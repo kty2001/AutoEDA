@@ -39,8 +39,10 @@ const END = '<!-- build:seo:end -->';
 export const PAGES = [
   { url: '/', file: 'index.html', title: 'AutoEDA — 정형 데이터 자동 EDA', sitemap: true },
   { url: '/pages/analyze', file: 'pages/analyze.html', title: '데이터 분석', sitemap: true },
-  { url: '/pages/guide', file: 'pages/guide/index.html', title: '해설', sitemap: true, generated: true },
-  { url: '/pages/case', file: 'pages/case/index.html', title: '사례 리포트', sitemap: true, generated: true },
+  // 섹션 인덱스는 디렉토리 인덱스(`pages/guide/index.html`)로 두지 않는다 —
+  // 그렇게 하면 `/pages/guide` 가 트레일링 슬래시로 307 된다. → build_guides.mjs 주석
+  { url: '/pages/guide', file: 'pages/guide.html', title: '해설', sitemap: true, generated: true },
+  { url: '/pages/case', file: 'pages/case.html', title: '사례 리포트', sitemap: true, generated: true },
   // 해설·사례 하위 페이지는 build_guides / build_cases 산출물을 스캔해 추가한다
 
   // 정책 4종 — noindex, sitemap 제외

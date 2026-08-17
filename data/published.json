@@ -1,0 +1,15 @@
+{
+  "guide": [
+    "class-imbalance",
+    "csv-encoding",
+    "data-leakage",
+    "high-cardinality",
+    "korean-public-data",
+    "missing-imputation",
+    "missing-types",
+    "multicollinearity",
+    "outlier-methods",
+    "skewness"
+  ],
+  "case": []
+}

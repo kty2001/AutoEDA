@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV 인코딩 오류 진단과 해결 — AutoEDA</title>
+<meta name="description" content="한글 CSV가 깨져 보이는 원인을 CP949·EUC-KR·UTF-8 관계로 설명하고, 인코딩을 판별하는 방법과 안전하게 변환하는 순서를 정리했습니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/csv-encoding">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/csv-encoding">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="CSV 인코딩 오류 진단과 해결 — AutoEDA">
+<meta property="og:description" content="한글 CSV가 깨져 보이는 원인을 CP949·EUC-KR·UTF-8 관계로 설명하고, 인코딩을 판별하는 방법과 안전하게 변환하는 순서를 정리했습니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"CSV 인코딩 오류 진단과 해결","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/csv-encoding"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"CSV 인코딩 오류 진단과 해결","description":"한글 CSV가 깨져 보이는 원인을 CP949·EUC-KR·UTF-8 관계로 설명하고, 인코딩을 판별하는 방법과 안전하게 변환하는 순서를 정리했습니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/csv-encoding","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">CSV 인코딩 오류 진단과 해결</span>
+  </nav>
+
+  <h1>CSV 인코딩 오류 진단과 해결</h1>
+  <p class="page-intro">한글 CSV가 깨지는 이유는 대부분 CP949와 UTF-8의 불일치입니다. 어느 쪽인지 판별하는 방법과 변환 순서를 정리했습니다.</p>
+
+  <p>파일을 열었을 때 열 이름이 &quot;�곗씠��&quot;처럼 나오거나 &quot;ÀÌ¸§&quot;처럼 보인다면 데이터가 손상된 것이 아닙니다. <strong>같은 바이트를 다른 규칙으로 읽은 것</strong>이고, 맞는 규칙으로 다시 읽으면 원래대로 돌아옵니다. 인코딩 문제를 데이터 손상으로 오해해 파일을 다시 받는 일이 흔한데, 대개 필요 없는 일입니다.</p>
+  <h2>왜 한국 데이터에서 자주 생기나</h2>
+  <p>국내 환경에서는 두 계통이 섞여 있습니다. 하나는 UTF-8이고, 다른 하나는 CP949입니다. CP949는 EUC-KR을 확장한 것이며 실무에서는 &quot;ANSI&quot;나 &quot;한국어&quot;로 표시되기도 합니다.</p>
+  <p>문제의 근원은 Excel입니다. 한국어 윈도우의 Excel에서 &quot;CSV로 저장&quot;을 누르면 UTF-8이 아니라 CP949로 저장되는 경우가 많습니다. 반면 대부분의 분석 도구와 웹은 UTF-8을 기본으로 가정합니다. <strong>저장하는 쪽과 읽는 쪽의 기본값이 다르다</strong>는 것이 원인이며, 누가 실수한 것이 아닙니다.</p>
+  <h2>어느 쪽인지 판별하는 방법</h2>
+  <p>가장 신뢰할 수 있는 판별은 <strong>UTF-8로 엄격하게 읽어 보는 것</strong>입니다. UTF-8은 바이트 배열에 규칙이 있어서, 아무 바이트열이나 유효한 UTF-8이 되지 않습니다. 한글이 담긴 CP949 바이트열을 UTF-8 규칙으로 엄격하게 읽으면 거의 항상 실패합니다.</p>
+  <p>따라서 순서는 이렇게 됩니다.</p>
+  <ol>
+    <li>UTF-8로 엄격하게 읽어 본다. 성공하면 UTF-8이다</li>
+    <li>실패하면 EUC-KR로 읽는다. 이것이 CP949 파일을 덮는다</li>
+    <li>둘 다 실패하면 인코딩 문제가 아니라 파일이 실제로 손상되었거나 텍스트가 아닐 가능성을 본다</li>
+  </ol>
+  <blockquote><p>눈으로 판별하려 할 때 주의할 점이 있습니다. 깨진 글자의 모양으로 원본 인코딩을 추측하는 방법이 알려져 있지만, 실제로는 읽는 쪽 환경까지 얽혀 있어 신뢰도가 낮습니다. 엄격 모드로 읽어 보는 편이 빠르고 확실합니다.</p></blockquote>
+  <h2>BOM이 만드는 별도의 문제</h2>
+  <p>UTF-8 파일 맨 앞에 BOM이라는 3바이트 표식이 붙는 경우가 있습니다. Excel이 UTF-8로 저장할 때 붙이는 경우가 많습니다. 내용은 정상인데 <strong>첫 번째 열 이름 앞에 보이지 않는 문자가 붙어</strong> 열 이름 비교가 실패합니다.</p>
+  <p>증상이 특징적입니다. 화면에는 열 이름이 정상으로 보이는데 그 열을 이름으로 찾으면 없다고 나옵니다. 첫 열만 그렇고 나머지는 정상이라면 BOM을 의심하면 됩니다.</p>
+  <h2>변환할 때 지킬 것</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>하지 말 것</th><th>대신 할 것</th></tr></thead>
+    <tbody>
+      <tr><td>원본 파일을 덮어써서 변환</td><td>변환 결과를 새 파일로 저장하고 원본을 남긴다</td></tr>
+      <tr><td>깨진 상태로 저장 후 되돌리기</td><td>잘못 읽어 저장한 파일은 정보가 이미 유실된다. 원본에서 다시 읽는다</td></tr>
+      <tr><td>열 이름만 손으로 고치기</td><td>값에도 같은 문제가 있다. 파일 전체를 다시 읽는다</td></tr>
+    </tbody>
+  </table></div>
+  <p>특히 두 번째가 중요합니다. <strong>잘못된 인코딩으로 읽은 뒤 저장하면 손실이 확정됩니다.</strong> 원본 바이트가 사라지므로 그 뒤에는 어떤 규칙으로 읽어도 복구되지 않습니다. 깨진 화면을 보는 단계에서는 아직 아무것도 잃지 않았지만, 그 상태로 저장하면 잃습니다.</p>
+  <h2>인코딩이 맞아도 남는 문제</h2>
+  <p>인코딩을 맞추면 글자는 정상이 되지만 그것으로 끝이 아닙니다. 열 이름에 줄바꿈이나 앞뒤 공백이 섞여 있는 경우, 같은 뜻의 열 이름이 파일마다 다른 경우, 숫자 열에 천 단위 쉼표가 들어가 문자로 취급되는 경우가 이어서 나옵니다. 인코딩은 가장 먼저 확인할 항목이지 마지막 항목이 아닙니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

@@ -4,8 +4,8 @@
 
 도구가 계산을 수행하고, 지식 베이스가 그 결과의 의미를 설명함. 도구는 제품이고 사이트는 리소스임.
 
-> **상태: Phase 1 코드 완성, 브라우저 실기 검증 통과, 첫 배포 직전.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 206건과 실기 검증 11항목이 통과함. SEO 빌드(canonical·OG·JSON-LD·sitemap)도 완료됨.
-> 남은 빌드 스크립트 2종은 해설·사례 콘텐츠가 있어야 의미가 있고, 콘텐츠는 미착수임.
+> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 236건 · 브라우저 실기 11항목 · 배포본 검증 7항목이 통과함.
+> 해설 11편과 사례 허브 1편이 발행되어(색인 14 URL) 죽은 내부 링크는 0건임. 남은 것은 사례 리포트 6편과 잔여 해설 11편임.
 > 다음 작업은 [docs/TODO.md](docs/TODO.md), 파일별 현황은 [docs/implementation-status.md](docs/implementation-status.md) 참조.
 > `AutoEDA`는 동명의 오픈소스 프로젝트가 존재하므로 서비스명 확정 전임.
 
@@ -82,8 +82,8 @@ EDA Engine (JavaScript) → 통계 JSON
 
 ## 로드맵
 
-- **Phase 1 (MVP)** — CSV 처리·타입 추론·필수 분석 항목·Health Score·Finding 목록·웹 결과 뷰, 필수 페이지 4종, 빌드 시점 HTML 생성 + MPA 구조 · *런타임 코드 완료, 빌드 스크립트 잔여*
-- **Phase 1.5** — 해설 문서 11편 이상 및 사례 리포트 3편 발행, Finding ↔ 해설 링크 연결, sitemap·색인
+- **Phase 1 (MVP)** — CSV 처리·타입 추론·필수 분석 항목·Health Score·Finding 목록·웹 결과 뷰, 필수 페이지 4종, 빌드 시점 HTML 생성 + MPA 구조 · **완료·배포됨**
+- **Phase 1.5** — 해설 문서 11편 이상 및 사례 리포트 3편 발행, Finding ↔ 해설 링크 연결, sitemap·색인 · *진행 중 — **해설 11편 완료**, Finding 8종에 해설 연결, 사례는 데이터셋 판정 대기*
 - **Phase 2** — 단계별 가이드 UI, 타깃 기반 EDA, AI 해석 레이어(BYO API Key), 비동기 처리, 대용량 샘플링, 내보내기·공유
 - **Phase 3 (후보)** — AI 질의응답, 데이터셋 비교, 전처리 지원, 시계열 분석, 분석 이력 비교, 콘텐츠 확장
 
@@ -125,9 +125,10 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test          # 전체 테스트 206건 (계약·동작·통합·빌드)
-npm run serve     # 로컬 서빙 → http://localhost:8000
-npm run build:seo # canonical·OG·JSON-LD 주입 + sitemap.xml (배포 직전)
+npm test            # 전체 테스트 236건 (계약·동작·통합·빌드)
+npm run serve       # 로컬 서빙 → http://localhost:8000
+npm run build:guides # 해설·사례 md → HTML + 섹션 인덱스
+npm run build:seo   # canonical·OG·JSON-LD 주입 + sitemap.xml (배포 직전)
 npx wrangler deploy
 ```
 

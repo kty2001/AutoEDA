@@ -253,3 +253,30 @@ thead th { background: var(--bg-soft); }
   padding: var(--sp-3);
   white-space: pre-wrap;
 }
+
+/* ── 해설·사례 (scripts/build_guides.mjs 산출물) ────────────── */
+.breadcrumb {
+  margin-bottom: var(--sp-3);
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}
+.breadcrumb a { color: var(--fg-muted); }
+
+.doc-list { padding-left: var(--sp-4); }
+.doc-list li { margin-bottom: var(--sp-2); }
+
+blockquote {
+  margin: var(--sp-4) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-soft);
+}
+blockquote p { margin: 0; }
+
+.cta {
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+.cta h2 { margin-top: 0; }

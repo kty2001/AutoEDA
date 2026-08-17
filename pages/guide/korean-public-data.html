@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한국 공공데이터 전처리에서 자주 만나는 함정 — AutoEDA</title>
+<meta name="description" content="국내 공공데이터 파일에서 반복적으로 나타나는 구조 문제를 정리했습니다. 병합 셀, 소계 행, 단위 혼재, 코드값 훼손을 어떻게 발견하고 처리하는지 설명합니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/korean-public-data">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/korean-public-data">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="한국 공공데이터 전처리에서 자주 만나는 함정 — AutoEDA">
+<meta property="og:description" content="국내 공공데이터 파일에서 반복적으로 나타나는 구조 문제를 정리했습니다. 병합 셀, 소계 행, 단위 혼재, 코드값 훼손을 어떻게 발견하고 처리하는지 설명합니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"한국 공공데이터 전처리에서 자주 만나는 함정","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/korean-public-data"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"한국 공공데이터 전처리에서 자주 만나는 함정","description":"국내 공공데이터 파일에서 반복적으로 나타나는 구조 문제를 정리했습니다. 병합 셀, 소계 행, 단위 혼재, 코드값 훼손을 어떻게 발견하고 처리하는지 설명합니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/korean-public-data","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">한국 공공데이터 전처리에서 자주 만나는 함정</span>
+  </nav>
+
+  <h1>한국 공공데이터 전처리에서 자주 만나는 함정</h1>
+  <p class="page-intro">병합 셀, 본문에 섞인 소계 행, 단위 혼재, 열 이름 불일치. 통계 이전에 걸러야 하는 구조 문제를 정리했습니다.</p>
+
+  <p>공공데이터 파일의 문제는 대부분 통계적인 문제가 아니라 <strong>구조적인 문제</strong>입니다. 사람이 보기 좋게 만든 표를 그대로 CSV로 내보낸 결과이기 때문입니다. 사람에게는 자연스러운 표가 기계에게는 규칙이 깨진 표입니다.</p>
+  <p>이 종류의 문제는 결측률이나 분포를 보기 전에 걸러야 합니다. 소계 행이 섞인 채 평균을 내면 그 평균은 아무것도 뜻하지 않는데, 계산은 아무 오류 없이 끝납니다.</p>
+  <h2>병합 셀이 남긴 빈 칸</h2>
+  <p>원본 표에서 &quot;서울특별시&quot;가 여러 행에 걸쳐 병합되어 있었다면, CSV로 내보낼 때 첫 행에만 값이 들어가고 나머지는 빈 칸이 됩니다. 이것은 결측이 아니라 <strong>직전 값이 이어진다는 뜻</strong>입니다.</p>
+  <p>증상으로 알아볼 수 있습니다. 특정 열의 결측률이 유독 높고, 빈 칸이 무작위로 흩어져 있지 않고 규칙적인 간격으로 나타납니다. 지역명이나 분류명처럼 상위 범주를 담은 열에서 주로 나옵니다.</p>
+  <p>처리는 위쪽 값으로 채우는 것이지만, <strong>채우기 전에 정말 병합 셀인지 확인해야 합니다.</strong> 실제 무응답인 결측을 위 값으로 채우면 없던 데이터를 만들어 내는 것입니다.</p>
+  <h2>본문에 섞인 소계와 합계 행</h2>
+  <p>&quot;소계&quot;, &quot;합계&quot;, &quot;계&quot;, &quot;전체&quot;, &quot;총계&quot; 같은 값이 데이터 행과 같은 자리에 들어 있는 경우가 많습니다. 지역별 통계라면 각 시군구 행 사이에 시도 합계 행이 끼어 있습니다.</p>
+  <p>이 행들을 빼지 않으면 두 가지가 동시에 망가집니다. 첫째, 같은 값이 두 번 계산되므로 합계가 실제의 두 배 가까이 나옵니다. 둘째, 합계 행은 값이 훨씬 크므로 <strong>이상치로 잡히고 분포를 오른쪽으로 길게 늘입니다.</strong> 편포 경고가 나왔을 때 실제 원인이 소계 행인 경우가 흔합니다.</p>
+  <p>찾는 방법은 범주형 열의 고유값 목록을 훑는 것입니다. 값 목록에 &quot;합계&quot;류가 있는지 보면 바로 드러납니다. 파일 맨 끝 한 행만 합계인 경우도 있고 중간중간 섞여 있는 경우도 있으므로 위치로 판단하지 않습니다.</p>
+  <h2>단위가 섞이거나 이름에만 있는 경우</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>형태</th><th>문제</th></tr></thead>
+    <tbody>
+      <tr><td>열 이름에 단위, 값에는 없음</td><td>파일마다 단위가 달라도 값만 보면 알 수 없음</td></tr>
+      <tr><td>값에 단위가 붙어 있음</td><td>숫자로 읽히지 않아 전체 열이 문자로 취급됨</td></tr>
+      <tr><td>같은 열에 단위가 혼재</td><td>천 원과 백만 원이 섞이면 어떤 계산도 무의미함</td></tr>
+      <tr><td>천 단위 쉼표</td><td>값이 문자로 취급되어 통계가 산출되지 않음</td></tr>
+    </tbody>
+  </table></div>
+  <p>가장 위험한 것은 세 번째입니다. 앞의 세 형태는 값이 문자로 남거나 이름을 보면 알 수 있어 눈에 띄지만, 단위 혼재는 <strong>전부 숫자로 잘 읽히면서 값만 틀립니다.</strong> 연도별 파일을 이어 붙였을 때 중간에 단위가 바뀐 경우가 대표적이며, 시계열이 특정 지점에서 갑자기 도약하는 모습으로 나타납니다.</p>
+  <h2>코드값이 수치로 바뀌는 문제</h2>
+  <p>행정동 코드, 사업자등록번호, 우편번호처럼 숫자로만 된 코드가 많습니다. 이 값들은 앞에 0이 붙는 경우가 있고, 수치로 변환되는 순간 그 0이 사라집니다. 06236이 6236이 되면 다른 지역을 가리키게 되고, 자릿수가 달라졌으므로 다른 파일과 결합할 때 매칭도 실패합니다.</p>
+  <p>이 변환은 되돌릴 수 없습니다. 사라진 0이 몇 개였는지 값만 보고는 알 수 없기 때문입니다. 그래서 <strong>코드성 열은 처음부터 문자로 읽어야 하며</strong>, 수치로 읽은 뒤 자릿수를 맞춰 복구하는 방식은 안전하지 않습니다.</p>
+  <h2>열 이름이 파일마다 다른 문제</h2>
+  <p>여러 연도의 파일을 이어 붙일 때 같은 항목의 열 이름이 미묘하게 다른 경우가 많습니다. 공백 유무, 괄호 표기, 한자와 한글 혼용, 약어와 전체 표기가 섞입니다.</p>
+  <blockquote><p>이어 붙인 뒤 결측률을 확인하면 알 수 있습니다. 특정 열의 결측이 정확히 특정 연도 분량만큼 나온다면 그 연도에서 열 이름이 달랐다는 뜻입니다. 결측 패턴이 무작위가 아니라 덩어리로 나타나는 것이 신호입니다.</p></blockquote>
+  <h2>정리</h2>
+  <p>위 항목들은 모두 통계 이전 단계입니다. 순서를 정리하면 인코딩 확인, 구조 문제 제거(병합 셀·소계 행), 타입과 단위 확인, 그다음이 결측과 분포입니다. 앞 단계를 건너뛰고 뒤 단계를 열심히 하면, 정확하게 계산된 무의미한 숫자를 얻습니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

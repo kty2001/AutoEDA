@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>다중공선성 — VIF와 상관계수로 진단하기 — AutoEDA</title>
+<meta name="description" content="다중공선성이 회귀 계수를 불안정하게 만드는 원리를 설명하고, 상관계수와 VIF의 진단 범위 차이, 처리 방법의 선택 기준을 정리했습니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/multicollinearity">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/multicollinearity">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="다중공선성 — VIF와 상관계수로 진단하기 — AutoEDA">
+<meta property="og:description" content="다중공선성이 회귀 계수를 불안정하게 만드는 원리를 설명하고, 상관계수와 VIF의 진단 범위 차이, 처리 방법의 선택 기준을 정리했습니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"다중공선성","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/multicollinearity"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"다중공선성","description":"다중공선성이 회귀 계수를 불안정하게 만드는 원리를 설명하고, 상관계수와 VIF의 진단 범위 차이, 처리 방법의 선택 기준을 정리했습니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/multicollinearity","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">다중공선성 — VIF와 상관계수로 진단하기</span>
+  </nav>
+
+  <h1>다중공선성 — VIF와 상관계수로 진단하기</h1>
+  <p class="page-intro">정보가 겹치는 변수를 함께 넣으면 계수가 불안정해집니다. 상관계수로 잡히지 않는 경우와 VIF가 필요한 이유를 정리했습니다.</p>
+
+  <p>다중공선성은 설명변수들끼리 정보가 겹치는 상태입니다. 예측 성능 자체는 크게 떨어지지 않는 경우도 많지만, <strong>어떤 변수가 얼마나 기여하는지를 말할 수 없게 됩니다.</strong> 그래서 이것은 성능 문제가 아니라 해석 문제입니다.</p>
+  <h2>무엇이 불안정해지나</h2>
+  <p>키를 센티미터로 담은 열과 미터로 담은 열을 함께 넣었다고 생각해 보겠습니다. 두 열은 같은 정보이므로, 첫 열의 계수를 크게 하고 둘째를 작게 해도, 반대로 해도 예측값은 같습니다. <strong>계수 조합이 무한히 많으므로 어느 하나로 정해지지 않습니다.</strong></p>
+  <p>실제 데이터에서는 완전히 같지 않고 거의 같은 경우가 많으므로 계수가 정해지기는 하지만, 데이터가 조금 바뀌면 크게 흔들립니다. 나타나는 증상은 이렇습니다.</p>
+  <ul>
+    <li>계수의 표준오차가 커지고 유의하지 않게 나옴</li>
+    <li>계수의 부호가 상식과 반대로 나옴</li>
+    <li>데이터를 조금 바꾸거나 표본을 나누면 계수가 크게 변함</li>
+    <li>모델 전체는 유의한데 개별 계수는 아무것도 유의하지 않음</li>
+  </ul>
+  <p>마지막 항목이 특징적인 신호입니다.</p>
+  <h2>상관계수만으로는 부족하다</h2>
+  <p>가장 먼저 하는 진단은 변수 쌍의 상관계수를 보는 것입니다. 절댓값이 0.8을 넘는 쌍이 있으면 겹침을 의심합니다.</p>
+  <p>그런데 상관계수는 <strong>두 변수씩만</strong> 봅니다. 세 변수 이상이 얽힌 겹침은 잡지 못합니다. 예를 들어 &quot;총액&quot; 열이 있고 &quot;항목A&quot;, &quot;항목B&quot;, &quot;항목C&quot; 열이 있는데 총액이 세 항목의 합이라면, 총액과 각 항목의 상관은 각각 0.6 정도로 낮을 수 있습니다. 쌍별로는 아무 문제가 없어 보이지만 총액은 나머지 셋으로 완전히 결정됩니다.</p>
+  <p>이 경우를 잡으려면 <strong>한 변수를 나머지 전부로 설명해 보는</strong> 방법이 필요합니다. 그것이 VIF입니다.</p>
+  <h2>VIF가 하는 일</h2>
+  <p>VIF는 한 변수를 나머지 설명변수 전부로 회귀했을 때의 결정계수로 계산됩니다. 그 변수가 다른 변수들로 잘 설명되면 값이 커집니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>VIF</th><th>통상적 해석</th></tr></thead>
+    <tbody>
+      <tr><td>1에 가까움</td><td>다른 변수와 겹치지 않음</td></tr>
+      <tr><td>5 부근</td><td>주의해서 볼 구간</td></tr>
+      <tr><td>10 이상</td><td>겹침이 뚜렷함</td></tr>
+    </tbody>
+  </table></div>
+  <p>이 도구는 상관 절댓값 0.8 이상 <strong>또는</strong> VIF 10 이상일 때 발견으로 올립니다. 두 조건을 OR로 묶은 이유는 각각이 잡는 범위가 다르기 때문입니다. 쌍별 겹침은 상관이 잡고, 여러 변수가 얽힌 겹침은 VIF가 잡습니다.</p>
+  <p>10이라는 값은 관례적 기준입니다. 5를 쓰는 문헌도 있고, 목적이 예측이면 더 관대하게 보아도 무방합니다.</p>
+  <h2>VIF를 볼 때 주의할 것</h2>
+  <p><strong>완전 겹침이면 VIF를 계산할 수 없습니다.</strong> 한 변수가 다른 변수들로 완전히 결정되면 회귀가 성립하지 않아 값이 무한대가 되거나 계산이 실패합니다. 이 도구는 그런 경우 VIF를 비워 두는데, 정보가 사라지는 것은 아닙니다 — 완전 겹침이면 상관 절댓값이 1에 가까우므로 상관 조건이 이미 성립합니다.</p>
+  <p>또 하나, VIF 계산은 <strong>결측이 있는 행을 전부 제외합니다.</strong> 여러 열에 결측이 흩어져 있으면 남는 행이 급격히 줄어들고, 표본이 작아진 상태의 VIF는 신뢰도가 떨어집니다. 결측률이 높은 데이터에서 VIF만 보고 판단하지 않는 편이 좋습니다.</p>
+  <h2>처리 방법</h2>
+  <ul>
+    <li><strong>하나를 제거한다.</strong> 가장 단순하고 대개 충분합니다. 어느 쪽을 남길지는 해석 가능성과 결측률로 정합니다</li>
+    <li><strong>합쳐서 새 변수를 만든다.</strong> 키와 체중을 각각 넣는 대신 체질량지수를 쓰는 식입니다. 도메인 의미가 있는 경우에 좋습니다</li>
+    <li><strong>주성분으로 축약한다.</strong> 겹침은 사라지지만 새 축의 해석이 어려워집니다. 해석이 목적이라면 이 방법은 목적과 상충합니다</li>
+    <li><strong>정규화된 회귀를 쓴다.</strong> 계수를 억제하는 방식으로 불안정을 완화합니다. 다만 계수 해석의 어려움은 남습니다</li>
+  </ul>
+  <p>우선순위는 대개 첫 번째입니다. <strong>겹치는 변수를 굳이 둘 다 남길 이유가 있는지 먼저 묻는 것</strong>이 가장 실용적입니다.</p>
+  <h2>아무것도 하지 않아도 되는 경우</h2>
+  <blockquote><p>목적이 예측이고 개별 계수를 해석할 생각이 없다면 다중공선성을 처리하지 않아도 됩니다. 예측값과 오차는 겹침에 크게 영향받지 않기 때문입니다. 트리 기반 모델도 계수를 추정하지 않으므로 이 문제에서 자유롭습니다.</p></blockquote>
+  <p>즉 다중공선성 경고에 대한 올바른 첫 반응은 변수를 지우는 것이 아니라 <strong>&quot;내가 계수를 해석할 것인가&quot;를 확인하는 것</strong>입니다. 해석할 것이면 처리해야 하고, 예측만 할 것이면 기록해 두고 넘어가도 됩니다.</p>
+  <p>주의할 점 하나가 남습니다. 상관이 매우 높은 변수 중 하나가 사실 타깃에서 파생된 것이라면 그것은 다중공선성이 아니라 데이터 누수이며, 처리 방법이 전혀 다릅니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

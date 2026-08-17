@@ -10,23 +10,25 @@
 
 여기에는 **작업 항목만** 둠. 수치·규칙·현황 표를 옮겨 적지 않고 링크함.
 
-최종 갱신: 2026-08-17
+최종 갱신: 2026-08-18
 
 ---
 
 ## 1. 지금 어디인가
 
-**Phase 1 런타임 코드가 닫힘. 실기 검증 통과. 배포를 막던 SEO 빌드가 풀림.**
+**Phase 1 완료·배포됨. Phase 1.5 의 해설 11편 조건 충족.**
 
-CSV를 읽어 통계·품질 점수·발견 목록·차트까지 만드는 경로가 전부 구현되어 있고, `npm test` 206건과 브라우저 실기 검증 11항목이 통과함. `sitemap.xml` 이 생성되어 **첫 배포(T3)의 선행 조건이 전부 해소됨.** 남은 빌드 스크립트 2종은 콘텐츠(T4)가 있어야 의미가 있음.
+도구·빌드 파이프라인이 닫혔고 해설 11편(K1 인덱스 + 하위 10편)과 사례 허브 1편이 발행됨. [`content-strategy.md` §8](content-strategy.md) 작성 순서 1~2 완료. 남은 것은 **사례 리포트(순서 3)와 잔여 해설 11편**이며, 사례는 데이터셋 이용 조건 판정이 선행 조건임.
 
 | 지표 | 값 |
 |---|---|
 | 런타임 코드 | `js/` 18개 모듈 (스텁 0) |
-| 테스트 | 206건 통과 (계약 21 + 동작 167 + 빌드 18) + 실기 11항목 |
-| 남은 스텁 | 빌드 스크립트 2종 (`build_guides` · `build_cases`) — 둘 다 콘텐츠 대기 |
-| 색인 대상 | 2 URL (`/`, `/pages/analyze`) — 콘텐츠 발행 시 최대 30 |
-| 미발행 콘텐츠 | 해설 22편 · 사례 6편 (전부 미착수) |
+| 빌드 스크립트 | `build_seo` · `build_guides` 완료 / `build_cases` 대기(데이터셋 판정) |
+| 테스트 | 236건 통과 (계약 21 + 동작 167 + 빌드 48) + 실기 11 + 배포본 7 |
+| 색인 대상 | **14 URL** — 전수가 리디렉션 0회로 200 |
+| 발행 콘텐츠 | **12편 · 17,249자** / 게이트 목표 15편 · 25,000자 (69%) |
+| 미발행 콘텐츠 | 해설 11편 · 사례 6편 |
+| 죽은 내부 링크 | **0건** |
 
 ---
 
@@ -49,29 +51,56 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 각 파일 헤더의 TODO 목록이 명세임. 전부 **서식 오류 시 파일을 쓰지 않고 exit 1** ([`implementation-status.md` §2](implementation-status.md) 규약 7).
 
 1. ~~`scripts/build_seo.mjs`~~ — **완료 (2026-08-17).** `npm run build:seo`. 색인 대상 페이지에 canonical·OG·JSON-LD 주입 + `sitemap.xml` 생성, 색인 정책 폐합 검사, 멱등. 미생성 해설·사례 인덱스는 경고 후 제외하므로 콘텐츠 없이도 돌아감. 결정·함정은 [`work-log.md`](work-log.md)
-2. `scripts/build_guides.mjs` ← **지금 할 것 중 코드로 남은 것.** 해설 원자료(`data/guide_source/*.md`) → HTML. 입력이 있어야 의미가 있으므로 T4와 함께 진행. **산출물 head 에 `build_seo` 자리 표시 주석을 넣을 것** — 없으면 `build:seo` 가 exit 1 함
-3. `scripts/build_cases.py` — **선행 조건: 데이터셋 이용 조건 판정 완료** ([`data-sources.md`](data-sources.md), 현재 C1~C6 전부 미판정). 판정 없이 실행하지 않음
+2. ~~`scripts/build_guides.mjs`~~ — **완료 (2026-08-17).** `npm run build:guides`. 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. **사례 허브도 이 스크립트가 만듦** (데이터셋과 무관한 산문이므로)
+3. `scripts/build_cases.py` — **선행 조건: 데이터셋 이용 조건 판정 완료** ([`data-sources.md`](data-sources.md), 현재 C1~C6 전부 미판정). 판정 없이 실행하지 않음. 범위는 `pages/case/{slug}.html` **본문만** — 사례 허브·목록은 `build_guides` 가 만들고, 이 스크립트 산출물을 다시 스캔해 목록에 넣음
 
-### T3. 첫 배포 ← **지금 할 것**
+### T3. 첫 배포 — **완료 (2026-08-17)**
 
-`npx wrangler deploy` → `autoeda.tyoujungzz.workers.dev`. 선행 조건(T1·T2-1)이 전부 끝났으므로 막는 것이 없음. 배포 전 `npm run build:seo` 를 한 번 돌려 `sitemap.xml` 을 최신으로 둠.
+`https://autoeda.tyoujungzz.workers.dev` 공개됨. 색인 인프라 검증 전량 통과 — 로컬 `wrangler dev` 결과와 엣지 동작이 갈리지 않았음.
 
-아래 3건은 **로컬 `wrangler dev` 에서 이미 통과함**(T1 과정에서 확인). 배포 후 실제 응답으로 한 번 더 봄 — 로컬 에뮬레이션과 엣지 동작이 갈릴 수 있는 지점임.
+- [x] 확장자 없는 URL 6종 200 · `.html` 은 307 · `/index.html` 은 301 · 없는 경로는 404 페이지
+- [x] `_headers` 6개 헤더 전부 적용 (CSP·HSTS·Referrer·nosniff·X-Frame·Permissions)
+- [x] 정적 자산 Content-Type 정상 (Worker `text/javascript`, sitemap `application/xml`, finding-map `application/json`)
+- [x] `sitemap.xml` 의 URL 2건이 **리디렉션 0회로 200** — 형제 프로젝트의 sitemap 전량 무효 원인을 회피함
+- [x] `.assetsignore` 가 실제로 막음 — `docs/` `tests/` `scripts/` `package.json` `wrangler.jsonc` `README.md` `_headers` 전부 404
+- [x] 색인 신호 — 홈 canonical·WebSite·Organization·FAQPage, 정책 4종 `noindex, follow`, 도구 페이지 robots 태그 없음(색인 대상)
+- [x] 엣지에서 도구 실기 — CP949 파일 → `euc-kr` 감지, 301행, Health 88, 발견 8건, 차트 8개, 콘솔 오류 0건
+- [ ] GSC 속성 등록 · sitemap 제출 ([`content-strategy.md` §7](content-strategy.md) 게이트) — **Google 계정 필요, 직접 수행할 사항**
 
-- [x] 확장자 없는 URL이 200을 반환 (로컬) — `.html` 요청은 문서대로 307, `/index.html` 은 301
-- [x] `_headers`의 CSP가 응답에 적용됨 (로컬)
-- [x] Worker 모듈 스크립트가 `text/javascript` 로 서빙됨 (로컬)
-- [x] `sitemap.xml` 이 서빙되고 담긴 URL 전수가 리디렉션 없이 200 (로컬)
-- [ ] 위 4건을 배포본에서 재확인
-- [ ] GSC 속성 등록 · sitemap 제출 ([`content-strategy.md` §7](content-strategy.md) 게이트)
+### T3.5 내부 링크 404 — **해소 (2026-08-17)**
+
+허브 2편을 발행하고 미발행 해설 링크에 게이트를 걸어 죽은 링크를 없앴음. **전 페이지 내부 링크·전역 메뉴 항목 전수가 리디렉션 0회로 200임**(로컬 확인).
+
+| 위치 | 조치 |
+|---|---|
+| 헤더 nav · 전역 메뉴 · 랜딩 본문 · 404 안내 | `/pages/guide`·`/pages/case` 를 실제로 발행 |
+| 발견 목록 `자세히 →` | `data/published.json`(build_guides 산출물)에 있는 슬러그만 링크. 미발행이면 링크를 렌더하지 않음 |
+
+발행한 2편은 하위 목록 없이도 성립하는 글임 — 사례 0편 상태의 빈 목록은 "미완성 페이지"이고 "준비 중" 문구는 안티패턴 #5 이므로 둘 다 쓰지 않았음. 경위와 함정 3건은 [`work-log.md`](work-log.md).
 
 ### T4. Phase 1.5 — 콘텐츠 발행
 
-[`content-strategy.md`](content-strategy.md)가 인벤토리·작성 순서·안티패턴의 확정본임. 분량 감당 가능 여부가 미결(T5)이므로 **착수 전에 범위를 먼저 정함.**
+[`content-strategy.md`](content-strategy.md)가 인벤토리·작성 순서·안티패턴의 확정본임. 원고는 초안을 만들고 검토받는 방식으로 진행함(T5 결정).
 
-- 해설 22편 (인덱스 K1 + 하위 21편). Finding 19종과 1:1 대응하는 Q·D·R·T군 19편이 우선
-- 사례 리포트 6편 — 데이터셋 판정 이후
-- 편당 800자 미달은 thin content 경고 대상
+**발행 완료 — 해설 11편 (2026-08-18)**
+
+| 순서 | 대상 | 상태 |
+|---|---|---|
+| 1 | K1 `/pages/guide` 인덱스 · K2 `csv-encoding` · K3 `korean-public-data` | ✅ |
+| 2 | Q1 `missing-types` · Q2 `missing-imputation` · Q5 `high-cardinality` · D1 `skewness` · D3 `outlier-methods` · R2 `multicollinearity` · R5 `data-leakage` · T1 `class-imbalance` | ✅ |
+| — | 사례 허브 `/pages/case` (EDA 리포트를 읽는 법) | ✅ |
+| 3 | 사례 리포트 C1 `titanic` · C2 `house-price` · 국내 1건 | ⛔ 데이터셋 판정 대기 |
+| 4 | 잔여 해설 11편 (Q3·Q4·Q6 · D2·D4·D5 · R1·R3·R4 · T2·T3) | 미착수 |
+
+**게이트까지 남은 것** ([`content-strategy.md` §7](content-strategy.md)) — 편수 12/15, 분량 17,249/25,000자. 잔여 해설 3편만 더 써도 편수는 채워지고 분량도 2만자를 넘김.
+
+**원고 추가 절차**: `data/guide_source/{slug}.md` 를 넣고 `npm run build:guides && npm run build:seo` → 페이지·허브 목록·sitemap·`자세히` 링크가 함께 살아남.
+
+- 슬러그는 [`screens.md §2`](screens.md) 해설 슬러그 표와 [`data/finding-map.json`](../data/finding-map.json)이 원천임
+- 프론트매터: `title` `summary` 필수, `description` `group` 선택 (`group` 은 허브 목록의 묶음)
+- 서식: `##` `###` 문단 `-` `1.` 표 `>` 와 인라인 `**굵게**` 만. 그 외는 줄 번호와 함께 exit 1
+- 편당 800자 미달은 빌드가 경고함. 발행하지 않는 것이 정책임 ([`content-strategy.md` §9](content-strategy.md))
+- **Finding 3단 문구를 복사하지 않음** (안티패턴 #4). 해설은 왜 그 기준인지·언제 틀리는지·언제 아무것도 하지 않아도 되는지를 다룸
 
 ### T5. 미결 결정 4건
 
@@ -79,8 +108,9 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 
 | 결정 | 막고 있는 것 | 판단 시점 |
 |---|---|---|
-| 콘텐츠 작성 분량·주체 | T4 전체 범위 | T4 착수 전 |
-| 서비스명 | 도메인·브랜딩·문구 전반 | T3 이후, 공개 전 |
+| ~~콘텐츠 작성 분량·주체~~ | — | **결정됨 (2026-08-18)** — 초안 작성 후 검토. 작성 순서 1~2 완료로 실행 가능성 확인됨 |
+| **데이터셋 이용 조건 판정 (C1~C6)** | 사례 리포트 6편 · `build_cases.py` | **지금** — 게이트 편수를 채우려면 필요함 ([`data-sources.md`](data-sources.md)) |
+| 서비스명 | 도메인·브랜딩·문구 전반 | 공개 완료 상태이므로 빠를수록 좋음 |
 | 커스텀 도메인 취득 | AdSense 신청(`ads.txt` 루트 소유) | 수익화 착수 시 |
 | Excel 파서 선정 | 없음 (미해결 시 Phase 1은 CSV 전용) | 사용자 요구가 확인되면 |
 
@@ -114,6 +144,9 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 | 2026-08-17 | **통합 스모크 도입** — `tests/integration.test.js` | 조립부 결함 3건 발견·수정 |
 | 2026-08-17 | **브라우저 실기 검증 (T1)** — 11항목 | 검증 서버를 `wrangler dev` 로 교체, CSS·`hidden` 결함 1건 수정 |
 | 2026-08-17 | **`build_seo.mjs` (T2-1)** — 주입·sitemap·검사 게이트 | 테스트 18건 추가(206), 배포 선행 조건 해소 |
+| 2026-08-17 | **첫 배포 (T3)** — `autoeda.tyoujungzz.workers.dev` | 색인 인프라 7항목 통과. 내부 링크 404 발견(T3.5) |
+| 2026-08-17 | **`build_guides.mjs` + 허브 2편 발행 (T2-2·T3.5)** | 테스트 22건 추가(236). 디렉토리 인덱스 307 함정 해소, 죽은 링크 0건 |
+| 2026-08-18 | **해설 10편 발행 (T4 작성 순서 1~2)** | 해설 11편 달성. 색인 14 URL, 17,249자(게이트 69%) |
 
 ### 이 과정에서 확인된 것
 
@@ -121,6 +154,8 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 - **통합 스모크가 유닛 테스트의 사각을 드러냄** — 172건 전부 통과하는 상태에서 조립부 결함 3건이 나왔음. 계층을 이을 때마다 반복함
 - **실기 검증은 CSS↔JS 상호작용을 드러냄** — 188건 전부 통과하고 JS 도 명세대로 동작하는데 CSS 한 줄이 `hidden` 을 이겨 메뉴가 항상 열려 있었음. Node 테스트로는 원리상 잡을 수 없는 층임
 - **검증 서버가 검증 항목을 좌우함** — CSP·확장자 없는 URL 은 그것을 재현하는 서버에서만 확인됨. 검증 대상에 맞는 서버를 고르는 것이 검증의 일부임
+- **307 리디렉션은 확장자를 없애도 다른 경로로 재발함** — 디렉토리 인덱스(`pages/guide/index.html`)가 트레일링 슬래시 307 을 만들었음. 회피 규칙(확장자 금지)을 지키는 것과 **결과를 실측하는 것**은 다른 일임
+- **링크는 목적지까지 눌러 봐야 검증됨** — 헤더·sitemap 이 200 이어도 화면에 깔린 링크는 별개임. `grep -oh 'href="/[^"]*"'` → 전량 curl 을 배포 검증 절차에 넣음
 
 ---
 

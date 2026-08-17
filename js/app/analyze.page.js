@@ -374,13 +374,22 @@ function renderFindings(panel, result) {
   attachGuideLinks(panel);
 }
 
-/** Finding 유형 → 해설 링크(UC-15). 매핑에 없는 유형은 링크를 렌더하지 않는다. */
+/**
+ * Finding 유형 → 해설 링크(UC-15). 매핑에 없는 유형은 링크를 렌더하지 않는다.
+ * 아직 발행되지 않은 해설도 링크하지 않는다 — `data/published.json`(build_guides 산출물)이
+ * 발행된 슬러그의 원천이다. 이 게이트가 없으면 콘텐츠 발행 전까지 결과 화면의
+ * 모든 '자세히' 링크가 404 로 이어진다(첫 배포 직후 실측).
+ */
 function attachGuideLinks(panel) {
-  findingMapPromise ??= fetch('/data/finding-map.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
-  findingMapPromise.then((map) => {
+  findingMapPromise ??= Promise.all([
+    fetch('/data/finding-map.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+    fetch('/data/published.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+  ]).then(([map, published]) => ({ map, published: new Set(published.guide ?? []) }));
+
+  findingMapPromise.then(({ map, published }) => {
     for (const slot of panel.querySelectorAll('[data-guide-link]')) {
       const entry = map[slot.dataset.guideLink];
-      if (!entry?.slug) continue;
+      if (!entry?.slug || !published.has(entry.slug)) continue;
       const a = document.createElement('a');
       a.href = `/pages/guide/${entry.slug}`;
       a.textContent = '자세히 →';
