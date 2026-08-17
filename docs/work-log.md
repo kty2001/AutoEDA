@@ -15,8 +15,15 @@
 - **원리적 한계를 숨기지 않음** — MAR 과 MNAR 은 데이터로 구별할 수 없고, 이상치에는 합의된 정의가 없으며, 상관은 범주형 누수를 잡지 못함. 도구가 못하는 것을 적는 편이 판정을 신뢰하게 만듦
 - **K군 2편은 Finding 대응이 없음** — `finding-map.json` 에 등장하지 않는 것이 정상임([`rules.md` §3.1](rules.md)). 도달 경로는 오류 상태 D 안내와 사례 리포트임
 
+### 배포에서 잡은 결함 — 원자료 md 가 자산으로 올라갔음
+
+`.assetsignore` 가 `data/guide_source` 만 제외하고 있어서 **`data/case_source/index.md` 가 공개 URL 로 서빙됐음**(200). 배포 로그의 업로드 목록을 눈으로 훑다가 발견함. `.assetsignore` 에 `data/case_source` 를 추가하고 재배포해 404 로 만듦.
+
+원자료가 서빙되면 같은 본문이 두 URL 에 존재해 중복 콘텐츠가 되고, 빌드 전 초안이 그대로 노출됨. **새 원자료 디렉토리를 만들 때마다 `.assetsignore` 를 같이 고쳐야 함** — 주석으로 그 규칙을 파일에 남김.
+
 ### 함정 (되풀이하지 말 것)
 
+- **`.assetsignore` 는 디렉토리별로 명시해야 하며 `.gitignore` 와 무관하다** — 새 원자료 디렉토리는 기본으로 배포된다. 배포 로그의 업로드 목록을 훑는 것이 유일한 실질 검사였음
 - **Windows 콘솔이 cp949 라 한글 JSON·HTML 을 파이썬으로 읽을 때 깨진다** — `json.load(open(...))` 가 `UnicodeDecodeError` 를 냄. `io.open(..., encoding='utf-8')` 로 열 것. 출력이 깨져 보이는 것은 콘솔 문제이고 파일은 정상임
 - **이 환경의 파이썬 `urllib` 은 로컬 서버에도 접속하지 못한다**(`getaddrinfo failed`) — 검증 스크립트는 `curl` 로 내려받아 파일을 파싱할 것
 

@@ -27,8 +27,11 @@ wrangler.jsonc
 # 저장소 메타
 README.md
 
-# 해설 원자료 — 빌드 입력이며 산출물(pages/guide/*.html)만 서빙한다
+# 해설·사례 원자료 — 빌드 입력이며 산출물(pages/guide*, pages/case*)만 서빙한다.
+# 원자료가 서빙되면 같은 본문이 두 URL 에 존재해 중복 콘텐츠가 되고,
+# 빌드 전 초안이 그대로 노출된다. 새 원자료 디렉토리를 만들면 여기에 추가할 것.
 data/guide_source
+data/case_source
 
 # 아래는 서빙 대상이므로 절대 제외하지 않는다:
 #   index.html  404.html  robots.txt  sitemap.xml  favicon.svg
