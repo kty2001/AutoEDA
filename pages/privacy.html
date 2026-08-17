@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인정보처리방침 — AutoEDA</title>
+<meta name="description" content="AutoEDA의 데이터 취급 방식, 브라우저 로컬 저장 항목과 삭제 방법, 쿠키 및 광고 고지.">
+<meta name="robots" content="noindex, follow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <h1>개인정보처리방침</h1>
+  <p class="page-intro">시행일: 준비 중</p>
+
+  <!-- ⚠️ 이 문서의 문구는 실제 구현과 일치해야 한다. 특히 "직접 삭제" 는
+       UC-11(결과 폐기)이 실제로 동작할 때만 쓸 수 있다. → docs/screens.md §3.6 -->
+
+  <h2>1. 업로드한 데이터</h2>
+  <p>
+    분석하는 파일은 <strong>서버로 전송되지 않습니다.</strong> 브라우저 안에서만 읽고 계산하며,
+    원본 파일이나 그 내용을 서버에 저장하지 않습니다. 이 사이트에는 데이터를 받는 서버가 없습니다.
+  </p>
+
+  <h2>2. 브라우저에 저장되는 항목</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>항목</th><th>저장 위치</th><th>내용</th><th>보관 기간</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>분석 결과</td>
+          <td>세션 저장소(sessionStorage)</td>
+          <td>집계된 통계와 발견 목록. <strong>원본 데이터 행은 포함되지 않습니다.</strong></td>
+          <td>탭을 닫으면 삭제됩니다</td>
+        </tr>
+        <tr>
+          <td>표시 설정</td>
+          <td>로컬 저장소(localStorage)</td>
+          <td>선택한 탭·열 등 화면 표시 설정</td>
+          <td>직접 삭제할 때까지</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    두 항목 모두 사용자 기기에만 존재하며 외부로 전송되지 않습니다.
+    분석 결과는 결과 화면의 &ldquo;결과 지우기&rdquo;로 즉시 삭제할 수 있고,
+    브라우저의 사이트 데이터 삭제 기능으로도 지울 수 있습니다.
+  </p>
+
+  <h2>3. 쿠키와 광고</h2>
+  <!-- TODO: AdSense 도입 시 아래를 실제 내용으로 확정한다.
+       광고 쿠키 설명 + 맞춤 광고 옵트아웃 링크가 필수 요건이다.
+       → docs/content-strategy.md §5, ../../Documents/project_process.md §5 -->
+  <p>준비 중입니다. 광고를 도입하면 광고 쿠키 사용과 맞춤 광고 해제 방법을 이 절에 명시합니다.</p>
+
+  <h2>4. 문의</h2>
+  <p>이 방침에 관한 문의는 <a href="/pages/contact">문의 페이지</a>로 보내 주세요.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "_comment": "Finding 유형 ID → 해설 페이지 매핑. 스키마: docs/data-model.md §7 / 유형 목록: docs/rules.md §3. 여기에 없는 유형은 '자세히' 링크를 렌더하지 않는다(UC-15 대안 흐름). 해설 K군 3편(진행 순서·인코딩·공공데이터 함정)은 프로세스 문서라 이 파일에 등장하지 않는 것이 정상이다.",
+  "F-MISSING-HIGH":    { "slug": "missing-types",                 "label": "결측치 유형과 판별" },
+  "F-MISSING-IMPUTE":  { "slug": "missing-imputation",            "label": "결측 대치 방법 선택" },
+  "F-DUP-ROW":         { "slug": "duplicate-rows",                "label": "중복 행" },
+  "F-CONST-COL":       { "slug": "constant-columns",              "label": "상수·준상수 컬럼" },
+  "F-HIGH-CARD":       { "slug": "high-cardinality",              "label": "고카디널리티 범주형" },
+  "F-ID-COL":          { "slug": "id-columns",                    "label": "ID성 컬럼" },
+
+  "F-SKEW":            { "slug": "skewness",                      "label": "왜도와 변환" },
+  "F-KURTOSIS":        { "slug": "kurtosis",                      "label": "첨도" },
+  "F-OUTLIER-RATE":    { "slug": "outlier-methods",               "label": "이상치 탐지법" },
+  "F-OUTLIER-ACTION":  { "slug": "outlier-removal",               "label": "이상치 제거 판단" },
+  "F-BIN-SENSITIVE":   { "slug": "histogram-bins",                "label": "히스토그램 구간 수" },
+
+  "F-CORR-METHOD":     { "slug": "correlation-coefficients",      "label": "상관계수 선택" },
+  "F-MULTICOLLINEAR":  { "slug": "multicollinearity",             "label": "다중공선성" },
+  "F-CORR-CAUSAL":     { "slug": "correlation-causation",         "label": "상관과 인과" },
+  "F-MIXED-RELATION":  { "slug": "categorical-numeric-relation",  "label": "범주형-수치형 관계" },
+  "F-LEAKAGE":         { "slug": "data-leakage",                  "label": "데이터 누수" },
+
+  "F-CLASS-IMBALANCE": { "slug": "class-imbalance",               "label": "클래스 불균형" },
+  "F-TARGET-SKEW":     { "slug": "target-distribution",           "label": "타깃 분포" },
+  "F-SCALE-DIFF":      { "slug": "scaling",                       "label": "스케일링" }
+}

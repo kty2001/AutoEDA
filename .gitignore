@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.env
+*.log
+
+# 사례 리포트 작업용 원본 데이터 (배포·버전관리 대상 아님)
+data/raw/

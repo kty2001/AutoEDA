@@ -1,0 +1,35 @@
+# Cloudflare 정적 자산 업로드 제외 (.gitignore 문법)
+# 주의: .gitignore 는 자산 스캔에 영향이 없다. 여기 적지 않으면 배포 자산으로 올라간다.
+
+# 의존성 — 자산으로 스캔되면 배포가 실패한다 (형제 프로젝트 실측)
+node_modules
+
+# 버전관리·CI·에디터
+.git
+.github
+.claude
+
+# 개발·문서 (서빙 대상 아님)
+tests
+scripts
+docs
+package.json
+package-lock.json
+.gitignore
+.env
+
+# Cloudflare 빌드 설정 자체는 서빙하지 않는다.
+# _headers / _redirects 는 Cloudflare 가 읽어야 하므로 제외하지 않는다.
+wrangler.jsonc
+.wrangler
+.assetsignore
+
+# 저장소 메타
+README.md
+
+# 해설 원자료 — 빌드 입력이며 산출물(pages/guide/*.html)만 서빙한다
+data/guide_source
+
+# 아래는 서빙 대상이므로 절대 제외하지 않는다:
+#   index.html  404.html  robots.txt  sitemap.xml  favicon.svg
+#   pages/  css/  js/  data/finding-map.json

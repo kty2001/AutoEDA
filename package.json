@@ -1,0 +1,13 @@
+{
+  "name": "autoeda",
+  "version": "0.0.0",
+  "description": "정형 데이터 자동 EDA — 브라우저에서 완결되는 도구 + EDA 지식 베이스",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build:guides": "node scripts/build_guides.mjs",
+    "build:seo": "node scripts/build_seo.mjs",
+    "serve": "python -m http.server 8000"
+  }
+}

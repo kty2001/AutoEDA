@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데이터 분석 — AutoEDA</title>
+<meta name="description" content="CSV를 골라 브라우저에서 바로 EDA를 실행합니다. 품질 점수, 주요 발견, 변수별 분포, 변수 간 관계를 한 화면에서 확인합니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <h1>데이터 분석</h1>
+  <p class="page-intro">CSV를 고르면 브라우저에서 바로 분석합니다. 파일은 서버로 전송되지 않습니다.</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       상태 A — 파일 선택 (docs/screens.md §4)
+       ═══════════════════════════════════════════════════════════════ -->
+  <section class="state is-active" id="state-select" aria-labelledby="h-select">
+    <h2 id="h-select" class="visually-hidden">파일 선택</h2>
+    <div class="card">
+      <p><label for="file-input">분석할 CSV 파일</label></p>
+      <input type="file" id="file-input" accept=".csv,text/csv">
+      <p><button type="button" class="btn-secondary btn" id="import-result">저장한 결과 불러오기</button></p>
+    </div>
+    <!-- 이전 분석 결과가 캐시에 있으면 여기에 "이어보기" 를 노출한다 -->
+    <div id="resume-notice" hidden></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       상태 B — 진행 (Web Worker)
+       ═══════════════════════════════════════════════════════════════ -->
+  <section class="state" id="state-progress" aria-labelledby="h-progress" aria-live="polite">
+    <h2 id="h-progress">분석 중</h2>
+    <p id="progress-stage">준비 중</p>
+    <progress id="progress-bar" max="100" value="0"></progress>
+    <p><button type="button" class="btn btn-secondary" id="cancel-analysis">취소</button></p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       상태 C — 결과 (5섹션 탭)
+       ※ 결과 UI 는 초기 HTML 에 내용을 두지 않는다. 색인 코퍼스가 도구 설명으로만
+         구성되게 하기 위한 것이며, 이것이 noindex 없이도 결과가 색인되지 않는 근거다.
+         → docs/screens.md §3.2
+       ═══════════════════════════════════════════════════════════════ -->
+  <section class="state" id="state-result" aria-labelledby="h-result">
+    <h2 id="h-result">분석 결과</h2>
+    <div role="tablist" aria-label="결과 섹션" id="result-tabs"></div>
+    <div id="result-panels"></div>
+    <p>
+      <button type="button" class="btn btn-secondary" id="export-result">결과 내보내기</button>
+      <button type="button" class="btn btn-secondary" id="clear-result">결과 지우기</button>
+      <button type="button" class="btn btn-secondary" id="new-file">새 파일</button>
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       상태 D — 오류 (유형 4종: docs/data-model.md §5.1)
+       ═══════════════════════════════════════════════════════════════ -->
+  <section class="state" id="state-error" aria-labelledby="h-error">
+    <h2 id="h-error">분석할 수 없습니다</h2>
+    <p id="error-message"></p>
+    <div id="error-actions"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       초기 HTML 필수 내용 — 색인 대상 (docs/screens.md §3.2)
+       인터페이스만 있는 페이지를 만들지 않는다.
+       ═══════════════════════════════════════════════════════════════ -->
+  <hr>
+
+  <h2>이 도구가 하는 일</h2>
+  <p>
+    CSV의 각 열이 어떤 종류의 데이터인지 판별하고, 결측·중복·이상치·상수 컬럼 같은 품질 문제를 찾아
+    점수로 집약합니다. 이어서 확인해야 할 사항을 <strong>발견 목록</strong>으로 정리하고 각 항목에
+    무엇이 발견되었는지, 왜 문제인지, 무엇을 하면 되는지를 함께 제시합니다.
+  </p>
+
+  <h2>지원 형식과 인코딩</h2>
+  <p>
+    CSV를 지원하며 구분자(쉼표·세미콜론·탭·파이프)를 자동으로 추정합니다.
+    인코딩은 UTF-8을 먼저 시도하고 실패하면 EUC-KR로 해석하므로 CP949로 저장된 한글 파일도 열립니다.
+    자동 감지가 실패하면 인코딩을 직접 고를 수 있습니다.
+  </p>
+
+  <h2>처리 방식</h2>
+  <p>
+    파일은 서버로 전송되지 않고 브라우저 메모리에서만 처리됩니다. 분석이 끝나면 집계된 통계만
+    현재 탭에 임시 보관되며(탭을 닫으면 사라집니다) 원본 데이터는 어디에도 저장되지 않습니다.
+    해설을 보러 다른 페이지에 갔다 돌아오면 결과가 그대로 남아 있습니다.
+  </p>
+
+  <h2>한계</h2>
+  <ul>
+    <li>브라우저 메모리에서 처리하므로 아주 큰 파일은 열 수 없습니다.</li>
+    <li>Excel 파일은 아직 지원하지 않습니다. CSV로 저장한 뒤 사용해 주세요.</li>
+    <li>통계적 특징을 알려주는 도구이며, 도메인 지식이 필요한 판단은 대신하지 않습니다.
+        제시되는 조치는 검토 대상이지 정답이 아닙니다.</li>
+    <li>결측이나 이상치를 자동으로 고치지 않습니다. 원본을 수정하지 않는 것이 원칙입니다.</li>
+  </ul>
+
+  <h2>자주 묻는 질문</h2>
+  <h3>결과를 다른 사람에게 보여줄 수 있나요?</h3>
+  <p>결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다.</p>
+  <h3>열의 타입을 잘못 인식하면 어떻게 하나요?</h3>
+  <p>개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요.</p>
+  <h3>분석 결과를 지울 수 있나요?</h3>
+  <p>결과 화면의 &ldquo;결과 지우기&rdquo;로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+<script type="module" src="/js/app/analyze.page.js"></script>
+</body>
+</html>

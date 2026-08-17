@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문의 — AutoEDA</title>
+<meta name="description" content="오류 신고, 해설 내용 오류, 기능 제안 문의.">
+<meta name="robots" content="noindex, follow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <h1>문의</h1>
+  <p class="page-intro">유형을 고르고 내용을 적으면 메일 앱이 열립니다.</p>
+
+  <!-- 백엔드가 없으므로 폼 전송이 아니라 mailto: 로 메일 앱을 연다.
+       form-action 'none' CSP 와도 일관된다. → docs/screens.md §3.6 -->
+  <div class="card">
+    <p>
+      <label for="contact-type">문의 유형</label><br>
+      <select id="contact-type"></select>
+    </p>
+    <p>
+      <label for="contact-body">내용</label><br>
+      <textarea id="contact-body" rows="8" cols="40"></textarea>
+    </p>
+    <p><button type="button" class="btn" id="contact-send">메일 앱으로 보내기</button></p>
+  </div>
+
+  <!-- 메일 앱이 없을 때 주소 노출 + 복사 + 본문 미리보기 -->
+  <div id="contact-fallback" hidden></div>
+
+  <h2>알려 주세요</h2>
+  <p>
+    분석 결과가 이상하다고 느껴지면 <strong>어떤 열에서 어떤 판정이 나왔는지</strong>를 함께 적어 주시면
+    확인이 빠릅니다. 다만 <strong>데이터 파일이나 분석 결과는 첨부하지 마세요</strong> —
+    이 사이트는 데이터를 받지 않는 것을 원칙으로 하며, 문의 경로에서도 그 전제를 유지합니다.
+  </p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+<script type="module" src="/js/app/contact.page.js"></script>
+</body>
+</html>
