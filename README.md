@@ -4,8 +4,8 @@
 
 도구가 계산을 수행하고, 지식 베이스가 그 결과의 의미를 설명함. 도구는 제품이고 사이트는 리소스임.
 
-> **상태: Phase 1 런타임 코드 완성, 브라우저 실기 검증 전.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 188건이 통과함.
-> 아직 빌드 스크립트 3종이 스텁이고 해설·사례 콘텐츠는 미착수임.
+> **상태: Phase 1 코드 완성, 브라우저 실기 검증 통과, 첫 배포 직전.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 206건과 실기 검증 11항목이 통과함. SEO 빌드(canonical·OG·JSON-LD·sitemap)도 완료됨.
+> 남은 빌드 스크립트 2종은 해설·사례 콘텐츠가 있어야 의미가 있고, 콘텐츠는 미착수임.
 > 다음 작업은 [docs/TODO.md](docs/TODO.md), 파일별 현황은 [docs/implementation-status.md](docs/implementation-status.md) 참조.
 > `AutoEDA`는 동명의 오픈소스 프로젝트가 존재하므로 서비스명 확정 전임.
 
@@ -125,12 +125,13 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test          # 전체 테스트 188건 (계약·동작·통합)
+npm test          # 전체 테스트 206건 (계약·동작·통합·빌드)
 npm run serve     # 로컬 서빙 → http://localhost:8000
+npm run build:seo # canonical·OG·JSON-LD 주입 + sitemap.xml (배포 직전)
 npx wrangler deploy
 ```
 
-연산은 전부 브라우저에서 일어나므로 개발 서버는 정적 서빙만 함. 상세는 [docs/implementation-status.md §3](docs/implementation-status.md) 참조.
+연산은 전부 브라우저에서 일어나므로 개발 서버는 정적 서빙만 함. 다만 `npm run serve`는 `_headers`의 CSP도 확장자 없는 URL도 재현하지 못하므로, **그 둘을 확인할 때는 `npx wrangler dev`를 씀.** 상세는 [docs/implementation-status.md §3](docs/implementation-status.md) 참조.
 
 ## 비타깃 범위
 

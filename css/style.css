@@ -163,6 +163,9 @@ thead th { background: var(--bg-soft); }
   background: var(--bg);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
+/* display 를 지정한 요소에는 hidden 속성의 UA 스타일(display:none)이 밀린다.
+   menu.js 는 hidden 으로만 여닫으므로 이 규칙이 없으면 패널이 항상 열려 있다. */
+.menu-panel[hidden] { display: none; }
 .menu-panel a {
   padding: var(--sp-2) var(--sp-4);
   text-decoration: none;

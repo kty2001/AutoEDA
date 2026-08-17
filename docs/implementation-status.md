@@ -12,7 +12,7 @@
 
 ## 1. 현황 스냅숏
 
-**단계: Phase 1 코드 완성(빌드 스크립트 제외), 브라우저 실기 검증 전.** domain·worker·storage·app 전부 구현·테스트 완료 — 남은 코드는 빌드 스크립트 3종(콘텐츠 작업과 결부). `npm run serve` 후 `/pages/analyze.html` 실기 검증이 다음 관문임. 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
+**단계: Phase 1 코드 완성, 브라우저 실기 검증 통과, SEO 빌드 완료.** domain·worker·storage·app·`build_seo` 전부 구현·테스트 완료 — 남은 코드는 빌드 스크립트 2종이고 둘 다 콘텐츠(Phase 1.5)가 있어야 의미가 있음. 실기 검증에서 나온 결함 1건(`.menu-panel` 의 `display` 가 `hidden` 을 덮음)은 수정함. **다음 관문은 첫 배포임.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
 
 ### 완성된 것
 
@@ -34,15 +34,18 @@
 | 차트 선택 | `js/domain/chart-select.js` | 타입별 대표 차트·산점도 상위 6쌍·히트맵 20열 축소·Finding 강조(왜도·IQR 경계) |
 | SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프 |
 | app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·5섹션 탭·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백 |
-| 테스트 | `tests/*.test.js` | 계약 21 + 동작 167 = 188건 (`integration.test.js` 가 계층 통합 스모크) |
-| 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` | |
+| SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
+| 테스트 | `tests/*.test.js` | 계약 21 + 동작 167 + 빌드 18 = 206건 (`integration.test.js` 가 계층 통합 스모크) |
+| 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` `sitemap.xml` | `sitemap.xml` 은 빌드 산출물이지만 배포 자산이라 커밋함 |
 | 페이지 골격 | `index.html` `404.html` `pages/*.html` `css/style.css` | analyze 4상태 섹션 포함 |
 
 ### 스텁 (구현 대상)
 
 | 계층 | 파일 | 내용 |
 |---|---|---|
-| 빌드 | `scripts/build_guides.mjs` `build_seo.mjs` `build_cases.py` | 콘텐츠·SEO 생성 |
+| 빌드 | `scripts/build_guides.mjs` `build_cases.py` | 해설·사례 HTML 생성. 둘 다 입력(콘텐츠 원자료·데이터셋 판정)이 없어 대기 중 |
+
+`build_guides` 산출물의 `<head>` 에는 **`build_seo` 자리 표시 주석을 넣어야 함** — 없으면 `npm run build:seo` 가 exit 1 함(색인 신호 누락을 조용히 넘기지 않기 위한 게이트).
 
 콘텐츠 원자료(`data/guide_source/`)와 사례 리포트(`pages/case/`)는 비어 있음 — Phase 1.5 범위임.
 
@@ -64,10 +67,11 @@
 
 | 명령 | 내용 |
 |---|---|
-| `npm test` | 전체 테스트 188건(계약·동작·통합). **모든 작업 완료 전 필수** |
+| `npm test` | 전체 테스트 206건(계약·동작·통합·빌드). **모든 작업 완료 전 필수** |
 | `npm run serve` | 로컬 서빙 (`python -m http.server 8000`). ES Module·Worker 확인용 |
+| `npx wrangler dev --persist-to <프로젝트 밖>` | **실기 검증용 서버.** `_headers` CSP·확장자 없는 URL 을 배포와 같게 적용함 — `npm run serve` 는 둘 다 재현하지 못하므로 CSP·링크 확인에는 쓸 수 없음. `--persist-to` 를 빼면 무한 리로드([`work-log.md`](work-log.md)) |
 | `npm run build:guides` | 해설 md → HTML (미구현) |
-| `npm run build:seo` | canonical·OG·JSON-LD·sitemap 주입 (미구현) |
+| `npm run build:seo` | canonical·OG·JSON-LD 주입 + `sitemap.xml` 생성. 멱등하므로 몇 번 돌려도 무방하고, **배포 직전에 한 번 돌림** |
 | `npx wrangler deploy` | Cloudflare Workers 배포 → `autoeda.tyoujungzz.workers.dev` |
 
 모듈을 구현하면 계약 테스트 외에 **동작 테스트를 `tests/`에 추가함** (`node --test`가 `tests/*.test.js`를 집음). domain 모듈은 순수 함수라 fixture 입력→출력 단정으로 충분함.
