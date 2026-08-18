@@ -111,13 +111,17 @@ img, svg { max-width: 100%; height: auto; }
   padding-right: var(--sp-12);
 }
 .site-header .logo {
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   text-decoration: none;
   color: var(--brand);
   letter-spacing: var(--tracking-ui);
 }
-.site-nav { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.site-nav { display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap; }
 .site-nav a { text-decoration: none; color: var(--fg); letter-spacing: var(--tracking-ui); }
+/* 항목 사이만 세로선으로 가른다. 줄바꿈된 첫 항목에는 선이 남지만
+   메뉴가 3개뿐이라 실제로는 접히지 않는다. */
+.site-nav a + a { padding-left: var(--sp-6); border-left: 1px solid var(--border); }
 .site-nav a[aria-current="page"] { font-weight: 600; color: var(--accent); text-decoration: underline; }
 
 /* 클래스까지 함께 거는 이유: `.container` 의 padding 단축 속성이 요소 선택자 `main` 을

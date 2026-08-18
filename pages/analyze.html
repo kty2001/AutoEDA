@@ -17,7 +17,8 @@
 <meta name="twitter:card" content="summary">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"데이터 분석","item":"https://autoeda.tyoujungzz.workers.dev/pages/analyze"}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"결과를 다른 사람에게 보여줄 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다."}},{"@type":"Question","name":"열의 타입을 잘못 인식하면 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요."}},{"@type":"Question","name":"분석 결과를 지울 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 “결과 지우기”로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다."}}]}</script>
-<!-- build:seo:end -->
+<!-- build:seo:end -->
+
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -45,8 +46,11 @@
   <section class="state is-active" id="state-select" aria-labelledby="h-select">
     <h2 id="h-select" class="visually-hidden">파일 선택</h2>
     <div class="card">
-      <p><label for="file-input">분석할 CSV 파일</label></p>
-      <input type="file" id="file-input" accept=".csv,text/csv">
+      <p id="file-caption">분석할 CSV 파일</p>
+      <!-- 기본 파일 입력은 OS 위젯이라 버튼 컴포넌트와 모양이 어긋난다.
+           입력은 숨기고 .btn 버튼이 대신 열도록 한다 (js/app/analyze.page.js) -->
+      <input type="file" id="file-input" accept=".csv,text/csv" class="visually-hidden" tabindex="-1" aria-hidden="true">
+      <p><button type="button" class="btn" id="choose-file" aria-describedby="file-caption">파일 선택</button></p>
       <p><button type="button" class="btn-secondary btn" id="import-result">저장한 결과 불러오기</button></p>
     </div>
     <!-- 이전 분석 결과가 캐시에 있으면 여기에 "이어보기" 를 노출한다 -->

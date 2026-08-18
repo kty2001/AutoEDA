@@ -534,8 +534,13 @@ function button(label, className, onClick) {
 function init() {
   const fileInput = document.getElementById('file-input');
   fileInput?.addEventListener('change', () => {
-    if (fileInput.files?.[0]) startAnalysis(fileInput.files[0]);
+    const file = fileInput.files?.[0];
+    // 같은 파일을 다시 골라도 change 가 뜨도록 값을 비운다
+    fileInput.value = '';
+    if (file) startAnalysis(file);
   });
+  // 숨긴 파일 입력을 버튼 컴포넌트가 대신 연다 (pages/analyze.html 상태 A)
+  document.getElementById('choose-file')?.addEventListener('click', () => fileInput?.click());
 
   // 드래그 앤 드롭 — 상태 A 카드 전체를 드롭 영역으로 쓴다
   const dropZone = document.querySelector('#state-select .card');
