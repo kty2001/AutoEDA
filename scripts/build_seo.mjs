@@ -43,6 +43,7 @@ export const PAGES = [
   // 그렇게 하면 `/pages/guide` 가 트레일링 슬래시로 307 된다. → build_guides.mjs 주석
   { url: '/pages/guide', file: 'pages/guide.html', title: '해설', sitemap: true, generated: true },
   { url: '/pages/case', file: 'pages/case.html', title: '사례 리포트', sitemap: true, generated: true },
+  { url: '/pages/glossary', file: 'pages/glossary.html', title: '용어집', kind: 'glossary', sitemap: true, generated: true },
   // 해설·사례 하위 페이지는 build_guides / build_cases 산출물을 스캔해 추가한다
 
   // 정책 4종 — noindex, sitemap 제외
@@ -216,6 +217,19 @@ function structuredData(page, meta, html) {
       inLanguage: 'ko',
       mainEntityOfPage: canonical,
       publisher: { '@type': 'Organization', name: SITE_NAME },
+    });
+  }
+
+  // 용어집은 Article 이 아니라 용어 모음이다. 개별 용어(DefinedTerm)까지는 넣지 않는다 —
+  // 화면 텍스트와 100% 일치를 보증할 수 있는 범위만 낸다(§6).
+  if (page.kind === 'glossary') {
+    objects.push({
+      '@context': 'https://schema.org',
+      '@type': 'DefinedTermSet',
+      name: meta.title.split(' — ')[0],
+      description: meta.description,
+      inLanguage: 'ko',
+      url: canonical,
     });
   }
 

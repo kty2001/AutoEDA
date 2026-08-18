@@ -119,9 +119,14 @@ img, svg { max-width: 100%; height: auto; }
 }
 .site-nav { display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap; }
 .site-nav a { text-decoration: none; color: var(--fg); letter-spacing: var(--tracking-ui); }
-/* 항목 사이만 세로선으로 가른다. 줄바꿈된 첫 항목에는 선이 남지만
-   메뉴가 3개뿐이라 실제로는 접히지 않는다. */
+/* 항목 사이를 세로선으로 가른다. */
 .site-nav a + a { padding-left: var(--sp-6); border-left: 1px solid var(--border); }
+/* 좁은 화면에서는 네비가 여러 줄로 접히는데, 그때 줄 첫 항목에 남는 세로선은
+   구분이 아니라 군더더기가 된다. 접히는 구간에서는 선을 걷고 간격만 남긴다. */
+@media (max-width: 640px) {
+  .site-nav { gap: var(--sp-3); }
+  .site-nav a + a { padding-left: 0; border-left: 0; }
+}
 .site-nav a[aria-current="page"] { font-weight: 600; color: var(--accent); text-decoration: underline; }
 
 /* 클래스까지 함께 거는 이유: `.container` 의 padding 단축 속성이 요소 선택자 `main` 을
@@ -179,7 +184,9 @@ main.container { padding-top: var(--sp-10); padding-bottom: var(--sp-16); }
 table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 /* 격자 대신 행 아래 실선만 남긴다 (DESIGN.md §4 영양성분표 패턴) */
 th, td { border-bottom: 1px solid var(--hairline); padding: var(--sp-3) var(--sp-4); text-align: left; }
-thead th { background: var(--bg-soft); border-bottom-color: var(--border); letter-spacing: var(--tracking-ui); }
+/* 머리글은 짧은 라벨뿐이라 줄바꿈할 이유가 없다. 좁은 열에서 한 글자씩
+   끊겨 세로로 쌓이는 것을 막는다 — 넘치면 .table-wrap 이 가로로 스크롤한다. */
+thead th { background: var(--bg-soft); border-bottom-color: var(--border); letter-spacing: var(--tracking-ui); white-space: nowrap; }
 tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 
 .verdict-ok { color: var(--ok); }
@@ -229,9 +236,13 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
   top: 52px;
   right: var(--sp-3);
   z-index: 20;
-  display: flex;
-  flex-direction: column;
+  /* 세로 나열이지만 flex 를 쓰지 않는다 — flex 항목은 max-content 아래로 줄지 않아
+     제목이 긴 해설 하위목록이 줄바꿈 대신 패널 밖으로 밀려난다(실측). */
   min-width: 10rem;
+  /* 해설 하위목록이 펼쳐져도 화면을 넘지 않게 패널이 자체 스크롤한다 */
+  max-width: min(22rem, calc(100vw - var(--sp-8)));
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
   padding: var(--sp-2) 0;
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -241,12 +252,36 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
    menu.js 는 hidden 으로만 여닫으므로 이 규칙이 없으면 패널이 항상 열려 있다. */
 .menu-panel[hidden] { display: none; }
 .menu-panel a {
+  display: block;
   padding: var(--sp-2) var(--sp-4);
   text-decoration: none;
   color: var(--fg);
 }
 .menu-panel a:hover { background: var(--bg-soft); }
 .menu-panel a[aria-current="page"] { font-weight: 600; color: var(--accent); }
+
+/* 해설 하위목록 */
+.menu-row { display: flex; align-items: center; }
+.menu-row a { flex: 1; }
+.menu-expand {
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.menu-expand[aria-expanded="true"] { transform: rotate(180deg); }
+.menu-sublist[hidden] { display: none; }
+.menu-sublist a { padding-left: var(--sp-8); font-size: 0.9rem; }
+.menu-group {
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-1) var(--sp-4) var(--sp-1) var(--sp-6);
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: var(--tracking-ui);
+}
 
 /* ── 결과 탭 (docs/screens.md §4 상태 C) ────────────────── */
 #result-tabs { display: flex; gap: var(--sp-1); flex-wrap: wrap; margin-bottom: var(--sp-4); }
@@ -344,6 +379,27 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 
 .doc-list { padding-left: var(--sp-4); }
 .doc-list li { margin-bottom: var(--sp-2); }
+
+/* 용어집 — 상단 '빠른 이동' 색인과 용어별 해설 링크 */
+.term-index {
+  margin-bottom: var(--sp-8);
+  padding: var(--sp-4) var(--sp-6);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+.term-index h2 { margin: 0 0 var(--sp-2); font-size: 1rem; }
+.term-index ul { margin: 0; padding-left: var(--sp-4); font-size: 0.9rem; }
+.term-index li { margin-bottom: var(--sp-2); }
+.term-index li > a:first-child { font-weight: 600; }
+
+.term-guide { margin-top: calc(-1 * var(--sp-2)); font-size: 0.9rem; }
+/* 앵커로 이동했을 때 제목이 화면 맨 위에 붙지 않게 한다 */
+h2[id], h3[id] { scroll-margin-top: var(--sp-4); }
+
+/* 같은 군의 다른 편으로 옮겨 가는 절. 본문과 CTA 밴드 사이에 오므로
+   실선 하나로 본문과 끊어 준다. */
+.related { margin-top: var(--sp-10); padding-top: var(--sp-6); border-top: 1px solid var(--hairline); }
+.related h2 { margin-top: 0; font-size: 1.125rem; }
 
 blockquote {
   margin: var(--sp-4) 0;

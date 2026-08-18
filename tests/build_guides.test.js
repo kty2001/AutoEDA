@@ -70,6 +70,25 @@ test('블록 — 지원 서식을 전부 파싱한다', () => {
   assert.deepEqual(kinds, ['p', 'h2', 'h3', 'ul', 'ol', 'quote', 'table']);
 });
 
+test('블록 — 제목의 {#앵커} 를 id 로 떼어낸다', () => {
+  const { blocks } = parseSource(`${FM}\n## 군 {#group}\n\n### 왜도 {#skewness}\n`, 'x.md');
+  assert.deepEqual(blocks, [
+    { type: 'h2', text: '군', id: 'group' },
+    { type: 'h3', text: '왜도', id: 'skewness' },
+  ]);
+});
+
+test('블록 — 앵커가 중복이거나 형식이 어긋나면 실패한다', () => {
+  assert.throws(() => parseSource(`${FM}\n### 가 {#dup}\n\n### 나 {#dup}\n`, 'x.md'), /앵커가 중복/);
+  assert.throws(() => parseSource(`${FM}\n### 가 {#왜도}\n`, 'x.md'), /앵커는 소문자/);
+});
+
+test('블록 — 해설: 줄은 슬러그만 받는다', () => {
+  const { blocks } = parseSource(`${FM}\n해설: skewness\n`, 'x.md');
+  assert.deepEqual(blocks, [{ type: 'guide-link', slug: 'skewness' }]);
+  assert.throws(() => parseSource(`${FM}\n해설: 왜도 해석\n`, 'x.md'), /슬러그만/);
+});
+
 test('블록 — 문단은 빈 줄까지 이어 붙인다', () => {
   const { blocks } = parseSource(`${FM}\n첫 줄\n둘째 줄\n\n다른 문단\n`, 'x.md');
   assert.deepEqual(blocks.map((b) => b.text), ['첫 줄 둘째 줄', '다른 문단']);
@@ -153,6 +172,19 @@ test('렌더 — 목록·인용이 의도한 태그로 나온다', () => {
   assert.match(html, /<blockquote><p>인용<\/p><\/blockquote>/);
 });
 
+test('렌더 — 제목 앵커와 해설 링크', () => {
+  const { blocks } = parseSource(`${FM}\n### 왜도 {#skewness}\n\n해설: skewness\n`, 'x.md');
+  const html = renderBlocks(blocks, '  ', (slug) => ({ url: `/pages/guide/${slug}`, title: '왜도 해석' }));
+  assert.match(html, /<h3 id="skewness">왜도<\/h3>/);
+  // 링크 문구는 원고가 아니라 해설 제목에서 온다 — 제목이 바뀌어도 어긋나지 않는다
+  assert.match(html, /<p class="term-guide"><a href="\/pages\/guide\/skewness">해설: 왜도 해석<\/a><\/p>/);
+});
+
+test('렌더 — 해설 해석기가 없는 자리에서는 해설: 줄이 실패한다', () => {
+  const { blocks } = parseSource(`${FM}\n해설: skewness\n`, 'x.md');
+  assert.throws(() => renderBlocks(blocks), /해설: 줄을 쓸 수 없는 자리/);
+});
+
 // ─── 분량 집계 ──────────────────────────────────────────────
 
 test('분량 — 서식 기호와 공백을 빼고 센다', () => {
@@ -162,7 +194,7 @@ test('분량 — 서식 기호와 공백을 빼고 센다', () => {
 
 // ─── 산출물 ─────────────────────────────────────────────────
 
-test('산출물 — 두 허브가 생성되어 있다', () => {
+test('산출물 — 섹션 인덱스가 전부 생성되어 있다', () => {
   for (const section of Object.values(SECTIONS)) {
     const path = join(ROOT, section.indexFile);
     assert.ok(existsSync(path), `${section.indexFile} 이 없음 — npm run build:guides 필요`);
@@ -181,7 +213,8 @@ test('산출물 — 내부 링크가 확장자 없는 절대경로다', () => {
     const html = readFileSync(join(ROOT, section.indexFile), 'utf8');
     for (const href of [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1])) {
       // canonical 은 build_seo 가 넣는 절대 URL 이고, 자산은 확장자가 있어야 한다.
-      if (href.startsWith('http') || href.startsWith('/css/') || href.startsWith('/favicon')) continue;
+      // 용어집의 #앵커는 같은 페이지 안의 이동이라 이 규칙 대상이 아니다.
+      if (href.startsWith('http') || href.startsWith('/css/') || href.startsWith('/favicon') || href.startsWith('#')) continue;
       assert.ok(href.startsWith('/'), `상대경로 링크: ${href}`);
       assert.ok(!href.endsWith('.html'), `확장자 링크: ${href}`);
     }
@@ -231,6 +264,98 @@ test('게이트 — 도구 화면이 published.json 으로 해설 링크를 거�
   const src = readFileSync(join(ROOT, 'js/app/analyze.page.js'), 'utf8');
   assert.match(src, /\/data\/published\.json/);
   assert.match(src, /published\.has\(/);
+});
+
+test('산출물 — guide-nav.json 이 발행된 편을 이름과 함께 담는다', () => {
+  const nav = JSON.parse(readFileSync(join(ROOT, 'data/guide-nav.json'), 'utf8'));
+  const published = JSON.parse(readFileSync(join(ROOT, 'data/published.json'), 'utf8'));
+
+  for (const [name, entry] of Object.entries(nav)) {
+    assert.equal(entry.url, SECTIONS[name].url);
+    const slugs = entry.groups.flatMap((group) => {
+      assert.ok(group.label, `${name}: 군 이름이 없음`);
+      assert.ok(group.items.length > 0, `${name}/${group.label}: 빈 군을 냈음`);
+      return group.items.map((item) => {
+        assert.ok(item.label, `${name}/${item.slug}: 메뉴 이름이 없음`);
+        return item.slug;
+      });
+    });
+    // 메뉴에 없는 편이 생기면(또는 지운 편이 남으면) 하위목록과 실제 발행분이 어긋난다.
+    assert.deepEqual([...slugs].sort(), [...published[name]].sort());
+  }
+  // 발행분이 0편인 섹션은 키 자체를 내지 않는다 — 빈 하위목록을 만들지 않기 위함.
+  for (const [name, slugs] of Object.entries(published)) {
+    assert.equal(name in nav, slugs.length > 0, `${name}: guide-nav.json 키가 발행 여부와 어긋남`);
+  }
+});
+
+test('산출물 — 하위 페이지에 같은 군의 다른 편 링크가 있다', () => {
+  const nav = JSON.parse(readFileSync(join(ROOT, 'data/guide-nav.json'), 'utf8'));
+
+  for (const [name, entry] of Object.entries(nav)) {
+    for (const group of entry.groups) {
+      for (const item of group.items) {
+        const html = readFileSync(join(ROOT, SECTIONS[name].out, `${item.slug}.html`), 'utf8');
+        const related = /<nav class="related"[\s\S]*?<\/nav>/.exec(html);
+        assert.ok(related, `${item.slug}: 관련 해설 절이 없음`);
+
+        const linked = [...related[0].matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+        for (const href of linked) {
+          assert.ok(href.startsWith('/') && !href.endsWith('.html'), `${item.slug}: 확장자·상대경로 링크 ${href}`);
+        }
+        assert.ok(linked.includes(entry.url), `${item.slug}: 허브 링크가 없음`);
+        assert.ok(!linked.includes(`${entry.url}/${item.slug}`), `${item.slug}: 자기 자신을 링크함`);
+        for (const sibling of group.items) {
+          if (sibling.slug === item.slug) continue;
+          assert.ok(linked.includes(`${entry.url}/${sibling.slug}`), `${item.slug}: ${sibling.slug} 링크가 없음`);
+        }
+      }
+    }
+  }
+});
+
+test('산출물 — 용어집의 앵커와 빠른 이동이 1:1 이다', () => {
+  const html = readFileSync(join(ROOT, SECTIONS.glossary.indexFile), 'utf8');
+
+  const ids = [...html.matchAll(/<h([23]) id="([^"]+)"/g)].map((m) => m[2]);
+  assert.equal(new Set(ids).size, ids.length, '앵커가 중복임');
+
+  const index = /<nav class="term-index"[\s\S]*?<\/nav>/.exec(html);
+  assert.ok(index, '빠른 이동 절이 없음');
+  for (const href of [...index[0].matchAll(/href="#([^"]+)"/g)].map((m) => m[1])) {
+    assert.ok(ids.includes(href), `빠른 이동이 없는 앵커를 가리킴: #${href}`);
+  }
+  // 용어(h3)는 모두 색인에 올라와야 한다 — 목록을 자동 생성하는 이유가 이것이다.
+  const terms = [...html.matchAll(/<h3 id="([^"]+)"/g)].map((m) => m[1]);
+  for (const term of terms) {
+    assert.ok(index[0].includes(`href="#${term}"`), `빠른 이동에서 빠진 용어: #${term}`);
+  }
+});
+
+test('산출물 — 용어집의 해설 링크가 실제 해설을 가리킨다', () => {
+  const html = readFileSync(join(ROOT, SECTIONS.glossary.indexFile), 'utf8');
+  const links = [...html.matchAll(/<p class="term-guide"><a href="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(links.length > 0, '해설 링크가 하나도 없음');
+  for (const href of links) {
+    const slug = href.split('/').pop();
+    assert.ok(
+      existsSync(join(ROOT, SECTIONS.guide.out, `${slug}.html`)),
+      `없는 해설을 가리킴: ${href}`
+    );
+  }
+});
+
+test('네비 — 모든 페이지의 상단 메뉴가 같다 (수기 복사 규약의 실패 지점)', () => {
+  const pages = ['index.html', '404.html', 'pages/analyze.html', 'pages/about.html', 'pages/contact.html',
+    'pages/privacy.html', 'pages/terms.html', SECTIONS.guide.indexFile, SECTIONS.case.indexFile,
+    SECTIONS.glossary.indexFile, join(SECTIONS.guide.out, 'skewness.html')];
+  const expected = ['/pages/analyze', '/pages/guide', '/pages/case', '/pages/glossary'];
+  for (const file of pages) {
+    const html = readFileSync(join(ROOT, file), 'utf8');
+    const nav = /<nav class="site-nav"[\s\S]*?<\/nav>/.exec(html);
+    assert.ok(nav, `${file}: site-nav 가 없음`);
+    assert.deepEqual([...nav[0].matchAll(/href="([^"]+)"/g)].map((m) => m[1]), expected, `${file}: 상단 메뉴가 다름`);
+  }
 });
 
 test('산출물 — 편당 분량이 하한을 넘는다', () => {

@@ -30,6 +30,7 @@
       <a href="/pages/analyze">데이터 분석</a>
       <a href="/pages/guide">해설</a>
       <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
     </nav>
   </div>
 </header>
@@ -80,6 +81,19 @@
   <p>즉 준상수 열은 <strong>성능을 크게 해치지는 않지만 예측을 불안정하게 만드는 쪽</strong>으로 기여합니다. 남기기로 했다면 그 열이 실제로 쓰이고 있는지 특성 중요도로 확인하는 편이 좋습니다.</p>
   <h2>정리</h2>
   <p>완전 상수는 지워도 되지만 <strong>왜 상수인지는 한 번 물어야 합니다.</strong> 준상수는 비율만 보고 판단할 수 없습니다. 소수 값이 잡음이면 지우고, 소수 값이 찾으려는 사건이면 그 열이 데이터에서 가장 중요한 열입니다. 이 도구가 준상수와 완전 상수를 같은 문구로 알리는 것은 <strong>둘 다 눈으로 확인하라는 뜻</strong>이지 둘을 같게 처리하라는 뜻이 아닙니다.</p>
+
+  <nav class="related" aria-label="관련 해설">
+    <h2>관련 해설</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/guide/duplicate-rows">중복 행 — 완전 중복과 키 중복의 구분</a> — 중복 행은 지우기 전에 어떤 종류의 중복인지부터 봐야 합니다. 지우면 안 되는 중복과 확인 순서를 정리했습니다.</li>
+      <li><a href="/pages/guide/high-cardinality">고카디널리티 범주형 변수 다루기</a> — 고유값이 수백 개인 범주형 열은 원-핫 인코딩으로 다룰 수 없습니다. 묶기·빈도 인코딩·타깃 인코딩의 선택 기준을 정리했습니다.</li>
+      <li><a href="/pages/guide/id-columns">ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</a> — 고유값 비율만으로 식별자를 판정하면 오탐이 납니다. 진짜 식별자를 가려내는 기준과 지우면 안 되는 경우를 정리했습니다.</li>
+      <li><a href="/pages/guide/missing-imputation">결측 대치 방법 선택 — 평균 대치가 분포를 왜곡하는 이유</a> — 평균 대치는 가장 흔하지만 분산을 줄이고 상관을 약화시킵니다. 방법별로 무엇을 잃는지 정리했습니다.</li>
+      <li><a href="/pages/guide/missing-types">결측치 유형과 판별 방법</a> — 결측은 비어 있다는 사실보다 왜 비었는지가 중요합니다. MCAR·MAR·MNAR의 구분과 실제로 판별 가능한 부분을 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/guide">해설 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
 
   <hr>
 

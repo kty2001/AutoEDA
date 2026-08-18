@@ -62,6 +62,17 @@ const SECTIONS = {
     label: '사례 리포트',
     groups: ['사례 리포트'],
   },
+  // 용어집은 하위 문서가 없는 단일 페이지 섹션이다(single). 해설 제목을 인용하므로
+  // 해설 다음에 처리되어야 한다 — 이 객체의 순서가 곧 처리 순서다.
+  glossary: {
+    source: 'data/glossary_source',
+    indexFile: 'pages/glossary.html',
+    out: 'pages/glossary',
+    url: '/pages/glossary',
+    label: '용어집',
+    groups: [],
+    single: true,
+  },
 };
 
 class BuildError extends Error {}
@@ -103,6 +114,15 @@ export function parseSource(text, file) {
   }
 
   const blocks = parseBlocks(lines.slice(closing + 1), file, closing + 2);
+
+  // 앵커가 겹치면 뒤엣것으로 이동할 방법이 없어진다. 화면으로는 알아채기 어렵다.
+  const seen = new Set();
+  for (const block of blocks) {
+    if (!block.id) continue;
+    if (seen.has(block.id)) throw new BuildError(`${file} — 앵커가 중복이다: {#${block.id}}`);
+    seen.add(block.id);
+  }
+
   return { meta, blocks, charCount: countChars(blocks) };
 }
 
@@ -123,12 +143,23 @@ function parseBlocks(lines, file, offset) {
     }
 
     if (line.startsWith('## ')) {
-      blocks.push({ type: 'h2', text: line.slice(3).trim() });
+      blocks.push({ type: 'h2', ...heading(line.slice(3).trim(), file, lineNo()) });
       i += 1;
       continue;
     }
     if (line.startsWith('### ')) {
-      blocks.push({ type: 'h3', text: line.slice(4).trim() });
+      blocks.push({ type: 'h3', ...heading(line.slice(4).trim(), file, lineNo()) });
+      i += 1;
+      continue;
+    }
+    // 용어집이 용어마다 관련 해설을 가리키는 줄. 링크 문구는 원고에 적지 않고
+    // 해설 프론트매터의 제목을 가져온다 — 제목이 바뀌어도 어긋나지 않게 하기 위함.
+    if (line.startsWith('해설: ')) {
+      const slug = line.slice('해설: '.length).trim();
+      if (!/^[a-z0-9-]+$/.test(slug)) {
+        throw new BuildError(`${file}:${lineNo()} — 해설: 뒤에는 슬러그만 쓴다(소문자·숫자·하이픈): ${slug}`);
+      }
+      blocks.push({ type: 'guide-link', slug });
       i += 1;
       continue;
     }
@@ -208,9 +239,23 @@ function parseBlocks(lines, file, offset) {
   return blocks;
 }
 
+/**
+ * 제목 줄에서 `{#앵커}` 를 떼어낸다. 앵커는 용어집이 용어마다 다는 것이며,
+ * 없으면 id 없는 제목이 된다(기존 원고는 그대로 동작한다).
+ */
+function heading(text, file, line) {
+  const match = /^(.*?)\s*\{#([^}]*)\}$/.exec(text);
+  if (!match) return { text };
+  const [, plain, id] = match;
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    throw new BuildError(`${file}:${line} — 앵커는 소문자·숫자·하이픈만 쓴다: {#${id}}`);
+  }
+  return { text: plain, id };
+}
+
 function isBlockStart(line) {
   const t = line.trimEnd();
-  return t.startsWith('## ') || t.startsWith('### ') || t.startsWith('- ') || t.startsWith('| ') || t.startsWith('|') || t.startsWith('> ') || /^\d+\. /.test(t);
+  return t.startsWith('## ') || t.startsWith('### ') || t.startsWith('- ') || t.startsWith('| ') || t.startsWith('|') || t.startsWith('> ') || t.startsWith('해설: ') || /^\d+\. /.test(t);
 }
 
 function splitRow(line) {
@@ -271,14 +316,27 @@ export function inline(text) {
   return esc(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 }
 
-function renderBlocks(blocks, indent = '  ') {
+/**
+ * 블록 → HTML.
+ * @param {object[]} blocks
+ * @param {string} indent
+ * @param {(slug: string) => {url: string, title: string}} [resolveGuide]
+ *   `해설:` 줄을 링크로 바꾸는 해석기. 없으면 그 블록에서 오류를 낸다.
+ */
+function renderBlocks(blocks, indent = '  ', resolveGuide) {
   return blocks
     .map((block) => {
+      const id = block.id ? ` id="${esc(block.id)}"` : '';
       switch (block.type) {
         case 'h2':
-          return `${indent}<h2>${inline(block.text)}</h2>`;
+          return `${indent}<h2${id}>${inline(block.text)}</h2>`;
         case 'h3':
-          return `${indent}<h3>${inline(block.text)}</h3>`;
+          return `${indent}<h3${id}>${inline(block.text)}</h3>`;
+        case 'guide-link': {
+          if (!resolveGuide) throw new BuildError(`해설: 줄을 쓸 수 없는 자리다: ${block.slug}`);
+          const target = resolveGuide(block.slug);
+          return `${indent}<p class="term-guide"><a href="${target.url}">해설: ${esc(target.title)}</a></p>`;
+        }
         case 'p':
           return `${indent}<p>${inline(block.text)}</p>`;
         case 'quote':
@@ -302,7 +360,7 @@ function renderBlocks(blocks, indent = '  ') {
 }
 
 /** 공통 셸. 기존 수기 페이지(pages/about.html)와 같은 마크업을 쓴다. */
-function page({ title, description, breadcrumb, h1, intro, body, cta = true }) {
+function page({ title, description, breadcrumb, h1, intro, body, related, cta = true }) {
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -323,6 +381,7 @@ ${SEO_MARKER}
       <a href="/pages/analyze">데이터 분석</a>
       <a href="/pages/guide">해설</a>
       <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
     </nav>
   </div>
 </header>
@@ -332,7 +391,7 @@ ${breadcrumb ? `\n${breadcrumb}\n` : ''}
   <h1>${esc(h1)}</h1>
   <p class="page-intro">${inline(intro)}</p>
 
-${body}
+${body}${related ? `\n\n${related}` : ''}
 ${
   cta
     ? `
@@ -374,29 +433,72 @@ function breadcrumbNav(section, title) {
   </nav>`;
 }
 
-/** 섹션 인덱스 — 인덱스 문서 본문 + 군별 목록. 목록이 비면 목록 절 자체를 내지 않는다. */
-function renderIndex(section, indexDoc, children) {
-  const parts = [renderBlocks(indexDoc.blocks)];
-
+/**
+ * 하위 문서를 군(群)별로 묶는다. 군 순서는 `section.groups` 를 따르고,
+ * 목록에 없는 군은 뒤에 등장 순으로 붙인다. 인덱스 목록·관련 해설 절·
+ * 전역 메뉴 목록이 같은 순서를 쓰도록 규칙을 여기 한 곳에 둔다.
+ * @returns {{label: string, docs: object[]}[]}
+ */
+function groupChildren(section, children) {
   const byGroup = new Map();
   for (const child of children) {
     const group = child.meta.group ?? section.groups[0];
     if (!byGroup.has(group)) byGroup.set(group, []);
     byGroup.get(group).push(child);
   }
+  const ordered = [...section.groups.filter((g) => byGroup.has(g)), ...[...byGroup.keys()].filter((g) => !section.groups.includes(g))];
+  return ordered.map((label) => ({ label, docs: byGroup.get(label) }));
+}
+
+/** 목록 한 줄. 인덱스와 관련 해설 절이 같은 형식을 쓴다. */
+function listItem(section, doc) {
+  return `<li><a href="${section.url}/${doc.slug}">${esc(doc.meta.title)}</a> — ${inline(doc.meta.summary)}</li>`;
+}
+
+/**
+ * 용어집 상단 '빠른 이동' — 파싱된 앵커에서 만든다. 원고에 목록을 손으로 적으면
+ * 용어를 추가할 때마다 어긋나므로 본문 자신을 원천으로 삼는다.
+ * 앵커가 하나도 없으면 절을 내지 않는다.
+ */
+function termIndex(blocks) {
+  const groups = [];
+  for (const block of blocks) {
+    if (block.type === 'h2' && block.id) groups.push({ label: block.text, id: block.id, terms: [] });
+    if (block.type === 'h3' && block.id && groups.length > 0) {
+      groups[groups.length - 1].terms.push(block);
+    }
+  }
+  const filled = groups.filter((group) => group.terms.length > 0);
+  if (filled.length === 0) return '';
+
+  const rows = filled
+    .map(
+      (group) =>
+        `      <li><a href="#${group.id}">${esc(group.label)}</a> — ` +
+        group.terms.map((term) => `<a href="#${term.id}">${esc(term.text)}</a>`).join(' · ') +
+        '</li>'
+    )
+    .join('\n');
+  return `  <nav class="term-index" aria-label="빠른 이동">\n    <h2>빠른 이동</h2>\n    <ul>\n${rows}\n    </ul>\n  </nav>`;
+}
+
+/** 섹션 인덱스 — 인덱스 문서 본문 + 군별 목록. 목록이 비면 목록 절 자체를 내지 않는다. */
+function renderIndex(section, indexDoc, children, resolveGuide) {
+  // 단일 페이지 섹션(용어집)은 하위 목록 대신 본문 앵커 색인을 앞에 둔다.
+  if (section.single) {
+    return [termIndex(indexDoc.blocks), renderBlocks(indexDoc.blocks, '  ', resolveGuide)]
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  const parts = [renderBlocks(indexDoc.blocks)];
+  const groups = groupChildren(section, children);
 
   // 발행된 하위 문서가 없으면 빈 목록·"준비 중" 문구를 내지 않는다 — 안티패턴 #5.
-  if (byGroup.size > 0) {
-    const ordered = [...section.groups.filter((g) => byGroup.has(g)), ...[...byGroup.keys()].filter((g) => !section.groups.includes(g))];
-    const lists = ordered.map((group) => {
-      const items = byGroup
-        .get(group)
-        .map(
-          (child) =>
-            `      <li><a href="${section.url}/${child.slug}">${esc(child.meta.title)}</a> — ${inline(child.meta.summary)}</li>`
-        )
-        .join('\n');
-      return `  <h2>${esc(group)}</h2>\n  <ul class="doc-list">\n${items}\n  </ul>`;
+  if (groups.length > 0) {
+    const lists = groups.map(({ label, docs }) => {
+      const items = docs.map((doc) => `      ${listItem(section, doc)}`).join('\n');
+      return `  <h2>${esc(label)}</h2>\n  <ul class="doc-list">\n${items}\n  </ul>`;
     });
     parts.push(lists.join('\n\n'));
   }
@@ -404,7 +506,47 @@ function renderIndex(section, indexDoc, children) {
   return parts.join('\n\n');
 }
 
+/**
+ * 하위 페이지의 '관련 해설' 절 — 같은 군의 다른 편으로 옆으로 이동하는 경로.
+ * 허브를 거치지 않으면 다른 편에 갈 수 없던 문제를 푼다 (docs/screens.md §3.4).
+ * 같은 군에 다른 편이 없으면 허브 링크만 남긴다.
+ */
+function relatedNav(section, doc, groups) {
+  const siblings = (groups.find((g) => g.docs.includes(doc))?.docs ?? []).filter((d) => d !== doc);
+  const list =
+    siblings.length > 0
+      ? `\n    <ul class="doc-list">\n${siblings.map((d) => `      ${listItem(section, d)}`).join('\n')}\n    </ul>`
+      : '';
+  // 용어만 확인하려는 독자를 위한 옆길. 원고가 없으면(= 발행 전) 링크를 걸지 않는다.
+  // 산출물이 아니라 원자료를 보는 이유: 같은 실행 안에서 쓰기 순서에 좌우되지 않게 하기 위함.
+  const glossary = existsSync(join(ROOT, SECTIONS.glossary.source))
+    ? ` ·\n    <a href="${SECTIONS.glossary.url}">${esc(SECTIONS.glossary.label)}</a>`
+    : '';
+  return `  <nav class="related" aria-label="관련 ${esc(section.label)}">
+    <h2>관련 ${esc(section.label)}</h2>${list}
+    <p><a href="${section.url}">${esc(section.label)} 전체 보기</a>${glossary}</p>
+  </nav>`;
+}
+
 // ─── 실행 ───────────────────────────────────────────────────
+
+/**
+ * 해설 슬러그 → 제목. 용어집의 `해설:` 줄이 참조한다.
+ * 해설 섹션을 처리할 때 채워지므로 SECTIONS 에서 용어집이 뒤에 와야 한다.
+ */
+const guideTitles = new Map();
+
+/** `해설:` 줄을 링크로 바꾼다. 없는 슬러그는 빌드를 세운다 — 404 를 발행하지 않는다. */
+function resolveGuide(slug) {
+  if (guideTitles.size === 0) {
+    throw new BuildError(`해설이 아직 파싱되지 않았다 — SECTIONS 에서 용어집이 해설보다 앞에 있다: ${slug}`);
+  }
+  const title = guideTitles.get(slug);
+  if (!title) {
+    throw new BuildError(`해설: ${slug} — 발행된 해설이 아니다 (data/guide_source 에 원고가 없다)`);
+  }
+  return { url: `${SECTIONS.guide.url}/${slug}`, title };
+}
 
 /** 섹션 하나를 조립한다. 파일은 쓰지 않고 결과만 돌려준다. */
 function buildSection(name, section, report) {
@@ -432,6 +574,16 @@ function buildSection(name, section, report) {
   const indexDoc = indexDocs[0];
   const children = docs.filter((d) => d !== indexDoc);
 
+  // 단일 페이지 섹션에 하위 원고가 섞이면 목록도 링크도 없는 유실 문서가 된다.
+  if (section.single && children.length > 0) {
+    throw new BuildError(
+      `${section.source} — 단일 페이지 섹션이라 하위 문서를 둘 수 없다: ${children.map((d) => d.file).join(', ')}`
+    );
+  }
+  if (name === 'guide') {
+    for (const doc of children) guideTitles.set(doc.slug, doc.meta.title);
+  }
+
   const slugs = new Set();
   for (const doc of children) {
     if (slugs.has(doc.slug)) throw new BuildError(`${section.source} — 슬러그 중복: ${doc.slug}`);
@@ -440,6 +592,8 @@ function buildSection(name, section, report) {
       throw new BuildError(`${section.source}/${doc.file} — 슬러그는 소문자·숫자·하이픈만: ${doc.slug}`);
     }
   }
+
+  const groups = groupChildren(section, children);
 
   const outputs = [
     {
@@ -452,7 +606,7 @@ function buildSection(name, section, report) {
         description: indexDoc.meta.description ?? indexDoc.meta.summary,
         h1: indexDoc.meta.title,
         intro: indexDoc.meta.summary,
-        body: renderIndex(section, indexDoc, children),
+        body: renderIndex(section, indexDoc, children, resolveGuide),
       }),
     },
     ...children.map((doc) => ({
@@ -467,12 +621,27 @@ function buildSection(name, section, report) {
         h1: doc.meta.title,
         intro: doc.meta.summary,
         body: renderBlocks(doc.blocks),
+        related: relatedNav(section, doc, groups),
       }),
     })),
   ];
 
-  report.push({ section: name, outputs });
+  report.push({ section: name, outputs, nav: navData(section, groups) });
   return outputs;
+}
+
+/**
+ * 전역 메뉴(js/app/menu.js)가 읽는 목록. 메뉴는 한 줄에 들어가야 하므로
+ * 부제(' — ' 뒤)를 뗀 짧은 이름을 쓴다 — build_seo 의 headline 과 같은 규칙이다.
+ */
+function navData(section, groups) {
+  return {
+    url: section.url,
+    groups: groups.map(({ label, docs }) => ({
+      label,
+      items: docs.map((doc) => ({ slug: doc.slug, label: doc.meta.title.split(' — ')[0] })),
+    })),
+  };
 }
 
 function main() {
@@ -505,6 +674,17 @@ function main() {
           group.outputs.filter((o) => o.url !== SECTIONS[group.section].url).map((o) => o.url.split('/').pop()),
         ])
       ),
+      null,
+      2
+    )}\n`
+  );
+
+  // 전역 메뉴용 목록 — 제목이 필요하므로 슬러그만 담는 published.json 과 따로 낸다.
+  // 항목이 없는 섹션은 키를 내지 않는다(메뉴에 빈 하위목록을 만들지 않기 위함).
+  writeFileSync(
+    join(ROOT, 'data/guide-nav.json'),
+    `${JSON.stringify(
+      Object.fromEntries(report.filter((g) => g.nav.groups.length > 0).map((g) => [g.section, g.nav])),
       null,
       2
     )}\n`

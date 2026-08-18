@@ -30,6 +30,7 @@
       <a href="/pages/analyze">데이터 분석</a>
       <a href="/pages/guide">해설</a>
       <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
     </nav>
   </div>
 </header>
@@ -79,6 +80,17 @@
   <p>곡선 관계까지 잡으려면 상호정보량처럼 단조성을 전제하지 않는 지표를 쓰거나, 구간별로 나눠 보거나, 산점도에 추세선을 얹어 눈으로 확인합니다.</p>
   <h2>정리</h2>
   <p>기본값을 Pearson으로 두되 <strong>분포를 먼저 보고 정하는 습관</strong>이 필요합니다. 치우친 데이터에서는 Spearman을 함께 계산하고, 두 값이 크게 다르면 그 차이가 데이터에 대해 알려주는 것을 읽습니다. 그리고 어떤 계수를 쓰든 <strong>0에 가깝다는 것이 관계가 없다는 뜻은 아니라는 점</strong>을 기억해야 합니다. 상관행렬은 후보를 좁히는 도구이지 결론을 내는 도구가 아닙니다.</p>
+
+  <nav class="related" aria-label="관련 해설">
+    <h2>관련 해설</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/guide/categorical-numeric-relation">범주형과 수치형 사이의 관계 측정하기</a> — 상관행렬은 수치형끼리만 다룹니다. 범주형과 수치형 사이의 관계를 보는 방법과 그 판단 기준을 정리했습니다.</li>
+      <li><a href="/pages/guide/data-leakage">데이터 누수 후보 탐지</a> — 검증 성능이 비현실적으로 높으면 대개 누수입니다. 타깃과 지나치게 높은 상관을 어떻게 읽어야 하는지 정리했습니다.</li>
+      <li><a href="/pages/guide/multicollinearity">다중공선성 — VIF와 상관계수로 진단하기</a> — 정보가 겹치는 변수를 함께 넣으면 계수가 불안정해집니다. 상관계수로 잡히지 않는 경우와 VIF가 필요한 이유를 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/guide">해설 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
 
   <hr>
 

@@ -30,6 +30,7 @@
       <a href="/pages/analyze">데이터 분석</a>
       <a href="/pages/guide">해설</a>
       <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
     </nav>
   </div>
 </header>
@@ -78,6 +79,19 @@
   <blockquote><p>이 도구는 빈 칸만 결측으로 세고, 타입에 맞지 않는 값은 별도로 &quot;불일치&quot;로 셉니다. 결측률이 낮은데 불일치율이 높은 열은 값으로 표기된 결측이 있다는 신호입니다.</p></blockquote>
   <h2>무엇을 하면 되나</h2>
   <p>결측을 발견했을 때의 순서는 채우기 전에 확인하는 것입니다. 결측 패턴을 다른 열과 대조하고, 그 열이 분석에 필요한지 판단하고, 필요하다면 대치 방법을 고릅니다. 필요하지 않은 열은 채우는 것보다 제외하는 편이 안전합니다. 대치 방법 선택은 별도로 다룹니다.</p>
+
+  <nav class="related" aria-label="관련 해설">
+    <h2>관련 해설</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/guide/constant-columns">상수·준상수 컬럼이 분석에 미치는 영향</a> — 값이 거의 변하지 않는 열은 대개 지워도 되지만, 지우면 안 되는 경우가 분명히 있습니다. 그 경계를 정리했습니다.</li>
+      <li><a href="/pages/guide/duplicate-rows">중복 행 — 완전 중복과 키 중복의 구분</a> — 중복 행은 지우기 전에 어떤 종류의 중복인지부터 봐야 합니다. 지우면 안 되는 중복과 확인 순서를 정리했습니다.</li>
+      <li><a href="/pages/guide/high-cardinality">고카디널리티 범주형 변수 다루기</a> — 고유값이 수백 개인 범주형 열은 원-핫 인코딩으로 다룰 수 없습니다. 묶기·빈도 인코딩·타깃 인코딩의 선택 기준을 정리했습니다.</li>
+      <li><a href="/pages/guide/id-columns">ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</a> — 고유값 비율만으로 식별자를 판정하면 오탐이 납니다. 진짜 식별자를 가려내는 기준과 지우면 안 되는 경우를 정리했습니다.</li>
+      <li><a href="/pages/guide/missing-imputation">결측 대치 방법 선택 — 평균 대치가 분포를 왜곡하는 이유</a> — 평균 대치는 가장 흔하지만 분산을 줄이고 상관을 약화시킵니다. 방법별로 무엇을 잃는지 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/guide">해설 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
 
   <hr>
 

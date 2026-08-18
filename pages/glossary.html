@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>용어집 — AutoEDA</title>
+<meta name="description" content="결측률·최빈값 비율·왜도·IQR·VIF처럼 EDA 결과 화면에 등장하는 용어를 정의와 판정 기준으로 정리했습니다. 각 용어는 관련 해설로 이어집니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/glossary">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/glossary">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="용어집 — AutoEDA">
+<meta property="og:description" content="결측률·최빈값 비율·왜도·IQR·VIF처럼 EDA 결과 화면에 등장하는 용어를 정의와 판정 기준으로 정리했습니다. 각 용어는 관련 해설로 이어집니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"용어집","item":"https://autoeda.tyoujungzz.workers.dev/pages/glossary"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"DefinedTermSet","name":"용어집","description":"결측률·최빈값 비율·왜도·IQR·VIF처럼 EDA 결과 화면에 등장하는 용어를 정의와 판정 기준으로 정리했습니다. 각 용어는 관련 해설로 이어집니다.","inLanguage":"ko","url":"https://autoeda.tyoujungzz.workers.dev/pages/glossary"}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <h1>용어집</h1>
+  <p class="page-intro">도구 화면과 해설에 나오는 용어를 한자리에 모았습니다. 항목마다 이 도구가 실제로 쓰는 판정 기준을 함께 적었습니다.</p>
+
+  <nav class="term-index" aria-label="빠른 이동">
+    <h2>빠른 이동</h2>
+    <ul>
+      <li><a href="#tool">이 도구가 쓰는 말</a> — <a href="#finding">발견</a> · <a href="#severity">심각도</a> · <a href="#health-score">품질 점수</a> · <a href="#verdict">판정</a> · <a href="#evidence">근거 수치</a></li>
+      <li><a href="#structure">데이터 구조와 타입</a> — <a href="#tabular">정형 데이터</a> · <a href="#row-column">관측치와 변수</a> · <a href="#numeric">수치형</a> · <a href="#categorical">범주형</a> · <a href="#type-inference">타입 추론</a> · <a href="#cardinality">카디널리티</a> · <a href="#unique-ratio">고유값 비율</a> · <a href="#leading-zero">선행 0</a> · <a href="#encoding">인코딩</a></li>
+      <li><a href="#quality">데이터 품질</a> — <a href="#missing">결측치</a> · <a href="#missing-rate">결측률</a> · <a href="#missing-mechanism">결측 발생 구조</a> · <a href="#imputation">결측 대치</a> · <a href="#duplicate">중복 행</a> · <a href="#constant">상수·준상수 열</a> · <a href="#mode-rate">최빈값 비율</a> · <a href="#id-column">ID성 열</a> · <a href="#invalid">유효하지 않은 값</a></li>
+      <li><a href="#distribution">분포</a> — <a href="#descriptive">기술통계</a> · <a href="#median">중위수</a> · <a href="#stdev">표준편차</a> · <a href="#iqr">사분위수와 IQR</a> · <a href="#skewness">왜도</a> · <a href="#kurtosis">첨도</a> · <a href="#outlier">이상치</a> · <a href="#z-score">z-score</a> · <a href="#bins">히스토그램 구간 수</a></li>
+      <li><a href="#relation">변수 간 관계</a> — <a href="#correlation">상관계수</a> · <a href="#correlation-methods">상관계수 세 가지</a> · <a href="#correlation-matrix">상관행렬</a> · <a href="#multicollinearity">다중공선성</a> · <a href="#vif">VIF</a> · <a href="#causation">상관과 인과</a> · <a href="#mixed-relation">범주형과 수치형의 관계</a> · <a href="#leakage">데이터 누수</a></li>
+      <li><a href="#target">타깃과 모델링</a> — <a href="#target-variable">타깃 변수</a> · <a href="#class-imbalance">클래스 불균형</a> · <a href="#scaling">스케일링</a> · <a href="#transform">로그·Box-Cox 변환</a></li>
+    </ul>
+  </nav>
+
+  <p>분석 결과를 읽다가 막히는 지점은 대개 계산이 아니라 <strong>말</strong>입니다. &quot;최빈값 비율 0.97&quot;, &quot;왜도 2.4&quot;, &quot;VIF 12&quot;가 무엇을 뜻하는지 모르면 그 숫자가 문제인지 아닌지 판단할 수 없습니다.</p>
+  <p>아래 항목은 이 도구의 화면에 실제로 나오는 용어들입니다. 각 항목은 뜻 한 문단과 <strong>이 도구가 쓰는 판정 기준</strong>으로 이루어져 있습니다. 임계값은 관례를 따른 것과 이 프로젝트가 정한 것이 섞여 있으며, 어느 쪽인지는 항목마다 밝혔습니다. 더 깊은 설명이 필요한 항목에는 해설 링크를 달았습니다.</p>
+  <h2 id="tool">이 도구가 쓰는 말</h2>
+  <h3 id="finding">발견</h3>
+  <p>확인이 필요한 사항 하나를 가리킵니다. 결과 화면의 목록에 올라오는 항목이 각각 하나의 발견이며, 무엇이 발견되었는지·왜 문제인지·무엇을 하면 되는지 세 단으로 제시됩니다. 유형은 19종으로 고정되어 있고, 조건에 맞을 때만 생성되므로 데이터에 따라 개수가 다릅니다.</p>
+  <h3 id="severity">심각도</h3>
+  <p>발견의 급함을 세 단계로 나눈 것입니다. high는 그대로 두면 이후 분석이 어긋나는 사항, medium은 조치를 검토할 사항, low는 해석할 때 주의하라는 안내입니다. 심각도는 데이터의 중요도가 아니라 <strong>분석 진행에 미치는 영향</strong>을 기준으로 매깁니다.</p>
+  <h3 id="health-score">품질 점수</h3>
+  <p>결측·중복·상수 열·고카디널리티·이상치·유효하지 않은 값 여섯 항목의 감점을 100점에서 뺀 값입니다. 항목마다 감점 상한이 있어 한 항목이 점수를 혼자 무너뜨리지 않습니다. 80점 이상이면 양호, 50점 이상이면 주의, 그 아래는 문제 있음으로 표시합니다.</p>
+  <h3 id="verdict">판정</h3>
+  <p>항목별로 매기는 세 단계 결과입니다. 양호는 손볼 것이 없는 상태, 주의는 확인이 필요한 상태, 문제 있음은 먼저 조치해야 하는 상태를 뜻합니다. 점수와 달리 판정은 항목마다 따로 나오므로, 총점이 높아도 특정 항목이 문제 있음일 수 있습니다.</p>
+  <h3 id="evidence">근거 수치</h3>
+  <p>판정과 함께 표시되는 실제 값입니다. &quot;결측률 23.4퍼센트&quot;처럼 무엇을 보고 그렇게 판정했는지 함께 내보이는 것으로, 점수만 제시하고 계산 근거를 감추지 않기 위한 장치입니다. 임계값이 마음에 들지 않으면 근거 수치를 보고 직접 다르게 판단할 수 있습니다.</p>
+  <h2 id="structure">데이터 구조와 타입</h2>
+  <h3 id="tabular">정형 데이터</h3>
+  <p>행과 열로 이루어진 표 형태의 데이터입니다. CSV·엑셀·데이터베이스 테이블이 여기에 속하며, 이 도구가 다루는 유일한 형태입니다. 이미지·음성·자유 문서는 정형 데이터가 아니므로 대상이 아닙니다.</p>
+  <h3 id="row-column">관측치와 변수</h3>
+  <p>행 하나가 관측치, 열 하나가 변수입니다. 관측치는 &quot;무엇을 한 번 잰 결과&quot;이고 변수는 &quot;무엇을 쟀는지&quot;입니다. 이 구분이 흔들리면, 즉 한 행이 무엇 하나를 뜻하는지 말할 수 없으면 그 데이터는 분석 전에 구조부터 정리해야 합니다.</p>
+  <h3 id="numeric">수치형</h3>
+  <p>크기를 비교하고 사칙연산이 뜻을 갖는 열입니다. 나이·금액·온도가 여기에 속합니다. 숫자로 보인다고 전부 수치형은 아닙니다. 우편번호나 코드값은 평균을 내도 의미가 없으므로 범주형으로 다뤄야 합니다.</p>
+  <h3 id="categorical">범주형</h3>
+  <p>값이 몇 개의 종류 중 하나인 열입니다. 성별·지역·등급이 여기에 속하며, 크기 비교가 아니라 빈도로 요약합니다. 등급처럼 순서가 있는 범주도 있지만, 순서가 있다고 해서 간격이 같지는 않다는 점에 주의해야 합니다.</p>
+  <h3 id="type-inference">타입 추론</h3>
+  <p>열의 값을 보고 수치형·범주형·날짜·불리언·ID 중 무엇인지 자동으로 정하는 과정입니다. 이 도구는 결측이 아닌 값의 90퍼센트 이상이 한 형식에 맞을 때 그 타입으로 판정합니다. 판정이 틀렸다고 판단되면 결과 화면에서 타입을 바꿔 다시 계산할 수 있습니다.</p>
+  <h3 id="cardinality">카디널리티</h3>
+  <p>한 열이 가진 고유값의 개수입니다. 성별처럼 종류가 둘뿐이면 카디널리티가 낮고, 주문번호처럼 행마다 다르면 높습니다. 이 도구는 범주형 열의 고유값이 50개 이상이면서 고유값 비율이 50퍼센트 이상일 때 고카디널리티로 알립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/high-cardinality">해설: 고카디널리티 범주형 변수 다루기</a></p>
+  <h3 id="unique-ratio">고유값 비율</h3>
+  <p>고유값 개수를 행 수로 나눈 값입니다. 1에 가까울수록 값이 행마다 다르다는 뜻이며, ID성 열과 고카디널리티 판정이 모두 이 값을 씁니다. 같은 고유값 100개라도 1,000행에서는 0.1이고 120행에서는 0.83이므로, 개수만 보면 판단이 어긋납니다.</p>
+  <h3 id="leading-zero">선행 0</h3>
+  <p>06236처럼 앞자리가 0으로 시작하는 값입니다. 수치로 바꾸면 0이 사라지고 되돌릴 수 없으므로, 이 도구는 선행 0이 있는 열을 기본적으로 문자열로 유지합니다. 우편번호·사업자번호·계좌번호처럼 자릿수가 의미를 갖는 코드값에서 자주 나타납니다.</p>
+  <h3 id="encoding">인코딩</h3>
+  <p>문자를 바이트로 저장하는 규칙입니다. 국내 파일은 CP949(EUC-KR)와 UTF-8이 섞여 있어, 규칙을 잘못 잡으면 열 이름부터 깨집니다. 이 도구는 두 인코딩을 자동으로 감지하며, 감지 결과를 결과 화면에 표시합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/csv-encoding">해설: CSV 인코딩 오류 진단과 해결</a></p>
+  <h2 id="quality">데이터 품질</h2>
+  <h3 id="missing">결측치</h3>
+  <p>값이 비어 있는 칸입니다. 빈 칸뿐 아니라 NA·해당없음·9999 같은 특수 코드로 표현되기도 하는데, 후자는 자동으로 결측으로 잡히지 않으므로 사람이 확인해야 합니다. 결측을 어떻게 다룰지는 왜 비어 있는지에 따라 달라집니다.</p>
+  <p class="term-guide"><a href="/pages/guide/missing-types">해설: 결측치 유형과 판별 방법</a></p>
+  <h3 id="missing-rate">결측률</h3>
+  <p>한 열에서 값이 빈 칸의 비율입니다. 이 도구는 열 결측률이 20퍼센트를 넘으면 심각도 high로, 5에서 20퍼센트 사이면서 분포가 치우쳐 있으면 대치 방법을 검토하라는 발견으로 올립니다. 20퍼센트는 관례가 아니라 이 프로젝트가 정한 초기값입니다.</p>
+  <h3 id="missing-mechanism">결측 발생 구조</h3>
+  <p>결측이 생긴 이유를 세 가지로 나눈 구분입니다. 완전 무작위(MCAR)는 다른 변수와 무관하게 비었고, 무작위(MAR)는 관측된 다른 변수로 설명되며, 비무작위(MNAR)는 비어 있다는 사실 자체가 값과 관련됩니다. 고소득자가 소득 문항을 건너뛰는 경우가 마지막에 해당하며, 이때는 단순 대치가 편향을 키웁니다.</p>
+  <p class="term-guide"><a href="/pages/guide/missing-types">해설: 결측치 유형과 판별 방법</a></p>
+  <h3 id="imputation">결측 대치</h3>
+  <p>빈 칸을 다른 값으로 채우는 것입니다. 평균 대치가 가장 흔하지만 분포의 폭을 좁히고 상관을 약하게 만들며, 치우친 분포에서는 왜곡이 특히 큽니다. 채우기 전에 &quot;비어 있음&quot; 자체를 하나의 값으로 남기는 편이 나은 경우도 많습니다.</p>
+  <p class="term-guide"><a href="/pages/guide/missing-imputation">해설: 결측 대치 방법 선택 — 평균 대치가 분포를 왜곡하는 이유</a></p>
+  <h3 id="duplicate">중복 행</h3>
+  <p>모든 열의 값이 같은 행이 둘 이상 있는 경우입니다. 수집 과정의 사고인 경우가 많지만, 키 열만 겹치는 중복은 데이터가 원래 1대다 구조라는 신호일 수 있습니다. 이 도구는 완전 중복이 하나라도 있으면 발견으로 올립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/duplicate-rows">해설: 중복 행 — 완전 중복과 키 중복의 구분</a></p>
+  <h3 id="constant">상수·준상수 열</h3>
+  <p>거의 모든 행이 같은 값을 가진 열입니다. 값이 변하지 않으므로 다른 변수와의 관계를 만들 수 없고, 모델에서는 아무 정보도 주지 못합니다. 이 도구는 최빈값 비율이 0.95 이상이면 타입과 무관하게 준상수로 판정합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/constant-columns">해설: 상수·준상수 컬럼이 분석에 미치는 영향</a></p>
+  <h3 id="mode-rate">최빈값 비율</h3>
+  <p>가장 많이 나온 값이 전체에서 차지하는 비율입니다. 0.97이면 100행 중 97행이 같은 값이라는 뜻입니다. 표준편차가 0인지만 보면 완전 상수만 걸러지지만, 최빈값 비율은 타입을 가리지 않고 준상수까지 잡아냅니다.</p>
+  <h3 id="id-column">ID성 열</h3>
+  <p>행을 식별하는 것이 목적인 열입니다. 회원번호·주문번호처럼 값이 행마다 다르므로 분석 변수로 쓰면 안 되고, 모델에 넣으면 과적합의 원인이 됩니다. 이 도구는 고유값 비율이 99퍼센트 이상이면서 타입이 ID로 추론될 때 알립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/id-columns">해설: ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</a></p>
+  <h3 id="invalid">유효하지 않은 값</h3>
+  <p>열의 타입과 맞지 않는 값입니다. 수치형 열에 들어간 &quot;미상&quot;, 날짜 열에 들어간 &quot;확인중&quot; 같은 경우이며, 빈 칸이 아니므로 결측률에는 잡히지 않습니다. 음수 나이나 미래 날짜 같은 도메인 규칙 위반은 일반화가 어려워 이 도구가 세지 않습니다.</p>
+  <h2 id="distribution">분포</h2>
+  <h3 id="descriptive">기술통계</h3>
+  <p>한 열의 값을 몇 개의 수로 요약한 것입니다. 개수·평균·표준편차·최솟값·사분위수·최댓값이 기본 묶음이며, 이 도구는 수치형 열마다 이 값들을 계산합니다. 요약은 편리하지만 분포의 모양을 지우므로 히스토그램과 함께 봐야 합니다.</p>
+  <h3 id="median">중위수</h3>
+  <p>값을 순서대로 늘어놓았을 때 한가운데 오는 값입니다. 극단값에 흔들리지 않으므로 치우친 분포에서는 평균보다 대표값 노릇을 잘합니다. 평균과 중위수의 차이가 크다는 것은 그 자체로 분포가 한쪽으로 쏠려 있다는 신호입니다.</p>
+  <h3 id="stdev">표준편차</h3>
+  <p>값이 평균에서 얼마나 흩어져 있는지를 나타내는 수입니다. 단위가 원래 값과 같아 해석하기 쉽지만, 평균과 마찬가지로 극단값에 민감합니다. 치우친 분포에서는 &quot;평균 빼기 표준편차&quot;가 음수가 되어 실제로 존재할 수 없는 구간을 가리키기도 합니다.</p>
+  <h3 id="iqr">사분위수와 IQR</h3>
+  <p>값을 크기순으로 넷으로 나누는 경계가 사분위수이고, 3사분위수에서 1사분위수를 뺀 값이 IQR입니다. 가운데 50퍼센트가 차지하는 폭이므로 극단값의 영향을 받지 않습니다. 상자 그림의 상자 높이가 곧 IQR입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/outlier-methods">해설: 이상치 탐지법 비교 — IQR과 z-score</a></p>
+  <h3 id="skewness">왜도</h3>
+  <p>분포가 한쪽으로 치우친 정도입니다. 양수면 오른쪽으로 긴 꼬리를, 음수면 왼쪽으로 긴 꼬리를 뜻하며, 0에 가까우면 좌우가 비슷합니다. 이 도구는 절댓값 2 이상일 때 발견으로 올리는데, 이는 경고가 너무 자주 나오지 않게 잡은 값이라 1.8이 안전하다는 뜻은 아닙니다.</p>
+  <p class="term-guide"><a href="/pages/guide/skewness">해설: 왜도 해석과 로그·Box-Cox 변환</a></p>
+  <h3 id="kurtosis">첨도</h3>
+  <p>분포의 꼬리가 얼마나 두꺼운지를 나타내는 수입니다. 정규분포를 0으로 놓은 초과첨도로 보며, 값이 크면 평균 근처와 아주 먼 값이 함께 많다는 뜻입니다. 이 도구는 초과첨도 7 이상을 안내 대상으로 삼습니다.</p>
+  <h3 id="outlier">이상치</h3>
+  <p>다른 값들과 뚜렷하게 떨어져 있는 값입니다. 오류일 수도 있고 실제로 일어난 극단적인 사건일 수도 있으므로, 탐지와 제거는 별개의 판단입니다. 이 도구는 IQR 기준으로 세며, 이상치율이 5퍼센트를 넘으면 발견으로 올립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/outlier-methods">해설: 이상치 탐지법 비교 — IQR과 z-score</a></p>
+  <h3 id="z-score">z-score</h3>
+  <p>값이 평균에서 표준편차의 몇 배만큼 떨어져 있는지를 나타낸 수입니다. 보통 절댓값 3을 넘으면 이상치로 보지만, 평균과 표준편차 자체가 이상치에 끌려가므로 치우친 분포에서는 잘 잡히지 않습니다. 그런 데이터에는 IQR 기준이 더 안전합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/outlier-methods">해설: 이상치 탐지법 비교 — IQR과 z-score</a></p>
+  <h3 id="bins">히스토그램 구간 수</h3>
+  <p>값의 범위를 몇 칸으로 나눠 셀지 정하는 수입니다. 같은 데이터라도 구간 수에 따라 봉우리가 하나로도 둘로도 보이므로, 분포의 모양에 대한 결론을 내리기 전에 구간 수를 바꿔 보는 것이 안전합니다. 고유값이 20개 이하인 수치형 열은 히스토그램보다 값별 빈도가 더 정확합니다.</p>
+  <h2 id="relation">변수 간 관계</h2>
+  <h3 id="correlation">상관계수</h3>
+  <p>두 수치형 변수가 함께 움직이는 정도를 마이너스 1에서 1 사이의 수로 나타낸 것입니다. 절댓값이 클수록 관계가 강하고 부호는 방향을 뜻합니다. 관계의 강도이지 인과의 증거가 아니며, 값이 0이라고 관계가 없다는 뜻도 아닙니다.</p>
+  <p class="term-guide"><a href="/pages/guide/correlation-coefficients">해설: Pearson·Spearman·Kendall 상관계수 선택 기준</a></p>
+  <h3 id="correlation-methods">상관계수 세 가지</h3>
+  <p>Pearson은 직선 관계의 강도를, Spearman은 순위가 함께 오르내리는 정도를, Kendall은 순서가 일치하는 쌍의 비율을 잽니다. 치우친 분포나 이상치가 있는 데이터에서는 Pearson이 실제보다 약하거나 강하게 나오므로 순위 기반 방법이 안전합니다. 세 값이 크게 다르면 그 자체가 분포를 다시 보라는 신호입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/correlation-coefficients">해설: Pearson·Spearman·Kendall 상관계수 선택 기준</a></p>
+  <h3 id="correlation-matrix">상관행렬</h3>
+  <p>모든 수치형 변수 쌍의 상관계수를 표로 늘어놓은 것입니다. 변수가 늘면 칸이 제곱으로 늘어 눈으로 훑기 어려워지므로, 이 도구는 절댓값이 큰 쌍만 따로 뽑아 보여줍니다. 대각선은 자기 자신과의 상관이라 항상 1입니다.</p>
+  <h3 id="multicollinearity">다중공선성</h3>
+  <p>설명변수들끼리 정보가 겹쳐 각 변수의 기여를 구분할 수 없게 된 상태입니다. 예측 성능은 크게 떨어지지 않지만 계수의 부호와 크기가 불안정해져 해석이 무너집니다. 이 도구는 상관 절댓값 0.8 이상이거나 VIF 10 이상인 쌍을 후보로 올립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/multicollinearity">해설: 다중공선성 — VIF와 상관계수로 진단하기</a></p>
+  <h3 id="vif">VIF</h3>
+  <p>한 설명변수를 나머지 설명변수로 회귀했을 때 그 변수의 분산이 얼마나 부풀려지는지를 나타내는 값입니다. 두 변수만 비교하는 상관계수와 달리 여러 변수가 합쳐져 만드는 겹침을 잡아냅니다. 10 이상을 경고로 보는 것이 통용 기준입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/multicollinearity">해설: 다중공선성 — VIF와 상관계수로 진단하기</a></p>
+  <h3 id="causation">상관과 인과</h3>
+  <p>상관은 두 값이 함께 움직인다는 관찰이고, 인과는 하나가 다른 하나를 일으킨다는 주장입니다. 둘 다에 영향을 주는 제3의 변수가 있거나, 표본을 고른 방식 때문에 관계가 만들어지는 경우가 흔합니다. 상관이 높을수록 인과로 읽고 싶은 유혹이 커지므로 오히려 경계가 필요합니다.</p>
+  <h3 id="mixed-relation">범주형과 수치형의 관계</h3>
+  <p>한쪽이 범주형이면 상관계수를 쓸 수 없으므로 다른 방법이 필요합니다. 집단별 평균과 분산을 비교하거나, 집단이 값의 변동을 얼마나 설명하는지를 비율로 계산합니다. 상관행렬에 나오지 않는다고 관계가 없는 것이 아니라, 그 표가 수치형끼리만 다루기 때문입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/categorical-numeric-relation">해설: 범주형과 수치형 사이의 관계 측정하기</a></p>
+  <h3 id="leakage">데이터 누수</h3>
+  <p>예측 시점에 알 수 없는 정보가 설명변수에 섞여 들어간 상태입니다. 검증 성능이 비현실적으로 높게 나오지만 실제 환경에서는 그대로 무너집니다. 타깃과 상관이 0.95를 넘는 변수는 좋은 변수가 아니라 누수 후보로 먼저 의심해야 합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/data-leakage">해설: 데이터 누수 후보 탐지</a></p>
+  <h2 id="target">타깃과 모델링</h2>
+  <h3 id="target-variable">타깃 변수</h3>
+  <p>예측하려는 대상 열입니다. 타깃을 정하면 나머지 열은 설명변수가 되고, 클래스 불균형이나 누수처럼 타깃이 있어야만 판단할 수 있는 항목이 열립니다. 예측 목적이 없는 분석에서는 타깃을 정하지 않는 것이 정상입니다.</p>
+  <h3 id="class-imbalance">클래스 불균형</h3>
+  <p>분류 문제에서 특정 클래스의 비율이 지나치게 낮은 상태입니다. 소수 클래스가 1퍼센트인 데이터에서는 전부 다수 클래스로 찍어도 정확도가 99퍼센트가 되므로 정확도라는 지표 자체가 쓸모없어집니다. 이 도구는 최소 클래스 비율이 10퍼센트 이하일 때 알립니다.</p>
+  <p class="term-guide"><a href="/pages/guide/class-imbalance">해설: 클래스 불균형 — 정확도를 쓰면 안 되는 이유와 지표 선택</a></p>
+  <h3 id="scaling">스케일링</h3>
+  <p>변수마다 다른 값의 범위를 비슷하게 맞추는 것입니다. 거리나 계수 크기를 쓰는 방법에서는 범위가 큰 변수가 결과를 지배하므로 필요하지만, 트리 기반 모델에는 영향을 주지 않습니다. 이 도구는 수치형 열 사이 표준편차 비가 100배 이상이면 안내합니다.</p>
+  <h3 id="transform">로그·Box-Cox 변환</h3>
+  <p>치우친 분포를 대칭에 가깝게 만드는 변환입니다. 로그는 배수 관계를 차이로 바꿔 오른쪽 꼬리를 줄이고, Box-Cox는 적절한 지수를 데이터에서 추정합니다. 변환하면 단위가 사라지므로 모델 안에서만 쓰고 보고할 때는 원래 단위로 되돌리는 것이 원칙입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/skewness">해설: 왜도 해석과 로그·Box-Cox 변환</a></p>
+  <h2 id="thresholds">임계값을 그대로 믿지 않는 법</h2>
+  <p>위 항목의 숫자는 두 부류입니다. VIF 10, IQR 1.5배, 상관 0.8, 초과첨도 7은 널리 쓰이는 관례이고, 결측 20퍼센트·최빈값 비율 0.95·고유값 50개·왜도 2는 이 프로젝트가 정한 초기값입니다. 후자는 실제 데이터에서 경고가 너무 자주 나오거나 너무 안 나오면 조정할 대상입니다.</p>
+  <p>그래서 임계값 바로 아래에 있는 값이 안전하다는 뜻이 아닙니다. <strong>경고가 없어도 근거 수치는 직접 확인하는 편이 좋습니다.</strong> 어떤 이상치가 오류이고 어떤 결측이 응답 거부인지는 그 데이터가 무엇을 재고 있는지 아는 사람만 판단할 수 있습니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

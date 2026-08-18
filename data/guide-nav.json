@@ -1,0 +1,92 @@
+{
+  "guide": {
+    "url": "/pages/guide",
+    "groups": [
+      {
+        "label": "프로세스·한국 데이터 환경",
+        "items": [
+          {
+            "slug": "csv-encoding",
+            "label": "CSV 인코딩 오류 진단과 해결"
+          },
+          {
+            "slug": "korean-public-data",
+            "label": "한국 공공데이터 전처리에서 자주 만나는 함정"
+          }
+        ]
+      },
+      {
+        "label": "데이터 품질",
+        "items": [
+          {
+            "slug": "constant-columns",
+            "label": "상수·준상수 컬럼이 분석에 미치는 영향"
+          },
+          {
+            "slug": "duplicate-rows",
+            "label": "중복 행"
+          },
+          {
+            "slug": "high-cardinality",
+            "label": "고카디널리티 범주형 변수 다루기"
+          },
+          {
+            "slug": "id-columns",
+            "label": "ID성 컬럼 식별"
+          },
+          {
+            "slug": "missing-imputation",
+            "label": "결측 대치 방법 선택"
+          },
+          {
+            "slug": "missing-types",
+            "label": "결측치 유형과 판별 방법"
+          }
+        ]
+      },
+      {
+        "label": "분포",
+        "items": [
+          {
+            "slug": "outlier-methods",
+            "label": "이상치 탐지법 비교"
+          },
+          {
+            "slug": "skewness",
+            "label": "왜도 해석과 로그·Box-Cox 변환"
+          }
+        ]
+      },
+      {
+        "label": "관계",
+        "items": [
+          {
+            "slug": "categorical-numeric-relation",
+            "label": "범주형과 수치형 사이의 관계 측정하기"
+          },
+          {
+            "slug": "correlation-coefficients",
+            "label": "Pearson·Spearman·Kendall 상관계수 선택 기준"
+          },
+          {
+            "slug": "data-leakage",
+            "label": "데이터 누수 후보 탐지"
+          },
+          {
+            "slug": "multicollinearity",
+            "label": "다중공선성"
+          }
+        ]
+      },
+      {
+        "label": "타깃·모델링",
+        "items": [
+          {
+            "slug": "class-imbalance",
+            "label": "클래스 불균형"
+          }
+        ]
+      }
+    ]
+  }
+}
