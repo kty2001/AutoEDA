@@ -4,7 +4,7 @@
 
 도구가 계산을 수행하고, 지식 베이스가 그 결과의 의미를 설명함. 도구는 제품이고 사이트는 리소스임.
 
-> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 255건 · 브라우저 실기 11항목 · 배포본 검증이 통과함.
+> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 260건 · 브라우저 실기 11항목 · 배포본 검증이 통과함.
 > 해설 20편 · 사례 리포트 3편 · 용어집이 발행되어(색인 27 URL) 죽은 내부 링크는 0건이고, 콘텐츠 게이트(15편·25,000자)를 24편·42,728자로 넘겼음. 필수 페이지 4종도 확정했음.
 > **남은 관문은 콘텐츠가 아니라 인프라임** — 커스텀 도메인 취득, 광고 배치·`ads.txt`, GSC 등록.
 > 다음 작업은 [docs/TODO.md](docs/TODO.md), 파일별 현황은 [docs/implementation-status.md](docs/implementation-status.md) 참조.
@@ -112,7 +112,7 @@ EDA Engine (JavaScript) → 통계 JSON
 | [docs/use-cases.md](docs/use-cases.md) | 액터 4종, 유스케이스 28건(Phase 1·1.5 상세), 추적 매트릭스 |
 | [docs/screens.md](docs/screens.md) | 페이지 12종, 페이지별 기능 명세, 도구 화면 4상태, 상태 저장, 공통 요소 |
 | [docs/data-model.md](docs/data-model.md) | 개념 엔티티 다이어그램, 결과 JSON 스키마, 저장소 키, Worker 메시지 프로토콜, 모듈 의존 그래프 |
-| [docs/rules.md](docs/rules.md) | Health Score 감점 규칙, Finding 19종 카탈로그, 표시 개수 상한, 문구 템플릿 규칙 |
+| [docs/rules.md](docs/rules.md) | Health Score 감점 규칙, Finding 18종 카탈로그, 표시 개수 상한, 문구 템플릿 규칙 |
 | [docs/data-sources.md](docs/data-sources.md) | 사례 리포트용 데이터셋 이용 조건 판정 기준·절차, 표시 요건 |
 
 작업 문서 3종 — 코드를 만지기 전에 읽음.
@@ -126,7 +126,7 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test            # 전체 테스트 255건 (계약·동작·통합·빌드·산출물 폐합)
+npm test            # 전체 테스트 260건 (계약·동작·통합·빌드·산출물 폐합)
 npm run serve       # 로컬 서빙 → http://localhost:8000
 npm run build       # 콘텐츠 빌드 — build:guides → build:seo 를 순서대로
 npx wrangler deploy

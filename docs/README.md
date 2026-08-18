@@ -52,7 +52,7 @@
 |---|---|
 | `rules.md` 임계값 | `js/domain/thresholds.js` (상수 집약. 다른 모듈에 수치를 쓰지 않음) |
 | `rules.md §2` Health Score 감점 | `js/domain/quality.js` |
-| `rules.md §3` Finding 19종 | `js/domain/finding.js` · `data/finding-map.json` (해설 매핑) |
+| `rules.md §3` Finding 18종 | `js/domain/finding.js` · `data/finding-map.json` (해설 매핑) |
 | `rules.md §4` 표시 상한 | `thresholds.DISPLAY_LIMIT` — `finding.js`(묶기) · `chart-select.js`(차트 수) · `analyze.page.js`(목록) |
 | `rules.md §5.4` 수치 뒤 조사 | `js/lib/format.js` 의 `ro()` |
 | `data-model.md §3` 결과 JSON | `js/worker/analyze.worker.js` 의 `analyze()` 가 조립 |

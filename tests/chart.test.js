@@ -185,3 +185,51 @@ test('renderAxis — 제목이 이스케이프된다', () => {
   const g = renderAxis({ orient: 'x', ticks: [], title: 'a<b' });
   assert.ok(g.includes('a&lt;b'));
 });
+
+// ── 히트맵 축 레이블 (docs/TODO.md T6 — 행 이름만 그려 툴팁 없이 판독 불가였음) ──
+
+/** 20열 히트맵 스펙 — DISPLAY_LIMIT.heatmapColumns 상한과 같은 최악 조건. */
+function heatmapSpec(count) {
+  const names = Array.from({ length: count }, (_, i) => `col_${i}`);
+  const cells = [];
+  for (let r = 0; r < count; r++) {
+    for (let c = r + 1; c < count; c++) cells.push({ row: r, col: c, value: 0.5 });
+  }
+  return { kind: 'heatmap', data: { names, cells, reduced: false }, axis: { method: 'pearson' } };
+}
+
+test('renderChart — 히트맵: 행·열 레이블을 모두 그린다 (20열)', () => {
+  const svg = renderChart(heatmapSpec(20));
+  const ticks = svg.match(/class="tick"/g) ?? [];
+  assert.equal(ticks.length, 40); // 행 20 + 열 20
+  const rotated = svg.match(/transform="rotate\(-45 /g) ?? [];
+  assert.equal(rotated.length, 20); // 열 레이블만 회전한다
+  for (const name of ['col_0', 'col_19']) assert.ok(svg.includes(`>${name}<`), name);
+});
+
+test('renderChart — 히트맵: 폰트가 셀 크기를 넘지 않는다 (겹침 회귀)', () => {
+  for (const count of [5, 20]) {
+    const svg = renderChart(heatmapSpec(count));
+    const cell = Number(svg.match(/<rect[^>]*width="([\d.]+)"[^>]*class="cell"/)[1]);
+    const sizes = [...svg.matchAll(/class="tick"[^>]*font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    assert.ok(sizes.length > 0);
+    assert.ok(Math.max(...sizes) <= cell, `${count}열: 폰트 ${Math.max(...sizes)} > 셀 ${cell}`);
+  }
+});
+
+test('renderChart — 히트맵: 인라인 style 없이 회전한다 (CSP style-src self)', () => {
+  const svg = renderChart(heatmapSpec(20));
+  assert.equal((svg.match(/ style="/g) ?? []).length, 0);
+});
+
+test('renderChart — 히트맵: 회전 레이블도 이스케이프되고 엔티티가 반토막 나지 않는다', () => {
+  const spec = {
+    kind: 'heatmap',
+    data: { names: ['a<b', '금액&수량이 아주 긴 열 이름'], cells: [{ row: 0, col: 1, value: 0.3 }], reduced: false },
+    axis: { method: 'pearson' },
+  };
+  const svg = renderChart(spec);
+  assert.ok(svg.includes('a&lt;b'));
+  assert.ok(svg.includes('&amp;'));
+  assert.equal((svg.match(/&(?!amp;|lt;|gt;|quot;|apos;)/g) ?? []).length, 0); // 잘린 엔티티 없음
+});

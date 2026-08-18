@@ -98,9 +98,9 @@ test('등급 구간 (rules.md §2.2)', () => {
   assert.equal(HEALTH_GRADE.fair, 50);
 });
 
-test('Finding 유형은 19종이며 ID 체계를 지킨다 (rules.md §3)', () => {
+test('Finding 유형은 18종이며 ID 체계를 지킨다 (rules.md §3)', () => {
   const ids = Object.keys(FINDING);
-  assert.equal(ids.length, 19);
+  assert.equal(ids.length, 18);
   for (const id of ids) {
     assert.match(id, /^F-[A-Z-]+$/, `${id} 가 F- 접두사 + 대문자 스네이크 형식이 아님`);
   }
@@ -150,7 +150,7 @@ test('표시 개수 상한 (rules.md §4)', () => {
 // 3. finding-map.json ↔ thresholds.FINDING 폐합
 // ─────────────────────────────────────────────────────────────
 
-test('finding-map.json 이 Finding 19종 전부를 해설로 매핑한다', () => {
+test('finding-map.json 이 Finding 18종 전부를 해설로 매핑한다', () => {
   const map = JSON.parse(readFileSync(join(ROOT, 'data/finding-map.json'), 'utf8'));
   const mapped = Object.keys(map).filter((k) => !k.startsWith('_'));
   const declared = Object.keys(FINDING);

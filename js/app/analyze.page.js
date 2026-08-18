@@ -375,6 +375,26 @@ function renderFindings(panel, result) {
 }
 
 /**
+ * 범주형↔수치형 관계 안내. 원래 F-MIXED-RELATION 발견이었으나 조건이 느슨해
+ * 거의 모든 데이터에서 발화했고, 항상 나오는 발견은 정보량이 0 이라 폐지했다
+ * (docs/rules.md §6.3). 발견 목록이 아니라 상관행렬 바로 옆에서만 뜻이 있는 안내다.
+ * 수치형이 1개뿐이라 상관을 계산하지 않은 경우에도 유효하므로 조기 반환보다 앞에 둔다.
+ */
+function renderMixedRelationNote(panel, result) {
+  const hasCategorical = result.columns.some((c) => c.type === 'categorical' || c.type === 'boolean');
+  const hasNumeric = result.columns.some((c) => c.type === 'numeric');
+  if (!hasCategorical || !hasNumeric) return;
+
+  const note = document.createElement('p');
+  note.className = 'hint';
+  note.innerHTML =
+    '상관행렬은 수치형끼리만 다룹니다. 범주형과 수치형 사이의 관계는 범주별 수치 분포를 ' +
+    '그룹 상자그림으로 비교해 확인하세요. <span data-guide-slug="categorical-numeric-relation"></span>';
+  panel.appendChild(note);
+  attachGuideLinks(panel);
+}
+
+/**
  * Finding 유형 → 해설 링크(UC-15). 매핑에 없는 유형은 링크를 렌더하지 않는다.
  * 아직 발행되지 않은 해설도 링크하지 않는다 — `data/published.json`(build_guides 산출물)이
  * 발행된 슬러그의 원천이다. 이 게이트가 없으면 콘텐츠 발행 전까지 결과 화면의
@@ -387,13 +407,19 @@ function attachGuideLinks(panel) {
   ]).then(([map, published]) => ({ map, published: new Set(published.guide ?? []) }));
 
   findingMapPromise.then(({ map, published }) => {
-    for (const slot of panel.querySelectorAll('[data-guide-link]')) {
-      const entry = map[slot.dataset.guideLink];
-      if (!entry?.slug || !published.has(entry.slug)) continue;
+    const link = (slot, slug) => {
+      if (!slug || !published.has(slug)) return;
       const a = document.createElement('a');
-      a.href = `/pages/guide/${entry.slug}`;
+      a.href = `/pages/guide/${slug}`;
       a.textContent = '자세히 →';
       slot.appendChild(a);
+    };
+    for (const slot of panel.querySelectorAll('[data-guide-link]')) {
+      link(slot, map[slot.dataset.guideLink]?.slug);
+    }
+    // Finding 유형이 아닌 화면 고정 안내도 같은 발행 게이트를 탄다(관계 탭)
+    for (const slot of panel.querySelectorAll('[data-guide-slug]')) {
+      link(slot, slot.dataset.guideSlug);
     }
   });
 }
@@ -447,6 +473,8 @@ function columnBlock(col) {
 
 // 관계 — 히트맵 + 산점도 (UC-08)
 function renderRelations(panel, result) {
+  renderMixedRelationNote(panel, result);
+
   if (result.correlations.length === 0) {
     panel.insertAdjacentHTML('beforeend', '<p>수치형 열이 2개 미만이라 상관을 계산하지 않았습니다.</p>');
     return;

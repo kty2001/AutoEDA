@@ -16,7 +16,6 @@
   "F-CORR-METHOD":     { "slug": "correlation-coefficients",      "label": "상관계수 선택" },
   "F-MULTICOLLINEAR":  { "slug": "multicollinearity",             "label": "다중공선성" },
   "F-CORR-CAUSAL":     { "slug": "correlation-causation",         "label": "상관과 인과" },
-  "F-MIXED-RELATION":  { "slug": "categorical-numeric-relation",  "label": "범주형-수치형 관계" },
   "F-LEAKAGE":         { "slug": "data-leakage",                  "label": "데이터 누수" },
 
   "F-CLASS-IMBALANCE": { "slug": "class-imbalance",               "label": "클래스 불균형" },

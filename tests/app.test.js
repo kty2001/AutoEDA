@@ -64,3 +64,14 @@ test('buildMailto — 제목 접두사·본문 인코딩', async () => {
   // 모르는 유형은 '기타'로
   assert.ok(buildMailto('ghost', 'x').includes(encodeURIComponent('기타')));
 });
+
+test('analyze.page 의 data-guide-slug 안내 링크가 발행된 해설을 가리킨다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/app/analyze.page.js', import.meta.url), 'utf8');
+  const published = JSON.parse(readFileSync(new URL('../data/published.json', import.meta.url), 'utf8'));
+  const slugs = [...src.matchAll(/data-guide-slug="([a-z][a-z-]*)"/g)].map((m) => m[1]);
+  assert.ok(slugs.length > 0, '관계 탭 안내의 해설 슬러그가 사라짐');
+  for (const slug of slugs) {
+    assert.ok(published.guide.includes(slug), `${slug} 가 미발행이라 링크가 렌더되지 않음`);
+  }
+});

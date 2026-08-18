@@ -3,7 +3,7 @@
 // 의존 위치: quality·stats·correlation·outlier 를 소비하고 chart-select.js 에 공급한다.
 //            → docs/data-model.md §6
 //
-// Finding 19종의 조건·심각도·문구 규칙은 docs/rules.md §3·§5, 임계값은 thresholds.js.
+// Finding 18종의 조건·심각도·문구 규칙은 docs/rules.md §3·§5, 임계값은 thresholds.js.
 // 결정론적으로 생성한다 — LLM 을 쓰지 않으며 Phase 2 의 AI 레이어와 무관하게 동작해야 한다.
 //
 // ⚠️ what/why/how 를 "문자열로 확정해" 담는다. 템플릿 ID 만 담으면 규칙 버전이 바뀐 뒤
@@ -205,14 +205,9 @@ export function buildFindings(input) {
       `제3의 변수나 수집 구조가 관계를 만들었을 가능성을 함께 검토해 보세요.`);
   }
 
-  const mr = FINDING['F-MIXED-RELATION'];
-  if (categorical.length >= mr.minCategorical && numeric.length >= mr.minNumeric) {
-    add('F-MIXED-RELATION', 'low', 'dataset', [],
-      { categoricalCount: categorical.length, numericCount: numeric.length }, false,
-      `범주형 열 ${count(categorical.length)}개와 수치형 열 ${count(numeric.length)}개가 함께 있습니다.`,
-      `상관행렬은 수치형끼리만 다루므로 범주형과 수치형 사이의 관계는 별도로 봐야 합니다.`,
-      `범주별 수치 분포를 그룹 상자그림으로 비교해 보세요.`);
-  }
+  // F-MIXED-RELATION 은 2026-08-18 에 폐지했다 — 조건이 "범주형 ≥ 1 이고 수치형 ≥ 1" 이라
+  // 거의 모든 데이터에서 발화해 정보량이 0 이었다(rules.md §6.3 이 첫 재검토 대상으로 지목).
+  // 같은 안내는 관계 탭 고정 문구로 옮겼다(js/app/analyze.page.js renderRelations).
 
   // ── 타깃 지정 시에만 (rules.md §3.4 F-LEAKAGE · §3.5) ─────
   if (target) {

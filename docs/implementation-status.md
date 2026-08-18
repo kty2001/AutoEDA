@@ -6,7 +6,7 @@
 - 설계 문서 지도: [`README.md`](README.md) · 프로젝트 개요: [`../README.md`](../README.md)
 - 이 문서는 수치·임계값을 옮겨 적지 않음. 확정본에 링크만 둠 ([`README.md` §단일 원천 지도](README.md))
 
-최종 갱신: 2026-08-18
+최종 갱신: 2026-08-19
 
 ---
 
@@ -26,18 +26,18 @@
 | 이상치 | `js/domain/outlier.js` | IQR(경계·비율), z-score 대조군 |
 | 상관·공선성 | `js/domain/correlation.js` | Pearson(쌍별 제거)·Spearman(평균 순위)·VIF(정규방정식, listwise) |
 | Health Score | `js/domain/quality.js` | 항목 6종 감점·verdict·evidence, id/text 제외 규칙 |
-| 규칙 엔진 | `js/domain/finding.js` | Finding 19종(타깃군은 target 지정 시), 3단 문구 확정, 정렬·유형당 5건 묶기 |
+| 규칙 엔진 | `js/domain/finding.js` | Finding 18종(타깃군은 target 지정 시), 3단 문구 확정, 정렬·유형당 5건 묶기 |
 | 표시 포맷 | `js/lib/format.js` | percent·count·stat·bytes |
-| Finding→해설 매핑 | `data/finding-map.json` | 19종 전부. 테스트가 폐합 검사함 |
+| Finding→해설 매핑 | `data/finding-map.json` | 18종 전부. 테스트가 폐합 검사함 |
 | Worker 파이프라인 | `js/worker/analyze.worker.js` | 순수 함수 `analyze()`가 결과 JSON([`data-model.md §3`](data-model.md)) 조립 — FILE_LIMIT 검사·progress·취소·중복행·메모리 추정 포함. 메시지 글루는 Worker 전역에서만 배선 |
 | 저장소 | `js/storage/local.js` | 결과 캐시 3단 축소 폴백([`data-model.md §4`](data-model.md))·major 검증·prefs 병합 저장 |
 | 차트 선택 | `js/domain/chart-select.js` | 타입별 대표 차트·산점도 상위 6쌍·히트맵 20열 축소·Finding 강조(왜도·IQR 경계) |
-| SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프 |
+| SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프. **캔버스는 공용 400×220 이고 히트맵만 420×420 예외**(행·열 레이블 자리. 레이블 폰트는 셀 크기에 종속) |
 | app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·5섹션 탭·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백 |
 | SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
 | 콘텐츠 빌드 | `scripts/build_guides.mjs` | 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. 인덱스는 `pages/{섹션}.html` 로 냄(디렉토리 인덱스는 307 을 만듦) |
 | 발행 콘텐츠 | `data/{guide,case,glossary}_source/*.md` → `pages/{guide,case,glossary}.html` · `pages/{guide,case}/*.html` | 해설 20편 + 사례 4편(허브 1 + 리포트 3) = **24편 · 42,728자** — [`content-strategy.md` §7](content-strategy.md) 게이트의 171%. 미발행은 T2·T3 해설(Phase 2)과 국내 사례(데이터셋 미선정) |
-| 테스트 | `tests/*.test.js` | **255건.** `integration.test.js` 가 계층 통합 스모크, `build_seo.test.js` 끝의 산출물 폐합 3건이 **저장소에 실제로 놓인 페이지**를 검사함 |
+| 테스트 | `tests/*.test.js` | **260건.** `integration.test.js` 가 계층 통합 스모크, `build_seo.test.js` 끝의 산출물 폐합 3건이 **저장소에 실제로 놓인 페이지**를 검사함 |
 | 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` `sitemap.xml` | `sitemap.xml` 은 빌드 산출물이지만 배포 자산이라 커밋함 |
 | 페이지 골격 | `index.html` `404.html` `pages/*.html` | analyze 4상태 섹션 포함. 마크업은 손으로 쓴 9개 + `build_guides` 템플릿에 중복되므로 함께 고침 |
 | 시각 디자인 | `css/style.css` | [`DESIGN.md`](DESIGN.md) 토큰·컴포넌트 반영. 색·간격·반경·그림자·서체가 `:root` 토큰 한 곳에 모여 있어 차트·발견 목록·배지·탭이 함께 따라옴. 구조 개편(히어로 분할·중간 밴드)은 미반영 |
@@ -71,7 +71,7 @@
 
 | 명령 | 내용 |
 |---|---|
-| `npm test` | 전체 테스트 255건(계약·동작·통합·빌드·산출물 폐합). **모든 작업 완료 전 필수** |
+| `npm test` | 전체 테스트 260건(계약·동작·통합·빌드·산출물 폐합). **모든 작업 완료 전 필수** |
 | `npm run serve` | 로컬 서빙 (`python -m http.server 8000`). ES Module·Worker 확인용 |
 | `npx wrangler dev --persist-to <프로젝트 밖>` | **실기 검증용 서버.** `_headers` CSP·확장자 없는 URL 을 배포와 같게 적용함 — `npm run serve` 는 둘 다 재현하지 못하므로 CSP·링크 확인에는 쓸 수 없음. `--persist-to` 를 빼면 무한 리로드([`work-log.md`](work-log.md)) |
 | **`npm run build`** | **콘텐츠를 고쳤으면 이것을 씀.** `build:guides` → `build:seo` 를 순서대로 돌림 |

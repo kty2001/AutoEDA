@@ -20,6 +20,18 @@ const PLOT = { x: M.left, y: M.top, w: W - M.left - M.right, h: H - M.top - M.bo
 const LABEL_MAX = 12; // 축·범주 레이블 최대 표시 길이
 
 /**
+ * 종류별 캔버스 예외. 히트맵만 정사각으로 키운다 — 공용 높이 220 에서는 20열일 때
+ * 셀이 8.6 단위라 폰트 10 인 행·열 레이블이 서로 겹쳐 판독이 불가능하다(docs/TODO.md T6).
+ * 나머지 4종은 공용 규격(W × H)을 그대로 쓴다.
+ */
+const CANVAS = { heatmap: { w: 420, h: 420 } };
+
+/** 히트맵 전용 여백 — 좌측은 행 레이블, 하단은 45° 회전한 열 레이블 자리다. */
+const HEAT = { left: 88, top: 16, right: 12, bottom: 88 };
+/** 히트맵 레이블 절단 길이. 한글 8자 ≈ 80단위 < HEAT.left. 전체 이름은 셀 <title> 에 있다. */
+const HEAT_LABEL_MAX = 8;
+
+/**
  * 값 범위를 픽셀 좌표로 매핑하는 선형 스케일을 만든다.
  * 도메인 폭이 0(상수 값)이면 범위 중앙에 고정한다.
  * @param {[number, number]} domain
@@ -68,9 +80,10 @@ export function renderAxis(axisSpec) {
  * @returns {string}
  */
 export function renderChart(spec) {
+  const canvas = CANVAS[spec.kind] ?? { w: W, h: H };
   const body = RENDERERS[spec.kind]?.(spec.data, spec.axis) ?? '';
   return (
-    `<svg viewBox="0 0 ${W} ${H}" class="chart chart-${spec.kind}" role="img">` +
+    `<svg viewBox="0 0 ${canvas.w} ${canvas.h}" class="chart chart-${spec.kind}" role="img">` +
     `<title>${escapeXml(chartTitle(spec))}</title>` +
     body +
     '</svg>'
@@ -207,9 +220,13 @@ const RENDERERS = {
 
   heatmap(data, axis) {
     const { names, cells, reduced } = data;
-    const size = Math.min(PLOT.w, PLOT.h) / names.length;
-    const originX = PLOT.x;
-    const originY = PLOT.y;
+    const canvas = CANVAS.heatmap;
+    const side = Math.min(canvas.w - HEAT.left - HEAT.right, canvas.h - HEAT.top - HEAT.bottom);
+    const size = side / names.length;
+    const originX = HEAT.left;
+    const originY = HEAT.top;
+    // 레이블이 셀보다 크면 이웃과 겹친다 — 폰트를 셀 크기에 종속시켜 겹침을 치수로 막는다
+    const fontSize = Math.max(6, Math.min(10, size * 0.85));
     const byKey = new Map();
     for (const c of cells) {
       byKey.set(`${c.row}:${c.col}`, c.value);
@@ -224,12 +241,35 @@ const RENDERERS = {
           `<rect x="${n(originX + c * size)}" y="${n(originY + r * size)}" width="${n(size)}" height="${n(size)}" fill="${divergingColor(value)}" class="cell"><title>${escapeXml(names[r])} × ${escapeXml(names[c])}: ${fmtNum(value)}</title></rect>`
         );
       }
-      parts.push(text(originX - 6, originY + r * size + size / 2 + 3, truncate(names[r]), 'tick', 'end'));
+      parts.push(
+        text(
+          originX - 6,
+          originY + r * size + size / 2 + fontSize * 0.35,
+          truncate(names[r], HEAT_LABEL_MAX),
+          'tick',
+          'end',
+          fontSize
+        )
+      );
+    }
+    // 열 레이블 — 행 이름만 그리면 어느 쌍인지 <title> 툴팁으로만 알 수 있다(docs/TODO.md T6).
+    // 45° 회전은 transform 속성으로 준다. presentation attribute 이므로 인라인 style 금지(CSP)를 지킨다.
+    for (let c = 0; c < names.length; c++) {
+      parts.push(
+        rotatedText(
+          originX + c * size + size / 2,
+          originY + side + 8,
+          truncate(names[c], HEAT_LABEL_MAX),
+          'tick',
+          -45,
+          fontSize
+        )
+      );
     }
     if (reduced) {
-      parts.push(text(W - M.right, 12, `분산 상위 ${names.length}열로 축소됨`, 'annotation', 'end'));
+      parts.push(text(canvas.w - HEAT.right, 12, `분산 상위 ${names.length}열로 축소됨`, 'annotation', 'end'));
     }
-    parts.push(text(originX, H - 4, `${axis.method} 상관`, 'axis-title', 'start'));
+    parts.push(text(originX, canvas.h - 4, `${axis.method} 상관`, 'axis-title', 'start'));
     return parts.join('');
   },
 };
@@ -277,9 +317,13 @@ function pad(min, max) {
   return [min - p, max + p];
 }
 
-function truncate(value) {
-  const s = escapeXml(value);
-  return s.length > LABEL_MAX ? `${s.slice(0, LABEL_MAX)}…` : s;
+/**
+ * 레이블 절단. 원문 길이로 자른 뒤 이스케이프한다 — 순서를 뒤집으면
+ * `&amp;` 같은 엔티티가 반토막 나 SVG 가 파싱 오류로 통째로 사라진다.
+ */
+function truncate(value, max = LABEL_MAX) {
+  const s = String(value);
+  return escapeXml(s.length > max ? `${s.slice(0, max)}…` : s);
 }
 
 /** 좌표값 표기 — 부동소수 잔여 자릿수로 SVG 가 비대해지지 않게 한다. */
@@ -305,6 +349,11 @@ function line(x1, y1, x2, y2, cls) {
   return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(x2)}" y2="${n(y2)}" class="${cls}"/>`;
 }
 
-function text(x, y, content, cls, anchor) {
-  return `<text x="${n(x)}" y="${n(y)}" class="${cls}" text-anchor="${anchor}" font-size="10">${content}</text>`;
+function text(x, y, content, cls, anchor, fontSize = 10) {
+  return `<text x="${n(x)}" y="${n(y)}" class="${cls}" text-anchor="${anchor}" font-size="${n(fontSize)}">${content}</text>`;
+}
+
+/** 앵커 지점을 중심으로 회전한 레이블. text-anchor="end" 라 글자가 앵커에서 끝난다. */
+function rotatedText(x, y, content, cls, deg, fontSize) {
+  return `<text x="${n(x)}" y="${n(y)}" class="${cls}" text-anchor="end" transform="rotate(${deg} ${n(x)} ${n(y)})" font-size="${n(fontSize)}">${content}</text>`;
 }

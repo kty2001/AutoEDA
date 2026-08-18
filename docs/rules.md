@@ -61,17 +61,17 @@
 
 ## 3. Finding 규칙 카탈로그
 
-19종. `content-strategy.md §2`의 "대응 Finding" 열에서 도출됨.
+18종. `content-strategy.md §2`의 "대응 Finding" 열에서 도출됨. `F-MIXED-RELATION`은 발행 후 폐지했음(§6.3).
 
 ### 3.1 Finding ↔ 해설의 비대칭
 
-**Finding 19종 ↔ 해설 19편(Q·D·R·T군)은 1:1이지만, 역방향은 성립하지 않음.** K군 3편은 프로세스 문서라 Finding에서 도달하지 않음.
+**Finding 18종 ↔ 해설 19편(Q·D·R·T군)은 1:1에 가깝지만, 역방향은 성립하지 않음.** K군 3편은 프로세스 문서라 Finding에서 도달하지 않고, R4(`categorical-numeric-relation`)는 대응 Finding을 폐지해 **관계 탭 고정 안내**에서 도달함(§6.3).
 
 | 해설군 | 편수 | Finding 대응 |
 |---|---|---|
 | Q 데이터 품질 | 6 | ○ (F-MISSING-HIGH ~ F-ID-COL) |
 | D 분포 | 5 | ○ (F-SKEW ~ F-BIN-SENSITIVE) |
-| R 관계 | 5 | ○ (F-CORR-METHOD ~ F-LEAKAGE) |
+| R 관계 | 5 | △ (F-CORR-METHOD ~ F-LEAKAGE. R4 는 관계 탭 안내에서 도달) |
 | T 타깃·모델링 | 3 | ○ (Phase 2의 UC-21에서 활성) |
 | **K 프로세스·한국 환경** | **3** | **× — `finding-map.json`에 등장하지 않음** |
 
@@ -104,14 +104,13 @@ K1(EDA 진행 순서)은 `/pages/guide` 인덱스 본문이고, K2(인코딩)는
 
 `F-BIN-SENSITIVE`는 이산적 수치(평점 1~5, 층수 등)를 연속형처럼 히스토그램으로 그리면 오해를 부르는 경우를 알림. 문제가 아니라 **해석 주의 안내**이므로 심각도 low임.
 
-### 3.4 관계군 (5종)
+### 3.4 관계군 (4종)
 
 | ID | 발생 조건 | 심각도 | 범위 | 해설 슬러그 | ML |
 |---|---|---|---|---|:---:|
 | `F-CORR-METHOD` | 수치형 열 중 왜도 절댓값 ≥ 2인 열이 1개 이상 존재 | low | dataset | `correlation-coefficients` | × |
 | `F-MULTICOLLINEAR` | Pearson 절댓값 ≥ 0.8 **또는** VIF ≥ 10 | high | pair | `multicollinearity` | ○ |
 | `F-CORR-CAUSAL` | Pearson 절댓값 ≥ 0.7인 쌍이 1개 이상 존재 | low | dataset | `correlation-causation` | × |
-| `F-MIXED-RELATION` | 범주형 열 ≥ 1 **이고** 수치형 열 ≥ 1 | low | dataset | `categorical-numeric-relation` | × |
 | `F-LEAKAGE` | 타깃 지정 시 특정 열과 타깃의 Pearson 절댓값 ≥ 0.95 | high | pair | `data-leakage` | ○ |
 
 `F-CORR-METHOD`는 편포 열이 있을 때 Pearson보다 Spearman이 적절할 수 있음을 알리는 안내형 Finding임. `F-CORR-CAUSAL`도 같은 성격으로, 상관이 높을 때 인과 해석을 경계하게 함.
@@ -256,6 +255,6 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 |---|---|
 | `invalid` 정의 | Health Score의 "유효하지 않은 값"을 어디까지 볼지. 타입 불일치는 명확하나 음수 나이·미래 날짜 같은 도메인 규칙은 일반화가 어려움. **초기에는 타입 불일치만 세고, 도메인 규칙은 넣지 않음** |
 | 준상수 열의 `F-CONST-COL` 문구 | 완전 상수와 준상수를 같은 문구로 다룰지 분리할지 |
-| `F-MIXED-RELATION` 유용성 | 조건이 느슨해(범주형·수치형 각 1개 이상) 거의 항상 발생함. 발견이 아니라 관계 탭의 안내 문구로 옮기는 것을 검토 |
+| ~~`F-MIXED-RELATION` 유용성~~ | **결론남 (2026-08-18)** — 폐지하고 관계 탭 고정 안내로 옮겼음. 아래 참조 |
 
-> `F-MIXED-RELATION`은 위 이유로 **구현 시 첫 재검토 대상**임. 항상 발생하는 발견은 정보량이 0이며, 안티패턴 #4의 "템플릿 문장 반복"에 가장 가까운 후보임.
+> **`F-MIXED-RELATION` 은 폐지됨 (2026-08-18).** 예고대로 조건(범주형·수치형 각 1개 이상)이 느슨해 실데이터에서 사실상 항상 발화했고, 항상 발생하는 발견은 정보량이 0이며 안티패턴 #4의 "템플릿 문장 반복"에 해당함. 같은 내용을 **관계 탭 상단 고정 안내**로 옮겼음 — 상관행렬 옆에서만 뜻이 있는 문장이고, 거기서는 상시 노출이 잡음이 아니라 맥락임. 해설 R4(`categorical-numeric-relation`)는 그대로 발행 상태이며 안내 문구의 `자세히 →` 로 도달함. 구현 위치는 `js/app/analyze.page.js` 의 `renderMixedRelationNote`.

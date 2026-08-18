@@ -130,12 +130,13 @@ test('F-MULTICOLLINEAR — |r|≥0.8 또는 VIF≥10', () => {
   assert.equal(ofType(neither, 'F-MULTICOLLINEAR').length, 0);
 });
 
-test('F-CORR-CAUSAL — |r|≥0.7 쌍 존재, F-MIXED-RELATION — 범주+수치 공존', () => {
+test('F-CORR-CAUSAL — |r|≥0.7 쌍 존재. 범주+수치 공존은 더 이상 발견이 아니다', () => {
   const found = build([col('a'), col('b'), col('c', { type: 'categorical', uniqueCount: 3 })], {
     correlations: [{ left: 'a', right: 'b', pearson: -0.75, spearman: -0.7, vif: 1 }],
   });
   assert.equal(ofType(found, 'F-CORR-CAUSAL').length, 1);
-  assert.equal(ofType(found, 'F-MIXED-RELATION').length, 1);
+  // 폐지된 유형 — 항상 발화해 정보량이 0 이었다. 안내는 관계 탭 고정 문구로 옮겼다(rules.md §6.3)
+  assert.equal(ofType(found, 'F-MIXED-RELATION').length, 0);
 });
 
 // ─── 타깃 지정 시 (Phase 2 경로) ────────────────────────────

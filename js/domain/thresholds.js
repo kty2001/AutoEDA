@@ -68,7 +68,6 @@ export const FINDING = Object.freeze({
   'F-CORR-METHOD': Object.freeze({ absSkewness: 2 }),
   'F-MULTICOLLINEAR': Object.freeze({ absPearson: 0.8, vif: 10 }),
   'F-CORR-CAUSAL': Object.freeze({ absPearson: 0.7 }),
-  'F-MIXED-RELATION': Object.freeze({ minCategorical: 1, minNumeric: 1 }),
   'F-LEAKAGE': Object.freeze({ absPearson: 0.95 }),
 
   // ── 타깃·모델링군 (rules.md §3.5) — Phase 2, 타깃 지정 시에만 활성
