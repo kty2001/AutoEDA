@@ -125,12 +125,13 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test            # 전체 테스트 236건 (계약·동작·통합·빌드)
+npm test            # 전체 테스트 239건 (계약·동작·통합·빌드·산출물 폐합)
 npm run serve       # 로컬 서빙 → http://localhost:8000
-npm run build:guides # 해설·사례 md → HTML + 섹션 인덱스
-npm run build:seo   # canonical·OG·JSON-LD 주입 + sitemap.xml (배포 직전)
+npm run build       # 콘텐츠 빌드 — build:guides → build:seo 를 순서대로
 npx wrangler deploy
 ```
+
+`build:guides` 와 `build:seo` 는 한 쌍임 — 앞의 것만 돌리면 페이지가 다시 만들어지면서 색인 신호가 지워지므로 개별 실행 대신 `npm run build` 를 씀 ([`work-log.md` 2026-08-18](docs/work-log.md)).
 
 연산은 전부 브라우저에서 일어나므로 개발 서버는 정적 서빙만 함. 다만 `npm run serve`는 `_headers`의 CSP도 확장자 없는 URL도 재현하지 못하므로, **그 둘을 확인할 때는 `npx wrangler dev`를 씀.** 상세는 [docs/implementation-status.md §3](docs/implementation-status.md) 참조.
 

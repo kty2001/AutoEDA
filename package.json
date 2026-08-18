@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "build": "npm run build:guides && npm run build:seo",
     "build:guides": "node scripts/build_guides.mjs",
     "build:seo": "node scripts/build_seo.mjs",
     "serve": "python -m http.server 8000"

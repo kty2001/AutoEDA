@@ -37,7 +37,7 @@
 | SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
 | 콘텐츠 빌드 | `scripts/build_guides.mjs` | 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. 인덱스는 `pages/{섹션}.html` 로 냄(디렉토리 인덱스는 307 을 만듦) |
 | 발행 콘텐츠 | `data/guide_source/*.md` `data/case_source/*.md` → `pages/guide.html` `pages/guide/*.html` `pages/case.html` | 해설 16편 + 사례 허브 1편 = 17편 · 25,596자 — [`content-strategy.md` §7](content-strategy.md) 분량 게이트 충족. 잔여 해설 6편·사례 6편 미발행 |
-| 테스트 | `tests/*.test.js` | 계약 21 + 동작 167 + 빌드 48 = 236건 (`integration.test.js` 가 계층 통합 스모크) |
+| 테스트 | `tests/*.test.js` | 계약 21 + 동작 167 + 빌드 51 = 239건. `integration.test.js` 가 계층 통합 스모크, `build_seo.test.js` 끝의 산출물 폐합 3건이 **저장소에 실제로 놓인 페이지**를 검사함 |
 | 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` `sitemap.xml` | `sitemap.xml` 은 빌드 산출물이지만 배포 자산이라 커밋함 |
 | 페이지 골격 | `index.html` `404.html` `pages/*.html` | analyze 4상태 섹션 포함. 마크업은 손으로 쓴 9개 + `build_guides` 템플릿에 중복되므로 함께 고침 |
 | 시각 디자인 | `css/style.css` | [`DESIGN.md`](DESIGN.md) 토큰·컴포넌트 반영. 색·간격·반경·그림자·서체가 `:root` 토큰 한 곳에 모여 있어 차트·발견 목록·배지·탭이 함께 따라옴. 구조 개편(히어로 분할·중간 밴드)은 미반영 |
@@ -71,13 +71,16 @@
 
 | 명령 | 내용 |
 |---|---|
-| `npm test` | 전체 테스트 236건(계약·동작·통합·빌드). **모든 작업 완료 전 필수** |
+| `npm test` | 전체 테스트 239건(계약·동작·통합·빌드·산출물 폐합). **모든 작업 완료 전 필수** |
 | `npm run serve` | 로컬 서빙 (`python -m http.server 8000`). ES Module·Worker 확인용 |
 | `npx wrangler dev --persist-to <프로젝트 밖>` | **실기 검증용 서버.** `_headers` CSP·확장자 없는 URL 을 배포와 같게 적용함 — `npm run serve` 는 둘 다 재현하지 못하므로 CSP·링크 확인에는 쓸 수 없음. `--persist-to` 를 빼면 무한 리로드([`work-log.md`](work-log.md)) |
-| `npm run build:guides` | 산문 md → HTML + 섹션 인덱스 + `published.json`. **`build:seo` 보다 먼저 돌림** (새 페이지를 sitemap 에 넣기 위해) |
-| `npm run build:seo` | canonical·OG·JSON-LD 주입 + `sitemap.xml` 생성. 멱등하므로 몇 번 돌려도 무방하고, **배포 직전에 한 번 돌림** |
+| **`npm run build`** | **콘텐츠를 고쳤으면 이것을 씀.** `build:guides` → `build:seo` 를 순서대로 돌림 |
+| `npm run build:guides` | 산문 md → HTML + 섹션 인덱스 + `published.json`. **단독으로 돌린 상태는 항상 깨진 상태임** — 페이지를 다시 만들면서 주입된 SEO 블록을 지우므로 `build:seo` 가 반드시 뒤따라야 함 ([`work-log.md` 2026-08-18](work-log.md)) |
+| `npm run build:seo` | canonical·OG·JSON-LD 주입 + `sitemap.xml` 생성. 멱등하므로 몇 번 돌려도 무방함 |
 | `node scripts/fetch_fonts.mjs` | 자체 호스팅 폰트 수집. **1회성** — 서체·웨이트를 바꿀 때만 돌림. 이미 받은 파일은 건너뜀 |
 | `npx wrangler deploy` | Cloudflare Workers 배포 → `autoeda.tyoujungzz.workers.dev` |
+
+**빌드 산출물을 커밋하기 전에는 `npm test` 가 마지막 관문임.** `build_seo.test.js` 끝의 산출물 폐합 3건이 sitemap 대상 전 페이지의 주입 블록·canonical·sitemap 집합을 실제 파일에서 대조하므로, `build:seo` 를 빼먹은 상태는 커밋 전에 실패로 드러남. 함수 단위 테스트가 전부 통과하는 상태에서 색인 신호가 통째로 사라진 사고가 있었고([`work-log.md` 2026-08-18](work-log.md)) 그 사각을 메운 것이 이 3건임.
 
 모듈을 구현하면 계약 테스트 외에 **동작 테스트를 `tests/`에 추가함** (`node --test`가 `tests/*.test.js`를 집음). domain 모듈은 순수 함수라 fixture 입력→출력 단정으로 충분함.
 

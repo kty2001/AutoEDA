@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -18,6 +18,7 @@ import {
   buildSitemap,
   extractFaq,
   inject,
+  scanGenerated,
   validate,
 } from '../scripts/build_seo.mjs';
 
@@ -174,4 +175,53 @@ test('sitemap — robots.txt 의 Sitemap 줄과 같은 오리진을 쓴다', () 
   for (const loc of [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])) {
     assert.equal(new URL(loc).origin, origin, 'sitemap 과 robots.txt 의 오리진이 어긋남');
   }
+});
+
+// ─── 산출물 폐합 ────────────────────────────────────────────
+//
+// 위 테스트들은 전부 함수 단위라 "주입 로직이 옳다"까지만 보인다.
+// 저장소에 실제로 놓인 파일이 주입된 상태인지는 보지 않았고, 그 사각으로
+// 회귀가 통과했다 — build_guides 가 페이지를 다시 만들면 주입 블록이 지워지는데
+// build:seo 를 이어 돌리지 않고 커밋하면 색인 신호가 통째로 사라진다.
+// 문서 경고로는 막히지 않아 여기서 기계로 고정한다. → docs/work-log.md 2026-08-18
+
+/** 오리진은 robots.txt 를 원천으로 삼는다 (위 테스트와 같은 방식). */
+const ORIGIN = new URL(/Sitemap:\s*(\S+)/.exec(readFileSync(join(ROOT, 'robots.txt'), 'utf8'))[1]).origin;
+
+/** PAGES + 산출물 스캔 중 실제로 존재하는 sitemap 대상. build_seo 의 collectPages 와 같은 규칙. */
+function indexedPages() {
+  return [...PAGES, ...scanGenerated('pages/guide'), ...scanGenerated('pages/case')]
+    .filter((page) => page.sitemap)
+    .filter((page) => existsSync(join(ROOT, page.file)));
+}
+
+test('산출물 — sitemap 대상 페이지에 주입 블록이 실제로 남아 있다', () => {
+  const pages = indexedPages();
+  assert.ok(pages.length > 0, 'sitemap 대상이 하나도 없음');
+  const missing = pages.filter((page) => {
+    const html = readFileSync(join(ROOT, page.file), 'utf8');
+    return !html.includes('<!-- build:seo:begin -->') || !html.includes('<!-- build:seo:end -->');
+  });
+  assert.deepEqual(
+    missing.map((p) => p.url),
+    [],
+    'build:seo 주입 블록이 없다 — npm run build 로 다시 생성할 것'
+  );
+});
+
+test('산출물 — 각 페이지의 canonical·og:url 이 자기 URL 과 일치한다', () => {
+  for (const page of indexedPages()) {
+    const html = readFileSync(join(ROOT, page.file), 'utf8');
+    const canonical = /<link rel="canonical" href="([^"]+)">/.exec(html)?.[1];
+    const ogUrl = /<meta property="og:url" content="([^"]+)">/.exec(html)?.[1];
+    assert.equal(canonical, `${ORIGIN}${page.url}`, `${page.file} 의 canonical 이 어긋남`);
+    assert.equal(ogUrl, canonical, `${page.file} 의 og:url 이 canonical 과 다름`);
+  }
+});
+
+test('산출물 — sitemap.xml 의 URL 집합이 실제 파일 목록과 일치한다', () => {
+  const xml = readFileSync(join(ROOT, 'sitemap.xml'), 'utf8');
+  const inSitemap = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).sort();
+  const onDisk = indexedPages().map((page) => `${ORIGIN}${page.url}`).sort();
+  assert.deepEqual(inSitemap, onDisk, 'sitemap 과 저장소가 어긋남 — npm run build 로 다시 생성할 것');
 });
