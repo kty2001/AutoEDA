@@ -3,19 +3,27 @@
     "categorical-numeric-relation",
     "class-imbalance",
     "constant-columns",
+    "correlation-causation",
     "correlation-coefficients",
     "csv-encoding",
     "data-leakage",
     "duplicate-rows",
     "high-cardinality",
+    "histogram-bins",
     "id-columns",
     "korean-public-data",
+    "kurtosis",
     "missing-imputation",
     "missing-types",
     "multicollinearity",
     "outlier-methods",
+    "outlier-removal",
     "skewness"
   ],
-  "case": [],
+  "case": [
+    "air-quality",
+    "bank-marketing",
+    "bike-sharing"
+  ],
   "glossary": []
 }

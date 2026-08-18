@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>첨도가 알려주는 것 — 꼬리의 두께 — AutoEDA</title>
+<meta name="description" content="초과첨도의 의미와 해석 기준, 표본 첨도가 불안정한 이유, 꼬리가 두꺼운 분포에서 평균·분산·이상치 판정이 어떻게 흔들리는지 설명합니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/kurtosis">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/kurtosis">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="첨도가 알려주는 것 — 꼬리의 두께 — AutoEDA">
+<meta property="og:description" content="초과첨도의 의미와 해석 기준, 표본 첨도가 불안정한 이유, 꼬리가 두꺼운 분포에서 평균·분산·이상치 판정이 어떻게 흔들리는지 설명합니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"첨도가 알려주는 것","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/kurtosis"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"첨도가 알려주는 것","description":"초과첨도의 의미와 해석 기준, 표본 첨도가 불안정한 이유, 꼬리가 두꺼운 분포에서 평균·분산·이상치 판정이 어떻게 흔들리는지 설명합니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/kurtosis","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">첨도가 알려주는 것 — 꼬리의 두께</span>
+  </nav>
+
+  <h1>첨도가 알려주는 것 — 꼬리의 두께</h1>
+  <p class="page-intro">첨도는 봉우리의 뾰족함이 아니라 꼬리의 두께를 재는 값입니다. 값이 클 때 실제로 무엇이 흔들리는지 정리했습니다.</p>
+
+  <p>첨도는 분포의 꼬리가 얼마나 두꺼운지를 재는 값입니다. 대부분의 도구는 정규분포를 0으로 맞춘 <strong>초과첨도</strong>를 보여주므로, 양수면 정규분포보다 꼬리가 두껍고 음수면 얇다는 뜻입니다.</p>
+  <p>흔한 오해부터 정리합니다. 첨도는 <strong>봉우리가 얼마나 뾰족한지를 재는 값이 아닙니다.</strong> 계산식이 평균에서 멀리 떨어진 값에 네제곱의 가중치를 주므로, 중앙 부근의 모양은 값에 거의 기여하지 않습니다. 첨도가 크다는 것은 사실상 &quot;평균에서 아주 먼 값이 예상보다 자주 나온다&quot;는 뜻입니다.</p>
+  <h2>값이 클 때 실제로 흔들리는 것</h2>
+  <p>꼬리가 두꺼운 분포에서는 세 가지가 함께 나빠집니다.</p>
+  <ol>
+    <li><strong>표준편차가 표본마다 크게 달라집니다.</strong> 극단값 몇 개가 들어오고 나가는 것만으로 값이 바뀌므로, 표준편차를 기준으로 만든 구간은 신뢰하기 어렵습니다</li>
+    <li><strong>평균에서 몇 배 떨어졌는지로 이상치를 판정하면 잘 걸리지 않습니다.</strong> 기준선 자체가 극단값 때문에 넓어지기 때문입니다</li>
+    <li><strong>정규성을 전제로 한 검정과 신뢰구간이 실제보다 좁게 나옵니다.</strong> 표본이 크면 평균의 분포는 정규에 가까워지지만, 분산 추정이 불안정한 상태는 그대로 남습니다</li>
+  </ol>
+  <h2>임계값을 어떻게 볼 것인가</h2>
+  <p>이 도구는 초과첨도가 7 이상일 때 발견으로 올리고, 심각도는 낮게 둡니다. 문제라기보다 <strong>해석 주의 신호</strong>로 취급한다는 뜻입니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>초과첨도</th><th>대략의 의미</th></tr></thead>
+    <tbody>
+      <tr><td>0 부근</td><td>정규분포와 비슷한 꼬리</td></tr>
+      <tr><td>1~3</td><td>실무 데이터에서 흔한 정도. 대개 알릴 가치가 없음</td></tr>
+      <tr><td>7 이상</td><td>이 도구가 발견으로 올리는 구간</td></tr>
+      <tr><td>두 자릿수 이상</td><td>대개 소수의 극단값이 만든 값. 원인을 확인할 것</td></tr>
+    </tbody>
+  </table></div>
+  <p>7이라는 값에 이론적 근거는 없습니다. 초과첨도 1~2 수준은 실무 데이터에서 흔해서 알릴 가치가 적고, 두 자릿수에 이르면 대개 몇 개의 극단값이 만든 결과라 확인할 필요가 생깁니다. 그 사이에서 관례적으로 고른 값입니다.</p>
+  <p>그래서 초과첨도 6인 열이 안전하다는 뜻은 아닙니다. 반대로 값이 30이라고 해서 데이터가 잘못되었다는 뜻도 아닙니다.</p>
+  <h2>표본 첨도는 생각보다 불안정합니다</h2>
+  <p>첨도는 4차 적률을 쓰기 때문에 <strong>관측 하나에 크게 좌우됩니다.</strong> 값이 만 개인 열에서 극단값 한 점을 빼면 초과첨도가 절반 이하로 떨어지는 일이 드물지 않습니다. 또 표본 첨도에는 상한이 있어서, 관측 수가 적으면 아무리 꼬리가 두꺼워도 큰 값이 나올 수 없습니다.</p>
+  <blockquote><p>그래서 첨도는 <strong>단독으로 읽지 않는 것</strong>이 안전합니다. 왜도, 이상치율, 최댓값과 함께 보면 값이 큰 이유가 꼬리 전체가 두꺼워서인지 한두 점 때문인지 금방 갈립니다.</p></blockquote>
+  <h2>값이 크면 무엇을 하나</h2>
+  <p>첨도 자체를 낮추는 것은 목표가 아닙니다. 확인할 것은 다음 순서입니다.</p>
+  <ul>
+    <li><strong>최댓값과 최솟값이 그 변수에서 가능한 값인가.</strong> 단위 혼재나 특수 코드값이 섞이면 첨도가 먼저 반응합니다</li>
+    <li><strong>큰 값이 특정 시점이나 특정 집단에 몰려 있는가.</strong> 몰려 있다면 그 집단을 나눠 보는 편이 낫습니다</li>
+    <li><strong>평균과 표준편차를 쓰는 요약을 계속 쓸 것인가.</strong> 중위수와 사분위로 바꾸면 문제의 상당 부분이 사라집니다</li>
+  </ul>
+  <h2>아무것도 하지 않아도 되는 경우</h2>
+  <ul>
+    <li><strong>트리 기반 모델을 쓸 때.</strong> 분할은 순서만 보므로 꼬리의 두께가 결과를 바꾸지 않습니다</li>
+    <li><strong>꼬리가 그 현상의 본질일 때.</strong> 보험 청구액, 거래 금액, 접속 폭주는 원래 꼬리가 두껍습니다. 이 경우 첨도가 큰 것은 데이터가 현상을 제대로 담고 있다는 신호입니다</li>
+    <li><strong>중위수·분위수로만 보고할 때.</strong> 평균과 분산을 쓰지 않으면 첨도가 요약을 망가뜨릴 자리가 없습니다</li>
+  </ul>
+  <p>첨도 경고는 &quot;고쳐라&quot;가 아니라 &quot;평균과 표준편차를 믿기 전에 꼬리를 한 번 보라&quot;는 안내입니다.</p>
+
+  <nav class="related" aria-label="관련 해설">
+    <h2>관련 해설</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/guide/histogram-bins">히스토그램 구간 수가 해석을 바꾸는 경우</a> — 같은 데이터도 구간 폭을 바꾸면 봉우리가 생기거나 사라집니다. 구간 수를 정하는 기준과 이산 수치형의 함정을 정리했습니다.</li>
+      <li><a href="/pages/guide/outlier-methods">이상치 탐지법 비교 — IQR과 z-score</a> — 같은 데이터에서 방법에 따라 이상치 개수가 크게 달라집니다. 각 방법이 무엇을 전제하는지 정리했습니다.</li>
+      <li><a href="/pages/guide/outlier-removal">이상치를 제거해야 하는가 — 판단 기준</a> — 이상치 제거는 기본 조치가 아니라 마지막 선택지입니다. 지우기 전에 갈라야 할 세 부류와 대안을 정리했습니다.</li>
+      <li><a href="/pages/guide/skewness">왜도 해석과 로그·Box-Cox 변환</a> — 왜도가 크다는 것은 오류가 아니라 분포의 성질입니다. 언제 변환해야 하고 언제 그대로 두는지 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/guide">해설 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

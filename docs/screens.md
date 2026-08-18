@@ -13,7 +13,7 @@
 | 규칙 | 내용 |
 |---|---|
 | **확장자 없음** | 내부 링크·canonical·sitemap·네비게이션 전부. `.html`을 가리키면 호스트가 307 리디렉션하고 GSC가 색인을 거부함 ([`tech-stack.md §6`](./tech-stack.md)) |
-| 소문자 하이픈 | `csv-encoding`, `house-price` |
+| 소문자 하이픈 | `csv-encoding`, `bike-sharing` |
 | 주제 기반 슬러그 | 해설·사례는 번호가 아니라 개념명. `guide/Q1` 아님 |
 | 쿼리스트링 미사용 | 도구가 단일 페이지 4상태이므로 상태를 URL로 구분하지 않음 (§4) |
 
@@ -52,7 +52,7 @@
 | 타깃·모델링 | T1 `class-imbalance` · T2 `target-distribution` · T3 `scaling` |
 | 프로세스·한국 환경 | **K1 → `/pages/guide` 인덱스 본문** · K2 `csv-encoding` · K3 `korean-public-data` |
 
-사례: C1 `titanic` · C2 `house-price` · C3~C6 국내 공공데이터(슬러그 미정 — 데이터셋 확정 시 부여).
+사례: `bike-sharing` · `bank-marketing` · `air-quality` (발행). 추가 사례는 [`data-sources.md §4`](./data-sources.md) 판정을 통과한 뒤 슬러그를 부여함.
 
 ## 3. 페이지별 기능 명세
 

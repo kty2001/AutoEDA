@@ -33,6 +33,10 @@
     <lastmod>2026-08-18</lastmod>
   </url>
   <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/correlation-causation</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
     <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/correlation-coefficients</loc>
     <lastmod>2026-08-18</lastmod>
   </url>
@@ -53,11 +57,19 @@
     <lastmod>2026-08-18</lastmod>
   </url>
   <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/histogram-bins</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
     <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/id-columns</loc>
     <lastmod>2026-08-18</lastmod>
   </url>
   <url>
     <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/korean-public-data</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/kurtosis</loc>
     <lastmod>2026-08-18</lastmod>
   </url>
   <url>
@@ -77,7 +89,23 @@
     <lastmod>2026-08-18</lastmod>
   </url>
   <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/outlier-removal</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
     <loc>https://autoeda.tyoujungzz.workers.dev/pages/guide/skewness</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/case/air-quality</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/case/bank-marketing</loc>
+    <lastmod>2026-08-18</lastmod>
+  </url>
+  <url>
+    <loc>https://autoeda.tyoujungzz.workers.dev/pages/case/bike-sharing</loc>
     <lastmod>2026-08-18</lastmod>
   </url>
 </urlset>

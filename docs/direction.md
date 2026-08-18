@@ -147,13 +147,14 @@ EDA Engine → 구조화된 EDA 결과(집계 통계만) → 사용자 API Key �
 
 > Excel 지원은 파서 라이선스 확인 결과에 따라 Phase 2로 이동할 수 있음 ([`tech-stack.md §9`](./tech-stack.md)).
 
-### Phase 1.5 — 콘텐츠 기반 구축
-- 해설 문서 11편 이상 발행 (한국 데이터 환경군 3편 우선)
-- 공개 사례 리포트 3편 발행 (Titanic, House Price, 국내 공공데이터 1건)
+### Phase 1.5 — 콘텐츠 기반 구축 · **완료 (2026-08-18)**
+- 해설 문서 20편 발행 (한국 데이터 환경군 3편 우선) — Phase 1에서 발화하는 Finding 유형 전량에 대응됨
+- 공개 사례 리포트 3편 발행 — 데이터셋은 이용 조건 판정을 통과한 UCI CC BY 4.0 3건([`data-sources.md §4`](./data-sources.md))
 - Finding ↔ 해설 페이지 양방향 링크 연결 (축 6)
 - sitemap.xml, robots.txt, 정규 URL(확장자 없음), 페이지별 메타 태그
 - Search Console 등록 및 색인 확인
 - **완료 기준**: 콘텐츠 페이지 14편 이상이 색인되고, 모든 Finding 유형에서 해설 페이지로 도달 가능하며, **sitemap URL 전수가 307 리디렉션 대상이 아님**
+- **현황**: 발행·링크·sitemap(27 URL, 리디렉션 0회)은 충족. **색인은 GSC 등록 대기 중**이므로 완료 기준 중 색인 항목만 미달임
 
 ### Phase 2 — 차별화 완성
 - **단계별 분석 가이드 UI** (축 2의 STEP 흐름)
@@ -196,7 +197,7 @@ EDA Engine → 구조화된 EDA 결과(집계 통계만) → 사용자 API Key �
 | 프론트엔드 | 순수 HTML + 수기 CSS + Vanilla ES Module, MPA. 프레임워크·번들러 없음 |
 | 콘텐츠 렌더링 | **빌드 시점 HTML 생성** (`md → HTML`). JSON+JS 런타임 렌더는 색인 코퍼스를 만들지 못함 |
 | 차트 | 자체 SVG 렌더링 (5종). 라이브러리 없음 |
-| 사례 리포트 | **빌드타임 Python**(pandas·ydata-profiling)으로 정적 HTML 생성 후 커밋. 런타임 의존성 아님 |
+| 사례 리포트 | 손으로 쓴 원고 md → `build_guides.mjs` 가 정적 HTML 생성. 수치는 브라우저와 같은 엔진(`analyze`)을 Node 에서 돌려 뽑음 |
 | SEO 요건 | sitemap.xml(결과 페이지 제외), robots.txt, **확장자 없는 정규 URL**, 페이지별 메타, Article 구조화 데이터 |
 | 저장 | `localStorage` + 결과 JSON 내보내기/불러오기 |
 | AI 연동 | 사용자 API Key를 저장하지 않고 요청 단위로만 사용 |
@@ -255,15 +256,17 @@ EDA Engine (JavaScript)
 
 확정 전에는 Phase 1 착수 범위가 고정되지 않음.
 
-1. **서비스명** — `AutoEDA`는 기존 오픈소스 프로젝트명과 충돌함
-2. **커스텀 도메인 취득 시점** — `workers.dev` 서브도메인에서는 `ads.txt` 루트를 소유할 수 없어 AdSense 신청 전 필요함
+1. **커스텀 도메인 취득** — `workers.dev` 서브도메인에서는 `ads.txt` 루트를 소유할 수 없어 AdSense 신청 전 필요함. 콘텐츠 축이 닫힌 지금 **최장 리드타임 항목**이며, 도메인 선택이 곧 서비스명 확정임
+2. **서비스명** — `AutoEDA`는 기존 오픈소스 프로젝트명과 충돌함. 1번과 함께 결정함
 3. **Excel 파서 선정** — 라이선스 조건 확인 필요. 미해결 시 Phase 1은 CSV 전용 ([`tech-stack.md §9`](./tech-stack.md))
-4. **콘텐츠 작성 분량·주체** — 전체 28편(해설 22 + 사례 6)을 감당 가능한지. 축소 시 [`content-strategy.md §8`](./content-strategy.md) 작성 순서 4~5를 후순위로 미룸
+4. **인코딩 지원 범위** — `decode.js` 가 UTF-8·EUC-KR 두 가지만 지원함. 서유럽 인코딩 파일을 열지 못해 사례 후보 하나가 보류됐음([`data-sources.md §4`](./data-sources.md))
 
 **결정된 사항**
 - 처리 파일 크기 상한 — **개별 파일 25MB** (2026-08-16 확정). Cloudflare 무료 티어의 파일당 25MB 기준에 맞춘 값이며, 브라우저 메모리로 처리 가능한 범위임. 상수는 `js/domain/thresholds.js`의 `FILE_LIMIT`이고 초과 시 `FILE_TOO_LARGE` 오류 경로를 탐([`data-model.md §5.1`](./data-model.md))
 - LLM 사용 — 사용자 API Key 기반 선택 레이어로 한정하며, 기본 기능은 AI 없이 완결함
-- 기술 스택 — [`tech-stack.md`](./tech-stack.md)로 확정. 런타임 JS / 빌드타임 Python, 백엔드 없음, 프레임워크·Tailwind 미도입
+- 기술 스택 — [`tech-stack.md`](./tech-stack.md)로 확정. 런타임·빌드타임 모두 JS(빌드타임 Python 은 계획했다가 쓰지 않음), 백엔드 없음, 프레임워크·Tailwind 미도입
 - 배포 환경 — Cloudflare Workers Static Assets (형제 프로젝트와 동일)
 - 인증·보존 기간 — 백엔드가 없어 서버에 저장되는 데이터 자체가 없으므로 쟁점이 소멸함
 - 수익화 — AdSense를 콘텐츠 페이지에 한정 게재. 프로젝트 성공 기준으로 삼지 않음(사전조사 §11.5)
+- 콘텐츠 작성 분량·주체 — **해소 (2026-08-18).** 초안 작성 후 검토 방식으로 24편·42,728자를 발행해 게이트를 넘겼음
+- 사례 데이터셋 — **확정 (2026-08-18).** UCI CC BY 4.0 3건. 조건이 불명확한 후보는 제외했음([`data-sources.md §4`](./data-sources.md))

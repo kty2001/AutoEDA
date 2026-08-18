@@ -2,7 +2,7 @@
 
 - 작성일: 2026-08-15
 - 전제: [`direction.md`](./direction.md) 차별화 축, [`content-strategy.md`](./content-strategy.md) 콘텐츠·색인 정책
-- 요지: **런타임은 브라우저 JavaScript, Python은 빌드타임 전용.** 백엔드 없음
+- 요지: **런타임·빌드타임 모두 JavaScript. 백엔드 없음.** 빌드타임 Python 은 계획했다가 쓰지 않았음 (§3)
 
 ---
 
@@ -19,15 +19,15 @@
 | 차트 | 자체 SVG 렌더링 | — | 필요한 차트가 5종뿐이라 라이브러리 불필요 |
 | 외부 라이브러리 | **없음 — 전부 자체 구현** | — | CSP 예외·공급망 관리·라이선스 부담이 사라짐. CSV 파서는 RFC 4180을 직접 구현함 |
 | 콘텐츠 생성 | Node 빌드 스크립트 (md → HTML) | — | JSON+JS 런타임 렌더는 색인 코퍼스를 만들지 못함 |
-| 사례 리포트 생성 | **Python (pandas, ydata-profiling)** — 빌드타임 | 무료 | 정적 HTML을 커밋. 런타임 의존성 아님 |
+| 사례 리포트 생성 | **손으로 쓴 원고 → `build_guides.mjs`** | — | 원래 계획한 빌드타임 Python 을 쓰지 않았음. 수치는 브라우저와 같은 엔진(`analyze`)을 Node 에서 돌려 뽑음 (§3 주석) |
 | 상태 저장 | `localStorage` | — | 백엔드 없음 |
 | 백엔드 | **없음** (MVP) | 0 | 결과 공유가 실제로 필요해지면 Cloudflare D1 재검토 (§9) |
-| 자동화 | GitHub Actions | 무료 | 사례 리포트 재생성·CI |
+| 자동화 | GitHub Actions | 무료 | CI (사례 리포트는 원고 기반이라 재생성 대상이 아님) |
 | 로컬 확인 | `python -m http.server`, `npx wrangler dev` | 무료 | ES Module은 `file://`로 열리지 않음 |
 
 ## 2. 제약 조건 — 왜 이 스택인지
 
-형제 프로젝트(`anime-semantle` / `BDAnalyzer` / `weareants`)와 [`../../Documents/project_process.md`](../../Documents/project_process.md)에서 확인한 실측 제약임. 이 표가 §1 결정의 근거 전부임.
+형제 프로젝트(`anime-semantle` / `BDAnalyzer` / `weareants`)와 `project_process.md`(저장소 밖 개인 문서, 현재 경로 미확인)에서 확인한 실측 제약임. 이 표가 §1 결정의 근거 전부임.
 
 | 제약 | 내용 | 스택에 준 영향 |
 |---|---|---|
@@ -43,7 +43,7 @@
 
 ## 3. 런타임 / 빌드타임 이원 구조
 
-두 층을 분리하면 각 언어를 강점대로 쓰면서 위 제약을 모두 회피함.
+두 층을 분리하면 위 제약을 모두 회피함. **양쪽 다 JavaScript 임** — 원래는 빌드타임을 Python 으로 두려 했으나 쓰지 않게 되었고(아래 주석), 그 결과 언어가 하나로 줄었음.
 
 ```text
 ┌─ 런타임 — 브라우저, JavaScript ────────────────────────────┐
@@ -55,9 +55,8 @@
 └─────────────────────────────────────────────────────────────┘
 
 ┌─ 빌드타임 — 로컬 / GitHub Actions ─────────────────────────┐
-│  해설 원자료 md ──[build_guides.mjs]──→ 해설 HTML 22편      │
-│  공개 데이터셋 ──[build_cases.py]───→ 사례 리포트 HTML 6편  │
-│      (pandas · ydata-profiling 사용)                        │
+│  해설·사례·용어집 원자료 md                                 │
+│    └─[build_guides.mjs]─→ 정적 HTML 24편                    │
 │  PAGES 목록 ────[build_seo.mjs]────→ canonical·OG·sitemap   │
 │      ↓                                                      │
 │  전부 정적 파일로 커밋 → 색인 코퍼스                        │
@@ -70,7 +69,7 @@
 2. **업로드 대기 시간이 사라짐** — 성능 목표(10만 행 × 30열 30초)에 오히려 유리
 3. **서버 비용 0** — 방치해도 부담이 없는 구조 유지
 
-**빌드타임 Python의 위치**: 사례 리포트 생성은 "자체 데이터에서 실측을 캐고 그 위에 해설을 쓴다"(`project_process.md` §3 유효 패턴)의 구현임. `BDAnalyzer`의 `build_flashcards.py`/`build_notes.py`와 동일한 원자료 → 산출물 파이프라인 구조를 따름.
+**빌드타임 Python은 쓰지 않았음**: 사례 리포트도 `build_guides.mjs` 의 원고 경로로 발행함. "자체 데이터에서 실측을 캐고 그 위에 해설을 쓴다"(`project_process.md` §3 유효 패턴)는 그대로 지키되, 실측을 pandas 로 다시 계산하지 않고 **브라우저와 같은 엔진**(`js/worker/analyze.worker.js` 의 `analyze`)을 Node 에서 돌려 뽑았음 — 임계값 단일 원천이 갈라지지 않게 하기 위함. 대가는 빌드타임 인라인 SVG 차트이며 결정 경위는 [`work-log.md` 2026-08-18](./work-log.md).
 
 ## 4. 지표별 구현 수단
 
@@ -87,7 +86,7 @@
 | 차트 | 자체 SVG 렌더링 | 히스토그램·박스플롯·막대·산점도·히트맵 5종 |
 | ML | Phase 3에서 필요 시점에 재검토 | Phase 1~2에 ML 요구 없음. "AI는 계산이 아닌 해석"(사전조사 §9.4) 원칙과 정합 |
 
-**포기하는 것**: scipy 계열 고급 검정(ANOVA, Box-Cox 등). 필요해지면 자체 구현하거나, 빌드타임 Python을 쓰는 사례 리포트에서만 다룸.
+**포기하는 것**: scipy 계열 고급 검정(ANOVA, Box-Cox 등). 필요해지면 자체 구현함 — 사례 리포트도 같은 엔진을 쓰므로 Python 우회로는 남아 있지 않음.
 
 ## 5. 디렉토리 구조
 
@@ -102,10 +101,9 @@ AutoEDA/
 ├── package.json                # private, type:module (ESM 테스트에 필요), scripts
 ├── pages/
 │   ├── analyze.html            # 도구 — 4상태 단일 페이지 (색인 ○ / 광고 ×)
-│   ├── guide/index.html        # 해설 허브 = K1 본문 + 21편 목록 (색인 ○ / 광고 ○)
-│   ├── guide/*.html            # 해설 21편 — build_guides.mjs 생성
-│   ├── case/index.html         # 사례 목록 + 사례 읽는 법 (색인 ○ / 광고 ○)
-│   ├── case/*.html             # 사례 리포트 6편 — build_cases.py 생성
+│   ├── guide.html  case.html  glossary.html   # 섹션 인덱스 — 디렉토리 index 로 두지 않음(307 회피)
+│   ├── guide/*.html            # 해설 19편 — build_guides.mjs 생성
+│   ├── case/*.html             # 사례 리포트 3편 — build_guides.mjs 생성
 │   └── about.html  contact.html  privacy.html  terms.html   # noindex, follow
 ├── css/style.css               # 수기 (토큰 → 리셋 → 레이아웃 → 컴포넌트)
 ├── js/
@@ -122,10 +120,13 @@ AutoEDA/
 │   └── lib/format.js           # 표시용 포맷 (여러 화면이 같은 수치를 같게 적도록)
 ├── data/
 │   ├── guide_source/*.md       # 해설 원자료 (사람이 작성, .assetsignore 로 배포 제외)
+│   ├── case_source/*.md        # 사례 원고 (index.md 가 허브 본문)
+│   ├── glossary_source/*.md    # 용어집 원자료
+│   ├── published.json  guide-nav.json   # build_guides 산출 — 발행 슬러그·전역 메뉴
 │   └── finding-map.json        # Finding 유형 ↔ 해설 URL 매핑 (스키마: data-model.md §7)
 ├── scripts/
-│   ├── build_guides.mjs        # md → HTML
-│   ├── build_cases.py          # 공개 데이터셋 → 사례 HTML (pandas)
+│   ├── build_guides.mjs        # md → HTML (해설·사례·용어집)
+│   ├── build_cases.py          # 미구현·미사용 (§3 주석)
 │   └── build_seo.mjs           # canonical·OG·JSON-LD·sitemap (PAGES 가 URL 단일 원천)
 ├── tests/contracts.test.js     # node --test — 모듈 계약 + 임계값↔문서 대조
 └── docs/
@@ -202,4 +203,5 @@ AutoEDA/
 | **`ads.txt` 루트 부재** | `workers.dev` 서브도메인에서는 불가. AdSense 신청 전 커스텀 도메인 취득 필요 (Cloudflare Registrar 연 ~2만원) |
 | **자체 SVG 차트 공수** | 축·눈금·툴팁을 직접 구현해야 함. 5종으로 한정하고 공통 축·스케일 모듈을 먼저 만듦 |
 | **결과 공유 부재** | 백엔드 0의 귀결. 결과 JSON 내보내기/불러오기로 대체하며, 링크 공유는 Phase 3에서 D1 도입과 함께 재검토 |
-| **콘텐츠 분량** | 25,000자는 실측 기준이며 작성량이 큼. [`content-strategy.md §8`](./content-strategy.md) 순서대로 분할 |
+| ~~**콘텐츠 분량**~~ | **해소 (2026-08-18)** — 24편·42,728자로 게이트의 171% |
+| **인코딩 지원 범위** | `decode.js` 가 UTF-8·EUC-KR 두 가지만 지원함. 서유럽 인코딩 파일을 열지 못해 사례 후보 하나가 보류됐음([`data-sources.md §4`](./data-sources.md)). 오류 화면의 수동 인코딩 선택에 후보를 늘릴지 판단 필요 |

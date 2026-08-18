@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들 — AutoEDA</title>
+<meta name="description" content="UCI 공유 자전거 대여 데이터 17,379행을 분석해 다중공선성·상관 해석·코드값 타입 오판을 정리했습니다. 자동 판정이 맞은 지점과 틀린 지점을 함께 다룹니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/case/bike-sharing">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/case/bike-sharing">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들 — AutoEDA">
+<meta property="og:description" content="UCI 공유 자전거 대여 데이터 17,379행을 분석해 다중공선성·상관 해석·코드값 타입 오판을 정리했습니다. 자동 판정이 맞은 지점과 틀린 지점을 함께 다룹니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"사례 리포트","item":"https://autoeda.tyoujungzz.workers.dev/pages/case"},{"@type":"ListItem","position":3,"name":"공유 자전거 대여 수요 데이터","item":"https://autoeda.tyoujungzz.workers.dev/pages/case/bike-sharing"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"공유 자전거 대여 수요 데이터","description":"UCI 공유 자전거 대여 데이터 17,379행을 분석해 다중공선성·상관 해석·코드값 타입 오판을 정리했습니다. 자동 판정이 맞은 지점과 틀린 지점을 함께 다룹니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/case/bike-sharing","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/case">사례 리포트</a> › <span aria-current="page">공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들</span>
+  </nav>
+
+  <h1>공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들</h1>
+  <p class="page-intro">열 17개짜리 시계열 수요 데이터에서 다중공선성 경고 여러 건과 코드값 오판이 함께 나왔습니다. 어느 것이 진짜 문제인지 가려 봅니다.</p>
+
+  <p>시간당 자전거 대여 건수와 그 시점의 날씨를 담은 데이터입니다. 열이 17개뿐이고 결측도 없어서 품질 점수는 높게 나오지만, <strong>관계를 읽는 단계에서 확인할 것이 여러 건 나옵니다.</strong> 이 리포트는 그 확인 과정을 순서대로 따라갑니다.</p>
+  <h2>데이터셋과 이용 조건</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td>이름</td><td>Bike Sharing Dataset (시간 단위 파일)</td></tr>
+      <tr><td>출처</td><td><a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" rel="noopener">UCI Machine Learning Repository dataset 275</a></td></tr>
+      <tr><td>제공자</td><td>Hadi Fanaee-T</td></tr>
+      <tr><td>라이선스</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a> — 출처 표시 조건으로 상업적 이용 허용</td></tr>
+      <tr><td>인용</td><td>Fanaee-T, H. (2013). Bike Sharing (Dataset). UCI Machine Learning Repository. <a href="https://doi.org/10.24432/C5W894" rel="noopener">doi.org/10.24432/C5W894</a></td></tr>
+      <tr><td>이용 조건 확인일</td><td>2026년 8월 18일</td></tr>
+    </tbody>
+  </table></div>
+  <p>원본 데이터 파일은 이 사이트에서 재배포하지 않습니다. 아래에 싣는 것은 집계된 통계와 그에 대한 해석뿐입니다.</p>
+  <h2>개요</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>행 · 열</td><td>17,379행 · 17열</td></tr>
+      <tr><td>인코딩 · 구분자</td><td>UTF-8 · 쉼표</td></tr>
+      <tr><td>결측</td><td>없음</td></tr>
+      <tr><td>중복 행</td><td>0건</td></tr>
+      <tr><td>품질 점수</td><td>92점</td></tr>
+      <tr><td>발견</td><td>24건</td></tr>
+    </tbody>
+  </table></div>
+  <p>92점은 이 도구가 매기는 점수 중 높은 편입니다. 감점은 두 곳뿐입니다 — 한 열의 값이 한쪽으로 몰려 있다는 항목에서 5점, 이상치율에서 3점.</p>
+  <p><strong>여기서 점수만 보고 넘어가면 이 데이터의 실제 문제를 전부 놓칩니다.</strong> 품질 점수는 결측·중복·상수·이상치처럼 값의 상태를 보는 지표이고, 열의 의미가 맞는지는 보지 않기 때문입니다.</p>
+  <h2>다중공선성 경고 — 셋 중 둘만 진짜입니다</h2>
+  <p>상관이 0.8을 넘거나 VIF가 10을 넘는 쌍이 여러 건 나왔습니다. 성격이 전부 다릅니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>쌍</th><th>Pearson</th><th>VIF</th><th>판단</th></tr></thead>
+    <tbody>
+      <tr><td>temp ~ atemp</td><td>0.9877</td><td>43.9</td><td>진짜. 기온과 체감온도라 같은 것을 두 번 잰 셈</td></tr>
+      <tr><td>instant ~ yr</td><td>0.8660</td><td>572.1</td><td>열 자체가 잘못 들어옴</td></tr>
+      <tr><td>season ~ mnth</td><td>0.8304</td><td>3.5</td><td>진짜지만 당연함. 계절은 월의 요약</td></tr>
+      <tr><td>registered ~ cnt</td><td>0.9722</td><td>—</td><td>다중공선성이 아니라 정의 관계</td></tr>
+    </tbody>
+  </table></div>
+  <p>첫 번째는 전형적인 사례입니다. 기온과 체감온도는 서로 다른 정보를 거의 담고 있지 않으므로, 회귀 계수를 해석할 목적이라면 <strong>둘 중 하나만 남기는 편이 낫습니다.</strong></p>
+  <p>세 번째는 다릅니다. 계절과 월은 상관이 높은 것이 정상이고, 둘 다 쓰면 정보가 겹칠 뿐 데이터가 잘못된 것은 아닙니다. VIF가 3.5로 낮게 나온 것도 다른 열들이 이 겹침을 상쇄하고 있기 때문입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/multicollinearity">해설: 다중공선성 — VIF와 상관계수로 진단하기</a></p>
+  <h2>정의상 같은 값을 상관으로 읽지 않습니다</h2>
+  <p>registered와 cnt의 상관 0.9722는 강한 관계가 아니라 <strong>정의</strong>입니다. 확인해 보면 17,379행 전부에서 casual과 registered의 합이 정확히 cnt와 같습니다.</p>
+  <p>이 데이터로 대여 건수를 예측하는 모델을 만든다면 casual과 registered는 쓸 수 없습니다. 예측 시점에 알 수 없는 값이고, 넣으면 학습 성능이 완벽하게 나오면서 실제로는 아무것도 하지 못합니다.</p>
+  <blockquote><p>이 도구는 타깃 열을 지정해야 누수 후보를 판정합니다. 타깃 없이 돌린 이 결과에서는 세 열의 관계가 <strong>일반적인 높은 상관</strong>으로만 보고되므로, 어느 열이 결과이고 어느 열이 그 결과의 구성 요소인지는 사람이 판단해야 합니다.</p></blockquote>
+  <p class="term-guide"><a href="/pages/guide/data-leakage">해설: 데이터 누수 후보 탐지</a></p>
+  <h2>자동 판정이 틀린 지점</h2>
+  <h3>행 번호가 변수로 잡혔습니다</h3>
+  <p>instant 열은 1부터 17,379까지 하나씩 증가하는 행 번호입니다. 값이 전부 다르고 빈칸이 없어서 수치형으로 판정되었고, 그 결과 VIF가 572.1이라는 큰 값으로 나왔습니다.</p>
+  <p>VIF가 큰 이유는 이 열이 다른 열과 관계가 있어서가 아니라 <strong>시간에 따라 단조 증가하는 값이 연도·월과 자동으로 겹치기 때문</strong>입니다. 분석에서 빼야 하는 열이며, 빼고 나면 관련 경고가 함께 사라집니다.</p>
+  <p class="term-guide"><a href="/pages/guide/id-columns">해설: ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</a></p>
+  <h3>코드값 일곱 개가 수치로 잡혔습니다</h3>
+  <p>season, yr, mnth, holiday, weekday, workingday, weathersit는 모두 코드값입니다. 도구는 이 일곱 열을 수치형으로 판정했고, 그래서 계절의 평균이 2.50이라는 값이 계산되었습니다. 아무 의미가 없는 수치입니다.</p>
+  <p>이 열들에 대해 &quot;수치형인데 고유값이 적다&quot;는 안내가 함께 나온 것은 정확한 지적입니다. 다만 조치는 히스토그램 구간을 조정하는 것이 아니라 <strong>타입을 범주형으로 바꾸는 것</strong>입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/histogram-bins">해설: 히스토그램 구간 수가 해석을 바꾸는 경우</a></p>
+  <h3>상수에 가까운 열 경고는 맞지만 버릴 열은 아닙니다</h3>
+  <p>holiday 열은 값 하나가 97.1퍼센트를 차지해 경고 대상이 되었습니다. 공휴일이 전체 시간의 3퍼센트 이하인 것은 당연하므로 데이터 문제가 아닙니다.</p>
+  <p>다만 이 비율 때문에 왜도 5.638, 초과첨도 29.79라는 큰 값이 함께 나왔습니다. <strong>0과 1만 갖는 열에서 이 두 지표는 읽을 필요가 없습니다.</strong> 두 값은 연속형 분포를 전제로 정의된 것이기 때문입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/constant-columns">해설: 상수·준상수 컬럼이 분석에 미치는 영향</a></p>
+  <h2>분포에서 실제로 볼 것</h2>
+  <p>수치형으로 다룰 가치가 있는 열은 사실상 네 개입니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>평균</th><th>중위수</th><th>왜도</th><th>이상치율</th></tr></thead>
+    <tbody>
+      <tr><td>casual</td><td>35.7</td><td>17</td><td>2.499</td><td>6.9%</td></tr>
+      <tr><td>registered</td><td>153.8</td><td>115</td><td>1.558</td><td>3.9%</td></tr>
+      <tr><td>cnt</td><td>189.5</td><td>142</td><td>1.277</td><td>2.9%</td></tr>
+      <tr><td>windspeed</td><td>0.190</td><td>0.194</td><td>0.575</td><td>2.0%</td></tr>
+    </tbody>
+  </table></div>
+  <p>앞의 세 열은 평균이 중위수보다 뚜렷하게 큽니다. 대여 건수가 낮은 시간대가 많고 소수의 시간대에 몰리는 형태라는 뜻이며, 수요 데이터에서 흔한 모양입니다. <strong>이상치율 6.9퍼센트는 오류가 아니라 이 치우침의 결과</strong>입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/skewness">해설: 왜도 해석과 로그·Box-Cox 변환</a></p>
+  <h2>한계</h2>
+  <p>이 리포트는 한 파일을 그대로 분석한 결과입니다. 아래는 여기서 판단할 수 없습니다.</p>
+  <ul>
+    <li>일 단위 파일과 합쳐 보면 달라지는 것 — 시간 단위 파일만 썼습니다</li>
+    <li>결측이 없는 이유 — 원래 없는 것인지 제공 과정에서 채워진 것인지는 이 데이터만으로 알 수 없습니다</li>
+    <li>인과 — 기온이 높으면 대여가 는다는 관계는 보이지만, 계절·요일과 얽혀 있어 이 상관만으로 방향을 말할 수 없습니다</li>
+  </ul>
+  <p class="term-guide"><a href="/pages/guide/correlation-causation">해설: 상관관계와 인과관계를 혼동하지 않는 방법</a></p>
+
+  <nav class="related" aria-label="관련 사례 리포트">
+    <h2>관련 사례 리포트</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/case/air-quality">대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때</a> — 품질 점수 63점짜리 파일에서 감점의 원인 대부분이 측정값이 아니라 파일 형식이었습니다. 무엇을 먼저 고쳐야 하는지 정리했습니다.</li>
+      <li><a href="/pages/case/bank-marketing">은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것</a> — 결측이 한 건도 없다고 보고된 45,211행 데이터에서 실제로는 열 하나의 81.7퍼센트가 값이 없었습니다. 그것을 어떻게 알아채는지 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/case">사례 리포트 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

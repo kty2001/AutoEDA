@@ -293,7 +293,7 @@ flowchart LR
 | 액터 | Builder |
 | 목적 | 공개 데이터셋 분석 결과를 정적 HTML로 발행 |
 | 선행조건 | 공개 데이터셋 확보, 이용 조건 확인 완료 |
-| 기본 흐름 | 1) `scripts/build_cases.py` 실행 → 2) pandas·ydata-profiling으로 지표 산출 → 3) 사람이 작성한 해석 원고와 병합 → 4) `pages/case/{slug}.html` 생성 |
+| 기본 흐름 | 1) [`data-sources.md §7`](./data-sources.md) 이용 조건 판정 → 2) `js/worker/analyze.worker.js` 의 `analyze` 를 Node 에서 돌려 지표 산출 → 3) 사람이 해석 원고를 `data/case_source/{slug}.md` 로 작성하고 지표를 표에 옮김 → 4) `npm run build` 가 `pages/case/{slug}.html` 생성 |
 | 후행조건 | 정적 HTML이 커밋 대상이 됨 |
 | 규칙 | **자동 생성 결과를 그대로 발행하지 않음.** 해석 원고 없이 지표만 있는 사례는 발행 대상이 아님 — 안티패턴 #2(프로그램 생성 페이지 대량 발행) 회피 |
 
@@ -359,7 +359,7 @@ Domain 열은 [`tech-stack.md §5`](./tech-stack.md)의 모듈명과 일치해�
 | UC-15 | `/pages/analyze` → `/pages/guide/{slug}` | `analyze.page.js` | `finding.js` | `data/finding-map.json` |
 | UC-16 | `/pages/guide/{slug}` → `/pages/analyze` | `common.js` | — | — |
 | UC-17 | (빌드) | — | `scripts/build_guides.mjs` | `data/guide_source/*.md` |
-| UC-18 | (빌드) | — | `scripts/build_cases.py` | 공개 데이터셋 |
+| UC-18 | (빌드) | — | `scripts/build_guides.mjs` + `analyze` 실측 | 공개 데이터셋 |
 | UC-19 | (빌드) | — | `scripts/build_seo.mjs` | `sitemap.xml` |
 
 **모든 분석 UC가 `analyze.page.js` 하나에 몰리는 이유**: 도구가 단일 페이지 4상태 구조이기 때문임(`screens.md §4`). 이 파일이 과대해지면 상태별 렌더 모듈로 분할하되, **`js/domain/*`는 DOM을 참조하지 않는 계약을 유지함** — 분할은 Presentation 내부 문제로 한정함.

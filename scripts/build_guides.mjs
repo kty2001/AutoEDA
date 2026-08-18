@@ -133,6 +133,25 @@ function parseBlocks(lines, file, offset) {
 
   const lineNo = () => offset + i;
 
+  // 인라인 링크 [텍스트](url) 의 URL 은 여기서 검사한다 — 렌더 시점에는 줄 번호가 없다.
+  // 허용: https?:// 절대 URL, / 로 시작하는 사이트 내부 경로. javascript: 같은 스킴을 막는다.
+  lines.forEach((text, idx) => {
+    const rest = text.replace(/\[[^\]]+\]\((\S*?)\)/g, (_whole, url) => {
+      if (!/^(https?:\/\/\S+|\/\S*)$/.test(url)) {
+        throw new BuildError(
+          `${file}:${offset + idx} — 링크 URL 은 https:// 또는 / 로 시작하는 내부 경로만 쓴다: ${url || '(비어 있음)'}`
+        );
+      }
+      return '';
+    });
+    // 링크 형태가 아닌 대괄호는 태그가 되지 않고 화면에 기호가 그대로 남는다.
+    if (/[[\]]/.test(rest)) {
+      throw new BuildError(
+        `${file}:${offset + idx} — 대괄호는 링크 [텍스트](url) 형태로만 쓴다: ${text.trim().slice(0, 40)}`
+      );
+    }
+  });
+
   while (i < lines.length) {
     const raw = lines[i];
     const line = raw.trimEnd();
@@ -219,10 +238,10 @@ function parseBlocks(lines, file, offset) {
       continue;
     }
     // 문단이 **굵게** 로 시작하는 것은 정상이므로 `**` 는 통과시키고 단일 `*` 만 막는다.
-    if (/^(\*(?!\*)|[_`[\]!<])/.test(line) || line.startsWith('---')) {
+    if (/^(\*(?!\*)|[_`!<])/.test(line) || line.startsWith('---')) {
       throw new BuildError(
         `${file}:${lineNo()} — 지원하지 않는 서식이다: ${line.slice(0, 40)}\n` +
-          `    허용: ## ### 문단 - 1. | > 그리고 인라인 **굵게** 뿐이다`
+          `    허용: ## ### 문단 - 1. | > 그리고 인라인 **굵게** · [텍스트](url) 뿐이다`
       );
     }
 
@@ -263,7 +282,8 @@ function splitRow(line) {
 }
 
 /**
- * 인라인 서식 검사. 허용은 `**굵게**` 하나뿐이다.
+ * 인라인 서식 검사. 허용은 `**굵게**` 와 `[텍스트](url)` 뿐이다.
+ * 링크와 대괄호는 줄 번호를 붙일 수 있는 파싱 시점(parseBlocks)에서 검사한다.
  * 줄 시작만 보면 부족하다 — 문장 중간의 백틱·대괄호는 태그가 되지 않고
  * **화면에 기호가 그대로 남는다**(실측: 렌더된 해설에 백틱이 노출됨).
  */
@@ -279,10 +299,6 @@ function checkInline(block, file) {
         `${file} — 백틱은 허용하지 않는다(인라인 서식은 ** 하나뿐). 화면에 기호가 그대로 남는다: ${text.slice(0, 60)}`
       );
     }
-    const link = /\[[^\]]*\]\([^)]*\)/.exec(text);
-    if (link) {
-      throw new BuildError(`${file} — 인라인 링크는 지원하지 않는다: ${link[0]}`);
-    }
   }
 }
 
@@ -297,6 +313,7 @@ function countChars(blocks) {
   return blocks
     .flatMap(blockTexts)
     .join('')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\*\*/g, '')
     .replace(/\s/g, '').length;
 }
@@ -311,9 +328,17 @@ function esc(value) {
     .replace(/"/g, '&quot;');
 }
 
-/** escapeHtml 을 먼저 걸고 나서 **굵게** 만 태그로 바꾼다(순서가 중요하다). */
+/**
+ * escapeHtml 을 먼저 걸고 나서 **굵게** · [텍스트](url) 만 태그로 바꾼다(순서가 중요하다).
+ * URL 스킴 검사는 파싱 시점에 끝나 있다(줄 번호를 붙이기 위함) — 여기서는 렌더만 한다.
+ * 사례 리포트가 데이터셋 출처·라이선스 전문을 가리키는 데 쓴다. → docs/data-sources.md §6
+ */
 export function inline(text) {
-  return esc(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return esc(text)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((\S+?)\)/g, (_, label, url) =>
+      url.startsWith('/') ? `<a href="${url}">${label}</a>` : `<a href="${url}" rel="noopener">${label}</a>`
+    );
 }
 
 /**
@@ -620,7 +645,7 @@ function buildSection(name, section, report) {
         breadcrumb: breadcrumbNav(section, doc.meta.title),
         h1: doc.meta.title,
         intro: doc.meta.summary,
-        body: renderBlocks(doc.blocks),
+        body: renderBlocks(doc.blocks, '  ', resolveGuide),
         related: relatedNav(section, doc, groups),
       }),
     })),

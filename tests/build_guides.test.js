@@ -100,7 +100,7 @@ test('블록 — 문단이 **굵게** 로 시작해도 문단이다', () => {
 });
 
 test('블록 — 지원하지 않는 서식은 줄 번호와 함께 실패한다', () => {
-  for (const bad of ['`코드`', '[링크](/x)', '_기울임_', '<div>', '![이미지](/x)']) {
+  for (const bad of ['`코드`', '_기울임_', '<div>', '![이미지](/x)']) {
     assert.throws(() => parseSource(`${FM}\n${bad}\n`, 'x.md'), /지원하지 않는 서식/, `통과됨: ${bad}`);
   }
 });
@@ -133,8 +133,14 @@ test('블록 — 문장 중간의 백틱을 잡는다 (화면에 기호가 그�
   assert.throws(() => parseSource(md, 'x.md'), /백틱/);
 });
 
-test('블록 — 문장 중간의 인라인 링크를 잡는다', () => {
-  assert.throws(() => parseSource(`${FM}\n자세히는 [여기](/x) 참고\n`, 'x.md'), /인라인 링크/);
+test('블록 — 문장 중간의 인라인 링크는 문단으로 통과한다', () => {
+  const { blocks } = parseSource(`${FM}\n자세히는 [여기](/pages/guide) 참고\n`, 'x.md');
+  assert.equal(blocks[0].type, 'p');
+});
+
+test('블록 — 링크 형태가 아닌 대괄호는 줄 번호와 함께 실패한다', () => {
+  // 태그가 되지 않고 화면에 기호가 그대로 남는 것을 막는다
+  assert.throws(() => parseSource(`${FM}\n대괄호 [주석] 표기\n`, 'x.md'), /x\.md:\d+ — 대괄호/);
 });
 
 test('원자료 — 실제 원고에 백틱이 없다', () => {
@@ -155,6 +161,31 @@ test('렌더 — escapeHtml 이 **굵게** 변환보다 먼저다', () => {
   assert.equal(inline('**굵게**'), '<strong>굵게</strong>');
   // 원자료에 태그를 써도 태그가 되지 않는다
   assert.equal(inline('**<b>x</b>**'), '<strong>&lt;b&gt;x&lt;/b&gt;</strong>');
+});
+
+test('렌더 — [텍스트](url) 이 링크가 된다 (사례 리포트의 출처·라이선스 표기)', () => {
+  // 외부 링크에는 rel="noopener" 를 붙이고, 사이트 내부 경로에는 붙이지 않는다
+  assert.equal(
+    inline('[출처](https://example.org/data)'),
+    '<a href="https://example.org/data" rel="noopener">출처</a>'
+  );
+  assert.equal(inline('[해설](/pages/guide/skewness)'), '<a href="/pages/guide/skewness">해설</a>');
+  // escapeHtml 이 먼저이므로 원자료의 태그가 링크 안에서도 태그가 되지 않는다
+  assert.equal(
+    inline('[<b>x</b>](https://example.org/)'),
+    '<a href="https://example.org/" rel="noopener">&lt;b&gt;x&lt;/b&gt;</a>'
+  );
+  // 굵게와 함께 쓸 수 있다
+  assert.match(inline('[**굵게**](https://example.org/)'), /<a href="[^"]+" rel="noopener"><strong>/);
+});
+
+test('파싱 — 링크 URL 스킴을 검사한다 (줄 번호와 함께 실패)', () => {
+  // javascript: 같은 스킴이 href 에 들어가면 안 된다
+  assert.throws(() => parseSource(`${FM}\n[누르기](javascript:alert(1))\n`, 'x.md'), /x\.md:\d+ — 링크 URL/);
+  assert.throws(() => parseSource(`${FM}\n[상대경로](pages/guide)\n`, 'x.md'), /링크 URL/);
+  // 허용되는 두 형태는 통과한다
+  assert.doesNotThrow(() => parseSource(`${FM}\n[외부](https://example.org/a?b=1)\n`, 'x.md'));
+  assert.doesNotThrow(() => parseSource(`${FM}\n[내부](/pages/guide)\n`, 'x.md'));
 });
 
 test('렌더 — 표는 가로 스크롤 래퍼를 쓴다 (본문이 스크롤되지 않게)', () => {
@@ -186,6 +217,12 @@ test('렌더 — 해설 해석기가 없는 자리에서는 해설: 줄이 실�
 });
 
 // ─── 분량 집계 ──────────────────────────────────────────────
+
+test('분량 — 링크 URL 은 렌더 텍스트가 아니므로 뺀다', () => {
+  const plain = parseSource(`${FM}\n출처 표기\n`, 'x.md').charCount;
+  const linked = parseSource(`${FM}\n[출처](https://example.org/very/long/path) 표기\n`, 'x.md').charCount;
+  assert.equal(linked, plain);
+});
 
 test('분량 — 서식 기호와 공백을 빼고 센다', () => {
   const { charCount } = parseSource(`${FM}\n**가나다** 라마\n`, 'x.md');
@@ -230,9 +267,23 @@ test('산출물 — h1 이 하나뿐이고 CTA·푸터가 있다', () => {
   }
 });
 
-test('산출물 — 사례가 0편일 때 빈 목록·"준비 중" 문구를 내지 않는다 (안티패턴 #5)', () => {
+test('산출물 — 사례 허브의 목록이 발행 상태와 일치한다 (안티패턴 #5)', () => {
+  // 0편이면 빈 목록 절을 내지 않고, 발행되어 있으면 전편이 목록에 있어야 한다.
+  // 어느 쪽이든 "준비 중" 류의 약점 공표 문구는 두지 않는다.
   const html = readFileSync(join(ROOT, SECTIONS.case.indexFile), 'utf8');
-  assert.ok(!html.includes('doc-list'), '발행된 사례가 없는데 목록 절을 냈음');
+  const dir = join(ROOT, SECTIONS.case.source);
+  const slugs = readdirSync(dir)
+    .filter((f) => f.endsWith('.md') && f !== 'index.md')
+    .map((f) => f.replace(/\.md$/, ''));
+
+  if (slugs.length === 0) {
+    assert.ok(!html.includes('doc-list'), '발행된 사례가 없는데 목록 절을 냈음');
+  } else {
+    assert.ok(html.includes('doc-list'), '발행된 사례가 있는데 목록 절이 없음');
+    for (const slug of slugs) {
+      assert.ok(html.includes(`${SECTIONS.case.url}/${slug}`), `허브 목록에 없음: ${slug}`);
+    }
+  }
   for (const phrase of ['준비 중', '아직 없습니다', '곧 공개', 'coming soon']) {
     assert.ok(!html.includes(phrase), `약점 공표 문구가 있음: ${phrase}`);
   }

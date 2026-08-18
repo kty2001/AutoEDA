@@ -4,8 +4,9 @@
 
 도구가 계산을 수행하고, 지식 베이스가 그 결과의 의미를 설명함. 도구는 제품이고 사이트는 리소스임.
 
-> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 236건 · 브라우저 실기 11항목 · 배포본 검증 7항목이 통과함.
-> 해설 16편과 사례 허브 1편이 발행되어(색인 19 URL) 죽은 내부 링크는 0건이고, 콘텐츠 게이트(15편·25,000자)를 25,596자로 넘겼음. 남은 것은 사례 리포트 6편과 잔여 해설 6편임.
+> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 255건 · 브라우저 실기 11항목 · 배포본 검증이 통과함.
+> 해설 20편 · 사례 리포트 3편 · 용어집이 발행되어(색인 27 URL) 죽은 내부 링크는 0건이고, 콘텐츠 게이트(15편·25,000자)를 24편·42,728자로 넘겼음. 필수 페이지 4종도 확정했음.
+> **남은 관문은 콘텐츠가 아니라 인프라임** — 커스텀 도메인 취득, 광고 배치·`ads.txt`, GSC 등록.
 > 다음 작업은 [docs/TODO.md](docs/TODO.md), 파일별 현황은 [docs/implementation-status.md](docs/implementation-status.md) 참조.
 > `AutoEDA`는 동명의 오픈소스 프로젝트가 존재하므로 서비스명 확정 전임.
 
@@ -75,7 +76,7 @@ EDA Engine (JavaScript) → 통계 JSON
 | **EDA 연산** | **브라우저 JavaScript** (Web Worker). 무료 티어 Worker CPU가 요청당 10ms라 서버 연산이 불가함 |
 | 차트 | 자체 SVG 렌더링 (5종) |
 | 콘텐츠 생성 | Node 빌드 스크립트 (md → HTML) |
-| 사례 리포트 생성 | **빌드타임 Python** (pandas, ydata-profiling) → 정적 HTML 커밋 |
+| 사례 리포트 생성 | 손으로 쓴 원고(`data/case_source/*.md`) → `build_guides` 가 정적 HTML 생성. 수치는 브라우저와 같은 엔진을 Node 에서 돌려 뽑음 |
 | 백엔드 | **없음.** localStorage + 결과 JSON 내보내기 |
 
 **런타임은 JavaScript, Python은 빌드타임 전용**이라는 이원 구조임. 연산을 브라우저에 두면 서버 비용이 0이고, 파일이 외부로 나가지 않으므로 프라이버시 주장이 수사가 아니라 실제 사실이 됨. 상세와 배제한 대안은 [docs/tech-stack.md](docs/tech-stack.md) 참조.
@@ -83,7 +84,7 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 로드맵
 
 - **Phase 1 (MVP)** — CSV 처리·타입 추론·필수 분석 항목·Health Score·Finding 목록·웹 결과 뷰, 필수 페이지 4종, 빌드 시점 HTML 생성 + MPA 구조 · **완료·배포됨**
-- **Phase 1.5** — 해설 문서 11편 이상 및 사례 리포트 3편 발행, Finding ↔ 해설 링크 연결, sitemap·색인 · *진행 중 — **해설 16편 완료**, Finding 13종에 해설 연결, 사례는 데이터셋 판정 대기*
+- **Phase 1.5** — 해설 문서 및 사례 리포트 발행, Finding ↔ 해설 링크 연결, sitemap·색인 · *발행 완료 — **해설 20편 · 사례 3편 · 용어집**, Phase 1에서 발화하는 Finding 전량에 해설 연결. 색인은 GSC 등록 대기*
 - **Phase 2** — 단계별 가이드 UI, 타깃 기반 EDA, AI 해석 레이어(BYO API Key), 비동기 처리, 대용량 샘플링, 내보내기·공유
 - **Phase 3 (후보)** — AI 질의응답, 데이터셋 비교, 전처리 지원, 시계열 분석, 분석 이력 비교, 콘텐츠 확장
 
@@ -125,7 +126,7 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test            # 전체 테스트 239건 (계약·동작·통합·빌드·산출물 폐합)
+npm test            # 전체 테스트 255건 (계약·동작·통합·빌드·산출물 폐합)
 npm run serve       # 로컬 서빙 → http://localhost:8000
 npm run build       # 콘텐츠 빌드 — build:guides → build:seo 를 순서대로
 npx wrangler deploy
@@ -141,9 +142,9 @@ npx wrangler deploy
 
 ## 미결정 항목
 
-기술 스택은 확정됨. 남은 항목은 아래 4건 (상세와 판단 시점: [direction.md §9](docs/direction.md), [TODO.md T5](docs/TODO.md)).
+기술 스택과 콘텐츠는 확정됨. 남은 항목은 아래 4건 (상세와 판단 시점: [direction.md §9](docs/direction.md), [TODO.md T5](docs/TODO.md)).
 
-- 서비스명 (명칭 충돌 해소)
-- 커스텀 도메인 취득 시점 (`workers.dev`에서는 `ads.txt` 루트 소유 불가)
+- **커스텀 도메인 취득** — `workers.dev`에서는 `ads.txt` 루트 소유 불가. 현재 최장 리드타임 항목
+- **서비스명** — 명칭 충돌 해소. 도메인 선택과 함께 결정
 - Excel 파서 선정 (미해결 시 Phase 1은 CSV 전용)
-- 콘텐츠 작성 분량·주체 (전체 28편 감당 가능 여부)
+- 인코딩 지원 범위 (현재 UTF-8·EUC-KR 두 가지만)

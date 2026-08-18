@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때 — AutoEDA</title>
+<meta name="description" content="UCI 대기질 데이터를 분석해 빈 행·이름 없는 열·소수점 쉼표·특수 코드값이 각각 어떤 지표를 어떻게 왜곡하는지와, 고쳐야 할 순서를 다룹니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/case/air-quality">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/case/air-quality">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때 — AutoEDA">
+<meta property="og:description" content="UCI 대기질 데이터를 분석해 빈 행·이름 없는 열·소수점 쉼표·특수 코드값이 각각 어떤 지표를 어떻게 왜곡하는지와, 고쳐야 할 순서를 다룹니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"사례 리포트","item":"https://autoeda.tyoujungzz.workers.dev/pages/case"},{"@type":"ListItem","position":3,"name":"대기질 측정 데이터","item":"https://autoeda.tyoujungzz.workers.dev/pages/case/air-quality"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"대기질 측정 데이터","description":"UCI 대기질 데이터를 분석해 빈 행·이름 없는 열·소수점 쉼표·특수 코드값이 각각 어떤 지표를 어떻게 왜곡하는지와, 고쳐야 할 순서를 다룹니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/case/air-quality","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/case">사례 리포트</a> › <span aria-current="page">대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때</span>
+  </nav>
+
+  <h1>대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때</h1>
+  <p class="page-intro">품질 점수 63점짜리 파일에서 감점의 원인 대부분이 측정값이 아니라 파일 형식이었습니다. 무엇을 먼저 고쳐야 하는지 정리했습니다.</p>
+
+  <p>이탈리아의 한 도시에서 1년간 측정한 시간별 대기질 기록입니다. 품질 점수 63점으로 이 리포트의 세 사례 중 가장 낮게 나왔습니다. <strong>그런데 감점의 원인 대부분은 측정값의 문제가 아니라 파일이 만들어진 방식의 문제입니다.</strong></p>
+  <p>측정 데이터를 다룰 때 자주 만나는 형태이므로, 어떤 형식 문제가 어떤 지표를 어떻게 왜곡하는지 순서대로 봅니다.</p>
+  <h2>데이터셋과 이용 조건</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td>이름</td><td>Air Quality</td></tr>
+      <tr><td>출처</td><td><a href="https://archive.ics.uci.edu/dataset/360/air+quality" rel="noopener">UCI Machine Learning Repository dataset 360</a></td></tr>
+      <tr><td>제공자</td><td>Saverio Vito</td></tr>
+      <tr><td>라이선스</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a> — 출처 표시 조건으로 상업적 이용 허용</td></tr>
+      <tr><td>인용</td><td>Vito, S. (2008). Air Quality (Dataset). UCI Machine Learning Repository. <a href="https://doi.org/10.24432/C59K5F" rel="noopener">doi.org/10.24432/C59K5F</a></td></tr>
+      <tr><td>이용 조건 확인일</td><td>2026년 8월 18일</td></tr>
+    </tbody>
+  </table></div>
+  <p>원본 데이터 파일은 이 사이트에서 재배포하지 않습니다. 아래에 싣는 것은 집계된 통계와 그에 대한 해석뿐입니다.</p>
+  <h2>개요</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>행 · 열</td><td>9,471행 · 17열</td></tr>
+      <tr><td>인코딩 · 구분자</td><td>UTF-8 · 세미콜론</td></tr>
+      <tr><td>평균 결측률</td><td>12.8%</td></tr>
+      <tr><td>중복 행</td><td>113건 (1.2%)</td></tr>
+      <tr><td>품질 점수</td><td>63점</td></tr>
+      <tr><td>발견</td><td>24건</td></tr>
+    </tbody>
+  </table></div>
+  <p>이 표의 숫자 중 <strong>절반은 실제 데이터의 성질이 아닙니다.</strong> 하나씩 갈라 봅니다.</p>
+  <h2>행 수부터 틀렸습니다</h2>
+  <p>파일에는 9,471행이 있지만 실제 측정 기록은 9,357행입니다. 나머지 114행은 모든 칸이 비어 있는 행입니다.</p>
+  <p>이 빈 행들이 세 가지를 동시에 만들어 냅니다.</p>
+  <ol>
+    <li><strong>행 수가 114행 부풀려집니다</strong> — 모든 비율의 분모가 어긋납니다</li>
+    <li><strong>중복 행 113건</strong> — 빈 행끼리는 서로 완전히 같으므로 중복으로 잡힙니다. 실제 측정 기록 중에는 중복이 없습니다</li>
+    <li><strong>모든 열의 결측 114건</strong> — 열마다 결측률 1.2퍼센트가 일률적으로 붙습니다</li>
+  </ol>
+  <p>중복 행 경고와 결측 경고가 <strong>같은 원인에서 나왔다</strong>는 것을 알아채는 것이 첫 단계입니다. 여러 열의 결측 수가 정확히 같은 값이면 열 단위 문제가 아니라 행 단위 문제를 의심해야 합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/duplicate-rows">해설: 중복 행 — 완전 중복과 키 중복의 구분</a></p>
+  <h2>이름 없는 열 두 개</h2>
+  <p>헤더 줄이 세미콜론 두 개로 끝나서 이름이 없는 열이 두 개 생겼습니다. 도구는 이 열들에 임시 이름을 붙였고, 두 열 모두 결측률 100퍼센트로 보고되었습니다.</p>
+  <p>평균 결측률 12.8퍼센트는 여기서 나옵니다. 전결측 열 두 개가 100퍼센트씩 들어가 평균을 끌어올린 것이고, <strong>실제 측정 열들의 결측률은 1.2퍼센트</strong>입니다.</p>
+  <p>전결측 열은 판단이 간단합니다. 정보가 0이므로 지웁니다. 다만 지우기 전에 원본 파일의 구분자 개수를 확인해서, 열이 밀려 들어간 것은 아닌지 봐야 합니다.</p>
+  <p class="term-guide"><a href="/pages/guide/missing-types">해설: 결측치 유형과 판별 방법</a></p>
+  <h2>소수점이 쉼표라 다섯 열이 문자로 읽혔습니다</h2>
+  <p>이 파일은 소수를 &quot;13,6&quot; 형태로 적습니다. 유럽식 표기이며, 구분자가 세미콜론인 이유도 같습니다.</p>
+  <p>그 결과 다섯 열이 수치형이 아니라 범주형으로 판정되었습니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>판정된 타입</th><th>고유값</th></tr></thead>
+    <tbody>
+      <tr><td>CO(GT)</td><td>범주형</td><td>104</td></tr>
+      <tr><td>C6H6(GT)</td><td>범주형</td><td>408</td></tr>
+      <tr><td>T</td><td>범주형</td><td>437</td></tr>
+      <tr><td>RH</td><td>범주형</td><td>754</td></tr>
+      <tr><td>AH</td><td>범주형</td><td>6,684</td></tr>
+    </tbody>
+  </table></div>
+  <p>이 다섯 열에는 평균도 분위수도 상관계수도 계산되지 않았습니다. <strong>기온과 습도가 통계에서 통째로 빠진 것</strong>이며, 대기질 분석에서 이 두 변수가 없으면 할 수 있는 일이 거의 없습니다.</p>
+  <p>AH 열에 대해 나온 고유값이 너무 많다는 경고도 같은 원인입니다. 원래 연속형 수치라 값이 거의 전부 다른 것이 정상인데, 문자열로 읽히면서 범주형 기준으로 평가되었습니다. <strong>경고는 맞지만 원인 진단은 사람이 해야 합니다.</strong></p>
+  <p class="term-guide"><a href="/pages/guide/high-cardinality">해설: 고카디널리티 범주형 변수 다루기</a></p>
+  <h2>-200이 결측 표기입니다</h2>
+  <p>데이터셋 문서는 결측을 -200으로 표기했다고 밝히고 있습니다. 이 값이 지표를 어떻게 망가뜨리는지가 이 사례에서 가장 중요한 부분입니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>평균</th><th>중위수</th><th>최솟값</th></tr></thead>
+    <tbody>
+      <tr><td>NMHC(GT)</td><td>-159.1</td><td>-200</td><td>-200</td></tr>
+      <tr><td>NO2(GT)</td><td>58.15</td><td>96</td><td>-200</td></tr>
+      <tr><td>PT08.S1(CO)</td><td>1049</td><td>1053</td><td>-200</td></tr>
+    </tbody>
+  </table></div>
+  <p>NMHC(GT)는 중위수가 -200입니다. <strong>관측의 절반 이상이 결측이라는 뜻이고, 이 열의 평균 -159.1은 아무것도 의미하지 않습니다.</strong> 그럼에도 이 열은 결측률 1.2퍼센트로 보고되었고 왜도 4.075, 초과첨도 18.85라는 값까지 계산되었습니다.</p>
+  <p>NO2(GT)의 이상치율 18.1퍼센트도 마찬가지입니다. IQR 기준을 벗어난 값들의 정체는 극단적인 오염도가 아니라 -200으로 채워진 결측입니다.</p>
+  <p>문자열로 읽힌 열에서는 이것이 오히려 눈에 잘 띕니다. CO(GT) 열의 최빈값이 -200이고 1,592건으로 전체의 17퍼센트입니다. <strong>최빈값 목록을 보는 습관이 최솟값을 보는 습관보다 이런 문제를 빨리 잡습니다.</strong></p>
+  <p class="term-guide"><a href="/pages/guide/outlier-methods">해설: 이상치 탐지법 비교 — IQR과 z-score</a></p>
+  <h2>상관은 마지막에 봅니다</h2>
+  <p>센서 열들 사이에 0.9를 넘는 상관이 여럿 있습니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>쌍</th><th>Pearson</th><th>VIF</th></tr></thead>
+    <tbody>
+      <tr><td>PT08.S1(CO) ~ PT08.S2(NMHC)</td><td>0.9331</td><td>13.9</td></tr>
+      <tr><td>PT08.S2(NMHC) ~ PT08.S5(O3)</td><td>0.9099</td><td>17.2</td></tr>
+      <tr><td>PT08.S1(CO) ~ PT08.S5(O3)</td><td>0.8924</td><td>13.9</td></tr>
+    </tbody>
+  </table></div>
+  <p>같은 대기를 동시에 재는 센서들이므로 높은 상관 자체는 놀랍지 않습니다. <strong>다만 이 값들은 -200이 섞인 채로 계산된 것이라 지금은 신뢰할 수 없습니다.</strong> 결측을 제대로 처리한 뒤 다시 계산해야 합니다.</p>
+  <p>이것이 분포와 상관을 품질 정리 뒤에 보는 이유입니다. 순서를 뒤집으면 결측이 만든 관계를 실제 관계로 착각하게 됩니다.</p>
+  <h2>고쳐야 할 순서</h2>
+  <ol>
+    <li>빈 행 114행을 제거합니다 — 중복 경고와 일률적 결측이 함께 사라집니다</li>
+    <li>이름 없는 열 두 개를 제거합니다 — 평균 결측률이 정상 범위로 돌아옵니다</li>
+    <li>소수점 쉼표를 점으로 바꿉니다 — 다섯 열이 수치형이 됩니다</li>
+    <li>-200을 결측으로 바꿉니다 — 이제야 결측률·평균·이상치율이 실제 값을 가리킵니다</li>
+    <li>그다음에 분포와 상관을 다시 봅니다</li>
+  </ol>
+  <p><strong>앞의 네 단계를 건너뛰고 계산한 지표는 전부 다시 계산해야 합니다.</strong> 품질 점수 63점은 이 데이터가 나쁘다는 뜻이 아니라, 아직 읽을 수 있는 상태가 아니라는 뜻입니다.</p>
+  <h2>한계</h2>
+  <ul>
+    <li>위 다섯 단계는 이 리포트에서 실행하지 않았습니다. 여기 실린 수치는 전부 원본 파일을 그대로 읽은 결과입니다</li>
+    <li>처리 후에 무엇이 남는지는 별도 확인이 필요합니다</li>
+    <li>센서 측정값과 기준 측정값의 차이, 센서 드리프트 같은 도메인 문제는 이 분석의 범위 밖입니다</li>
+  </ul>
+
+  <nav class="related" aria-label="관련 사례 리포트">
+    <h2>관련 사례 리포트</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/case/bank-marketing">은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것</a> — 결측이 한 건도 없다고 보고된 45,211행 데이터에서 실제로는 열 하나의 81.7퍼센트가 값이 없었습니다. 그것을 어떻게 알아채는지 정리했습니다.</li>
+      <li><a href="/pages/case/bike-sharing">공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들</a> — 열 17개짜리 시계열 수요 데이터에서 다중공선성 경고 여러 건과 코드값 오판이 함께 나왔습니다. 어느 것이 진짜 문제인지 가려 봅니다.</li>
+    </ul>
+    <p><a href="/pages/case">사례 리포트 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

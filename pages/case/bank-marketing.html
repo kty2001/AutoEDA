@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것 — AutoEDA</title>
+<meta name="description" content="UCI 은행 마케팅 데이터 45,211행을 분석해, 특수 코드값으로 표기된 결측이 결측률에 잡히지 않는 문제와 피어슨·스피어만 상관의 차이가 그것을 드러내는 과정을 다룹니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/case/bank-marketing">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/case/bank-marketing">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것 — AutoEDA">
+<meta property="og:description" content="UCI 은행 마케팅 데이터 45,211행을 분석해, 특수 코드값으로 표기된 결측이 결측률에 잡히지 않는 문제와 피어슨·스피어만 상관의 차이가 그것을 드러내는 과정을 다룹니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"사례 리포트","item":"https://autoeda.tyoujungzz.workers.dev/pages/case"},{"@type":"ListItem","position":3,"name":"은행 마케팅 데이터","item":"https://autoeda.tyoujungzz.workers.dev/pages/case/bank-marketing"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"은행 마케팅 데이터","description":"UCI 은행 마케팅 데이터 45,211행을 분석해, 특수 코드값으로 표기된 결측이 결측률에 잡히지 않는 문제와 피어슨·스피어만 상관의 차이가 그것을 드러내는 과정을 다룹니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/case/bank-marketing","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/case">사례 리포트</a> › <span aria-current="page">은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것</span>
+  </nav>
+
+  <h1>은행 마케팅 데이터 — 결측률 0퍼센트가 뜻하지 않는 것</h1>
+  <p class="page-intro">결측이 한 건도 없다고 보고된 45,211행 데이터에서 실제로는 열 하나의 81.7퍼센트가 값이 없었습니다. 그것을 어떻게 알아채는지 정리했습니다.</p>
+
+  <p>포르투갈 은행의 전화 마케팅 기록입니다. 45,211행에 결측이 한 건도 없다고 보고되었고 품질 점수는 80점이 나왔습니다. <strong>그런데 이 데이터에는 값이 없는 칸이 대량으로 있습니다.</strong> 결측으로 세어지지 않았을 뿐입니다.</p>
+  <h2>데이터셋과 이용 조건</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td>이름</td><td>Bank Marketing (전체 파일)</td></tr>
+      <tr><td>출처</td><td><a href="https://archive.ics.uci.edu/dataset/222/bank+marketing" rel="noopener">UCI Machine Learning Repository dataset 222</a></td></tr>
+      <tr><td>제공자</td><td>S. Moro, P. Rita, P. Cortez</td></tr>
+      <tr><td>라이선스</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a> — 출처 표시 조건으로 상업적 이용 허용</td></tr>
+      <tr><td>인용</td><td>Moro, S., Rita, P., Cortez, P. (2014). Bank Marketing (Dataset). UCI Machine Learning Repository. <a href="https://doi.org/10.24432/C5K306" rel="noopener">doi.org/10.24432/C5K306</a></td></tr>
+      <tr><td>이용 조건 확인일</td><td>2026년 8월 18일</td></tr>
+    </tbody>
+  </table></div>
+  <p>원본 데이터 파일은 이 사이트에서 재배포하지 않습니다. 아래에 싣는 것은 집계된 통계와 그에 대한 해석뿐입니다.</p>
+  <h2>개요</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>행 · 열</td><td>45,211행 · 17열</td></tr>
+      <tr><td>인코딩 · 구분자</td><td>UTF-8 · 세미콜론</td></tr>
+      <tr><td>결측</td><td>0건으로 보고됨</td></tr>
+      <tr><td>중복 행</td><td>0건</td></tr>
+      <tr><td>품질 점수</td><td>80점</td></tr>
+      <tr><td>발견</td><td>22건</td></tr>
+    </tbody>
+  </table></div>
+  <p>구분자가 쉼표가 아니라 세미콜론인데도 자동으로 잡혔습니다. 유럽에서 만들어진 데이터에서 흔한 형식이며, 이것을 놓치면 전체가 한 열로 읽힙니다.</p>
+  <h2>결측이 0건인데 값이 없는 칸이 있습니다</h2>
+  <p>pdays 열은 &quot;직전 캠페인 이후 지난 일수&quot;입니다. 최솟값이 -1이고 중위수도 -1입니다. 날짜 간격이 음수일 수 없으므로 이 값은 실제 일수가 아니라 <strong>&quot;이전에 연락한 적 없음&quot;을 뜻하는 표기</strong>입니다.</p>
+  <p>세어 보면 -1이 36,954건으로 전체의 81.7퍼센트입니다. 즉 이 열은 결측률 0퍼센트로 보고되었지만 실제로 값이 있는 행은 18.3퍼센트뿐입니다.</p>
+  <p>같은 문제가 문자열 쪽에도 있습니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>값이 없음을 뜻하는 표기</th><th>건수</th><th>비율</th></tr></thead>
+    <tbody>
+      <tr><td>pdays</td><td>-1</td><td>36,954</td><td>81.7%</td></tr>
+      <tr><td>poutcome</td><td>unknown</td><td>36,959</td><td>81.7%</td></tr>
+      <tr><td>contact</td><td>unknown</td><td>13,020</td><td>28.8%</td></tr>
+      <tr><td>education</td><td>unknown</td><td>1,857</td><td>4.1%</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>이 도구는 빈 칸만 결측으로 셉니다.</strong> 어떤 문자열이나 숫자가 결측을 뜻하는지는 데이터마다 다르고 자동으로 알 수 없기 때문입니다. 결측률이 0으로 나왔을 때 안심하는 대신 각 열의 최솟값과 최빈값을 확인해야 하는 이유가 여기 있습니다.</p>
+  <p class="term-guide"><a href="/pages/guide/missing-types">해설: 결측치 유형과 판별 방법</a></p>
+  <h2>두 상관계수의 차이가 단서가 됩니다</h2>
+  <p>pdays와 previous의 관계를 보면 이 문제가 수치로 드러납니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>지표</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>Pearson 상관</td><td>0.4548</td></tr>
+      <tr><td>Spearman 상관</td><td>0.9856</td></tr>
+    </tbody>
+  </table></div>
+  <p>순위로 계산한 상관은 거의 완전한데 값으로 계산한 상관은 절반 수준입니다. <strong>-1이라는 값이 실제 척도에서 한참 떨어진 곳에 대량으로 몰려 있기 때문</strong>입니다. 순위로 보면 -1들은 그냥 가장 작은 값 무리가 되어 관계가 깔끔하게 드러납니다.</p>
+  <p>두 계수의 차이가 이렇게 크면 대개 특수 코드값이나 극단적인 치우침이 있다는 신호입니다. 상관 행렬을 볼 때 한 종류만 보면 놓치는 정보입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/correlation-coefficients">해설: Pearson·Spearman·Kendall 상관계수 선택 기준</a></p>
+  <h2>이상치 경고의 상당수가 같은 원인입니다</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>이상치율</th><th>왜도</th><th>초과첨도</th></tr></thead>
+    <tbody>
+      <tr><td>pdays</td><td>18.3%</td><td>2.616</td><td>6.934</td></tr>
+      <tr><td>previous</td><td>18.3%</td><td>41.85</td><td>4506</td></tr>
+      <tr><td>balance</td><td>10.5%</td><td>8.36</td><td>140.7</td></tr>
+      <tr><td>duration</td><td>7.2%</td><td>3.144</td><td>18.15</td></tr>
+      <tr><td>campaign</td><td>6.8%</td><td>4.898</td><td>39.25</td></tr>
+    </tbody>
+  </table></div>
+  <p>pdays와 previous의 이상치율이 소수점까지 똑같은 18.3퍼센트인 것은 우연이 아닙니다. <strong>연락한 적 있는 18.3퍼센트가 두 열 모두에서 나머지와 동떨어진 값을 갖기 때문</strong>입니다. 이 경우 이상치는 제거 대상이 아니라 집단이 둘로 나뉘어 있다는 표시입니다.</p>
+  <p>previous의 초과첨도 4506은 그 자체로는 읽을 값이 아닙니다. 최댓값 275가 평균 0.58에서 극단적으로 떨어져 있어 생긴 값이고, 이런 크기의 첨도는 한두 관측이 만들어 냅니다.</p>
+  <p>balance는 성격이 다릅니다. 최솟값 -8,019에 최댓값 102,127로 계좌 잔액의 자연스러운 분포이며, 왜도 8.36은 금액 데이터에서 흔한 수준입니다.</p>
+  <p class="term-guide"><a href="/pages/guide/kurtosis">해설: 첨도가 알려주는 것 — 꼬리의 두께</a></p>
+  <h2>자동 판정이 틀린 지점</h2>
+  <h3>상수에 가까운 열 경고</h3>
+  <p>default 열은 98.2퍼센트가 하나의 값이라 경고 대상이 되었습니다. 판정 자체는 정확합니다. 다만 <strong>채무 불이행 이력은 원래 드문 사건</strong>이고, 드물다는 사실이 이 열의 정보 가치를 없애지는 않습니다.</p>
+  <p>이 유형의 경고에서 판단해야 할 것은 비율이 아니라 &quot;그 소수 사례가 관심 대상인가&quot;입니다. 관심 대상이면 남기고, 아니면 뺍니다.</p>
+  <p class="term-guide"><a href="/pages/guide/constant-columns">해설: 상수·준상수 컬럼이 분석에 미치는 영향</a></p>
+  <h3>예측에 쓸 수 없는 열</h3>
+  <p>duration은 통화 시간입니다. 통화가 끝나야 알 수 있는 값이므로, 전화를 걸기 전에 결과를 예측하는 모델에는 넣을 수 없습니다. 데이터셋 문서도 이 점을 명시하고 있습니다.</p>
+  <p>도구는 타깃 열을 지정해야 이런 후보를 판정합니다. 타깃 없이 돌린 이 결과에서 duration은 그냥 치우친 수치형 열로만 보고되었습니다.</p>
+  <p class="term-guide"><a href="/pages/guide/data-leakage">해설: 데이터 누수 후보 탐지</a></p>
+  <h3>타깃 불균형</h3>
+  <p>결과 열 y는 45,211건 중 5,289건이 yes로 11.7퍼센트입니다. 분류 문제로 다룬다면 정확도를 지표로 쓸 수 없는 비율이지만, 타깃을 지정하지 않았으므로 이 결과에는 불균형 경고가 나오지 않았습니다.</p>
+  <p class="term-guide"><a href="/pages/guide/class-imbalance">해설: 클래스 불균형 — 정확도를 쓰면 안 되는 이유와 지표 선택</a></p>
+  <h2>한계</h2>
+  <ul>
+    <li>-1과 unknown이 결측을 뜻한다는 판단은 데이터셋 문서와 값의 범위에 근거한 것입니다. 이 도구가 자동으로 알아낸 것이 아닙니다</li>
+    <li>이 파일은 전체 기간을 담은 판이며, 시점별로 나눈 다른 배포판을 쓰면 수치가 달라집니다</li>
+    <li>각 열이 실제로 무엇을 재는지는 원 데이터셋 문서를 확인해야 합니다</li>
+  </ul>
+
+  <nav class="related" aria-label="관련 사례 리포트">
+    <h2>관련 사례 리포트</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/case/air-quality">대기질 측정 데이터 — 파일 형식이 통계를 먼저 망가뜨릴 때</a> — 품질 점수 63점짜리 파일에서 감점의 원인 대부분이 측정값이 아니라 파일 형식이었습니다. 무엇을 먼저 고쳐야 하는지 정리했습니다.</li>
+      <li><a href="/pages/case/bike-sharing">공유 자전거 대여 수요 데이터 — 관계를 읽을 때 걸리는 것들</a> — 열 17개짜리 시계열 수요 데이터에서 다중공선성 경고 여러 건과 코드값 오판이 함께 나왔습니다. 어느 것이 진짜 문제인지 가려 봅니다.</li>
+    </ul>
+    <p><a href="/pages/case">사례 리포트 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>
