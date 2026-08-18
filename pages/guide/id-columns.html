@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ID성 컬럼 식별 — 분석에서 제외해야 하는 변수 — AutoEDA</title>
+<meta name="description" content="식별자 컬럼을 판정하는 기준과 오탐 사례, 식별자를 모델에서 제외해야 하는 이유, 그럼에도 남겨 두어야 하는 경우를 정리했습니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/id-columns">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/id-columns">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="ID성 컬럼 식별 — 분석에서 제외해야 하는 변수 — AutoEDA">
+<meta property="og:description" content="식별자 컬럼을 판정하는 기준과 오탐 사례, 식별자를 모델에서 제외해야 하는 이유, 그럼에도 남겨 두어야 하는 경우를 정리했습니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"ID성 컬럼 식별","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/id-columns"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"ID성 컬럼 식별","description":"식별자 컬럼을 판정하는 기준과 오탐 사례, 식별자를 모델에서 제외해야 하는 이유, 그럼에도 남겨 두어야 하는 경우를 정리했습니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/id-columns","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</span>
+  </nav>
+
+  <h1>ID성 컬럼 식별 — 분석에서 제외해야 하는 변수</h1>
+  <p class="page-intro">고유값 비율만으로 식별자를 판정하면 오탐이 납니다. 진짜 식별자를 가려내는 기준과 지우면 안 되는 경우를 정리했습니다.</p>
+
+  <p>식별자는 행을 가리키기 위해 존재하는 열입니다. 값 자체에 크기나 순서의 의미가 없고, 두 행의 식별자를 비교해서 알 수 있는 것은 &quot;같은 행인가 아닌가&quot;뿐입니다. <strong>통계적으로는 정보가 없지만 데이터 관리에는 반드시 필요한</strong> 이중적인 열입니다.</p>
+  <h2>무엇이 문제인가</h2>
+  <p>식별자를 모델 입력에 그대로 넣으면 과적합의 통로가 됩니다.</p>
+  <p>숫자형 식별자라면 모델은 그것을 크기가 있는 값으로 읽습니다. 고객번호 1005가 1002보다 크다는 사실에는 아무 의미가 없는데도 선형 모델은 기울기를 추정하고, 트리는 그 값으로 분기합니다. 발급 순서가 가입 시점과 상관되어 있으면 <strong>모델이 우연히 맞는 규칙을 학습하고</strong>, 번호 체계가 바뀌는 순간 무너집니다.</p>
+  <p>문자형 식별자를 원-핫 인코딩하면 행 수만큼 열이 생깁니다. 각 열은 정확히 한 행에서만 1이므로, 모델은 학습 데이터의 각 행을 통째로 외울 수 있게 됩니다. 학습 성능은 완벽에 가깝고 새 데이터에서는 아무것도 못 합니다.</p>
+  <h2>언제 발견으로 올리나</h2>
+  <p>이 도구는 열의 <strong>고유값 비율이 99% 이상</strong>일 때 식별자로 봅니다. 다만 비율만 보지 않고 두 조건을 더 겁니다.</p>
+  <ul>
+    <li><strong>평균 길이 36자 이하</strong> — UUID 36자를 포함하되 그보다 긴 값은 제외합니다</li>
+    <li><strong>공백을 포함한 값의 비율 10% 이하</strong> — 공백이 있으면 식별자가 아니라 문장으로 봅니다</li>
+  </ul>
+  <p>이 두 조건이 없으면 비고나 상세 내용 같은 자유 텍스트 열이 전부 고유하다는 이유로 식별자로 잡힙니다. 자유 텍스트는 처리 방법이 식별자와 완전히 다르므로 갈라 두어야 합니다. 길이와 공백은 그 둘을 가르는 가장 단순하고 잘 듣는 신호입니다.</p>
+  <p>또 하나 중요한 전제가 있습니다. <strong>타입 추론은 숫자로 읽히는 열을 먼저 수치형으로 확정합니다.</strong> 그래서 고객번호가 정수로 저장되어 있으면 식별자가 아니라 수치형으로 잡히고 이 발견이 뜨지 않습니다. 대신 평균·표준편차 같은 무의미한 통계가 계산됩니다. 그럴 때는 타입을 직접 바꿔 주면 됩니다.</p>
+  <h2>자주 나오는 오탐</h2>
+  <p>고유값 비율이 높다고 전부 식별자는 아닙니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>왜 고유값이 많은가</th><th>실제 성격</th></tr></thead>
+    <tbody>
+      <tr><td>우편번호·행정코드</td><td>지역이 세분화되어 있음</td><td>범주형. 앞자리로 묶으면 의미가 생김</td></tr>
+      <tr><td>타임스탬프</td><td>초 단위면 거의 겹치지 않음</td><td>시간형. 날짜·시간대·요일로 파생해야 함</td></tr>
+      <tr><td>연속 측정값</td><td>소수점이 길어 값이 겹치지 않음</td><td>수치형. 구간화하면 분포가 보임</td></tr>
+      <tr><td>금액</td><td>원 단위면 중복이 드묾</td><td>수치형</td></tr>
+      <tr><td>주문번호에 날짜가 섞인 값</td><td>식별자이면서 날짜를 담고 있음</td><td>식별자이지만 날짜를 뽑아 쓸 수 있음</td></tr>
+    </tbody>
+  </table></div>
+  <p>공통된 판별법은 <strong>&quot;이 값에 순서나 거리가 있는가&quot;</strong> 입니다. 우편번호 두 개를 빼서 나온 숫자에 뜻이 없으면 범주형이고, 금액 두 개의 차이에 뜻이 있으면 수치형입니다. 식별자는 어느 쪽도 아닙니다.</p>
+  <p>고유값 비율이 50~99% 사이인 범주형 열은 식별자가 아니라 고카디널리티 문제로 다루는 편이 맞습니다. 둘은 처리 방법이 다릅니다.</p>
+  <h2>지우기 전에 확인할 것</h2>
+  <p>식별자를 분석에서 빼는 것은 맞지만, <strong>데이터프레임에서 삭제하는 것과는 다릅니다.</strong> 남겨 두어야 하는 용도가 있습니다.</p>
+  <ol>
+    <li><strong>그룹 분할 키</strong> — 한 고객의 여러 행이 학습과 평가에 나뉘어 들어가면 성능이 부풀려집니다. 고객 단위로 나누려면 고객 식별자가 있어야 합니다</li>
+    <li><strong>중복 판정 키</strong> — 완전 중복이 아닌 키 중복을 세려면 식별자가 필요합니다</li>
+    <li><strong>원본 대조</strong> — 이상한 값을 발견했을 때 원본 시스템에서 그 행을 찾아보려면 식별자가 있어야 합니다</li>
+    <li><strong>결과 결합</strong> — 예측 결과를 원본에 다시 붙일 때 씁니다</li>
+  </ol>
+  <p>그래서 실무에서는 <strong>인덱스로 옮기거나 별도로 보관하고 특성 목록에서만 제외</strong>하는 방식을 씁니다. 지우는 것이 아니라 역할을 바꾸는 것입니다.</p>
+  <h2>식별자에서 정보를 뽑아 쓰는 경우</h2>
+  <p>식별자 값 자체는 무의미하지만 <strong>구조에 정보가 있을 때</strong>가 있습니다. 주문번호 앞 8자리가 날짜이거나, 회원번호 첫 글자가 가입 채널이거나, 코드 중간에 지점 번호가 박혀 있는 경우입니다.</p>
+  <p>이때는 식별자를 그대로 쓰는 것이 아니라 <strong>파생 변수를 만들어 씁니다.</strong> 다만 두 가지를 주의해야 합니다. 첫째, 규칙이 언제부터 적용되었는지 확인해야 합니다 — 과거 데이터에는 다른 체계가 쓰였을 수 있습니다. 둘째, 뽑아낸 값이 타깃과 지나치게 잘 맞으면 데이터 누수를 의심해야 합니다. 발급 순번이 결과를 예측한다면 보통은 시간 정보가 새어 든 것입니다.</p>
+  <h2>정리</h2>
+  <p>식별자 판정은 고유값 비율 하나로 끝나지 않습니다. <strong>값에 순서나 거리의 의미가 있는지</strong>를 함께 물어야 우편번호와 타임스탬프를 잘못 빼지 않습니다. 진짜 식별자라면 특성에서는 빼되 데이터에서는 남겨 둡니다 — 그룹 분할과 원본 대조에 필요하기 때문이고, 그 두 가지를 못 하게 되는 손해가 열 하나를 줄이는 이득보다 큽니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

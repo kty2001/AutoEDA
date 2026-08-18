@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>중복 행 — 완전 중복과 키 중복의 구분 — AutoEDA</title>
+<meta name="description" content="완전 중복과 키 중복의 차이, 중복이 정상인 데이터, 제거 전에 확인할 순서를 정리했습니다. 중복 행이 통계와 모델 평가에 미치는 영향도 함께 설명합니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/duplicate-rows">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/duplicate-rows">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="중복 행 — 완전 중복과 키 중복의 구분 — AutoEDA">
+<meta property="og:description" content="완전 중복과 키 중복의 차이, 중복이 정상인 데이터, 제거 전에 확인할 순서를 정리했습니다. 중복 행이 통계와 모델 평가에 미치는 영향도 함께 설명합니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"중복 행","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/duplicate-rows"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"중복 행","description":"완전 중복과 키 중복의 차이, 중복이 정상인 데이터, 제거 전에 확인할 순서를 정리했습니다. 중복 행이 통계와 모델 평가에 미치는 영향도 함께 설명합니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/duplicate-rows","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">중복 행 — 완전 중복과 키 중복의 구분</span>
+  </nav>
+
+  <h1>중복 행 — 완전 중복과 키 중복의 구분</h1>
+  <p class="page-intro">중복 행은 지우기 전에 어떤 종류의 중복인지부터 봐야 합니다. 지우면 안 되는 중복과 확인 순서를 정리했습니다.</p>
+
+  <p>중복 행을 발견했을 때 가장 흔한 대응은 곧바로 제거하는 것입니다. 그런데 <strong>중복은 원인이 서로 다른 여러 현상의 공통된 겉모습</strong>입니다. 원인을 확인하지 않고 지우면 수집 과정의 문제를 덮거나, 정상 데이터를 잘라내게 됩니다.</p>
+  <h2>완전 중복과 키 중복</h2>
+  <p>두 가지를 먼저 갈라야 합니다.</p>
+  <p><strong>완전 중복</strong>은 모든 열의 값이 같은 행입니다. 같은 레코드가 두 번 들어온 상태이므로 대개 수집·병합 과정의 사고입니다. 파일을 두 번 이어 붙였거나, 배치 작업이 재시도되면서 같은 데이터를 다시 적재했거나, 조인 조건이 느슨해 한 행이 여러 번 복제된 경우입니다.</p>
+  <p><strong>키 중복</strong>은 식별자는 같은데 나머지 값이 다른 행입니다. 고객번호가 같은 행이 두 개인데 주소가 서로 다르다면 이것은 복제가 아니라 <strong>갱신 이력</strong>이거나 <strong>데이터 충돌</strong>입니다. 최신 행만 남길지, 둘 다 남길지, 어느 쪽이 옳은지 확인할지가 전부 다른 판단입니다.</p>
+  <p>이 도구가 세는 것은 완전 중복입니다. 키 중복은 어느 열이 키인지 알아야 셀 수 있고, 그것은 데이터를 아는 사람만 지정할 수 있습니다. <strong>완전 중복이 0건이어도 키 중복은 있을 수 있습니다.</strong></p>
+  <h2>언제 발견으로 올리나</h2>
+  <p>이 도구는 완전 중복이 <strong>1건이라도 있으면</strong> 발견으로 올립니다. 다른 항목들이 비율 기준을 쓰는 것과 달리 개수 기준이고, 그것도 가장 낮은 값입니다.</p>
+  <p>기준을 낮게 잡은 이유는 중복 행이 <strong>비율이 작아도 원인이 큰 문제일 수 있기 때문</strong>입니다. 결측률 3%는 그냥 결측률 3%이지만, 완전 중복 3건은 적재 파이프라인이 특정 조건에서 재시도되고 있다는 신호일 수 있습니다. 개수가 아니라 원인을 보라는 뜻으로 문턱을 낮게 둔 것입니다.</p>
+  <p>대신 부작용이 있습니다. 열이 적은 데이터에서는 서로 다른 사람의 기록이 우연히 모든 값이 같아질 수 있고, 그때도 이 발견이 뜹니다. 열이 3~4개뿐인 집계 데이터라면 발견이 떴다는 사실보다 <strong>중복 건수와 전체 대비 비율</strong>을 함께 보는 편이 낫습니다.</p>
+  <h2>중복이 정상인 데이터</h2>
+  <p>아래 유형에서는 완전 중복이 오류가 아닙니다. 지우면 데이터가 망가집니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>데이터</th><th>중복이 생기는 이유</th></tr></thead>
+    <tbody>
+      <tr><td>트랜잭션·이벤트 로그</td><td>같은 사용자가 같은 초에 같은 행동을 두 번 하면 모든 값이 같습니다</td></tr>
+      <tr><td>설문·평점 응답</td><td>문항 수가 적으면 서로 다른 응답자의 답이 전부 일치할 수 있습니다</td></tr>
+      <tr><td>패널·반복측정 데이터</td><td>시점 열을 빼고 보면 같은 대상의 여러 관측이 중복으로 보입니다</td></tr>
+      <tr><td>부트스트랩·오버샘플링 산출물</td><td>복원추출이므로 중복이 설계상 존재합니다</td></tr>
+      <tr><td>코드값만 남은 집계 테이블</td><td>열이 적어 조합 수가 행 수보다 적으면 중복이 필연적입니다</td></tr>
+    </tbody>
+  </table></div>
+  <p>공통점은 <strong>행이 개체가 아니라 사건을 가리킨다</strong>는 것입니다. 행 하나가 사람 한 명이면 중복은 대개 오류이고, 행 하나가 사건 한 건이면 같은 사건이 여러 번 일어날 수 있습니다.</p>
+  <h2>그대로 두면 무엇이 달라지나</h2>
+  <p>중복을 남긴 채 분석하면 두 곳에서 결과가 흔들립니다.</p>
+  <p>첫째, 중복된 값의 <strong>가중치가 커집니다.</strong> 평균과 분산이 그 값 쪽으로 당겨지고 최빈값이 바뀔 수 있습니다. 상관계수도 중복된 관측이 만드는 점 하나에 더 크게 반응합니다.</p>
+  <p>둘째, 학습·평가 분할에서 <strong>같은 행이 양쪽에 들어갑니다.</strong> 이것이 더 위험합니다. 모델이 학습에서 본 행을 평가에서 다시 만나면 성능이 실제보다 높게 나오고, 그 수치를 믿고 배포한 뒤에야 문제가 드러납니다. 교차검증에서도 같은 일이 일어납니다.</p>
+  <p>두 번째 이유 때문에 <strong>모델을 만들 계획이라면 중복 처리를 분석 초반에 끝내는 편</strong>이 안전합니다.</p>
+  <h2>확인 순서</h2>
+  <ol>
+    <li>중복 건수와 전체 대비 비율을 함께 봅니다. 비율이 크면 병합 사고를, 몇 건뿐이면 개별 원인을 의심합니다</li>
+    <li>중복된 행을 직접 몇 개 꺼내 봅니다. 값이 자연스러운지, 특정 값에 몰려 있는지 확인합니다</li>
+    <li>행이 개체인지 사건인지 판단합니다. 사건이면 위 표의 경우인지 확인합니다</li>
+    <li>개체라면 식별자 열을 정해 키 중복도 따로 셉니다. 완전 중복만 지우고 끝내면 키 중복이 남습니다</li>
+    <li>제거한 결과와 제거하지 않은 결과를 <strong>둘 다 계산해 비교합니다.</strong> 차이가 없으면 무엇을 택하든 무방하고, 크게 다르면 그 자체가 조사할 단서입니다</li>
+  </ol>
+  <blockquote><p>제거할 때는 원본 파일을 덮어쓰지 않고 제거한 사본을 따로 만듭니다. 중복 판단이 틀렸을 때 되돌릴 수 있어야 합니다.</p></blockquote>
+  <h2>정리</h2>
+  <p>완전 중복은 지우기 쉬운 문제라서 오히려 원인을 건너뛰기 쉽습니다. <strong>몇 건인지보다 왜 생겼는지가 정보</strong>입니다. 행이 사건을 가리키는 데이터라면 아무것도 하지 않는 것이 정답이고, 개체를 가리키는 데이터라면 완전 중복을 지운 뒤 키 중복을 한 번 더 확인해야 절반만 처리하는 일을 피할 수 있습니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

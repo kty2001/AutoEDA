@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상수·준상수 컬럼이 분석에 미치는 영향 — AutoEDA</title>
+<meta name="description" content="완전 상수와 준상수 컬럼의 차이, 최빈값 비율 95% 기준의 근거, 준상수가 오히려 핵심 변수가 되는 경우와 처리 판단을 정리했습니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/constant-columns">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/constant-columns">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="상수·준상수 컬럼이 분석에 미치는 영향 — AutoEDA">
+<meta property="og:description" content="완전 상수와 준상수 컬럼의 차이, 최빈값 비율 95% 기준의 근거, 준상수가 오히려 핵심 변수가 되는 경우와 처리 판단을 정리했습니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"상수·준상수 컬럼이 분석에 미치는 영향","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/constant-columns"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"상수·준상수 컬럼이 분석에 미치는 영향","description":"완전 상수와 준상수 컬럼의 차이, 최빈값 비율 95% 기준의 근거, 준상수가 오히려 핵심 변수가 되는 경우와 처리 판단을 정리했습니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/constant-columns","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">상수·준상수 컬럼이 분석에 미치는 영향</span>
+  </nav>
+
+  <h1>상수·준상수 컬럼이 분석에 미치는 영향</h1>
+  <p class="page-intro">값이 거의 변하지 않는 열은 대개 지워도 되지만, 지우면 안 되는 경우가 분명히 있습니다. 그 경계를 정리했습니다.</p>
+
+  <p>한 열의 값이 전부 같으면 그 열은 행을 구분하지 못합니다. 여기까지는 이견이 없습니다. 문제는 <strong>&quot;거의&quot; 같은 열</strong>입니다. 10만 행 중 9만 9천 행이 같은 값이고 나머지 1천 행이 다르다면, 이 열은 버릴 것일 수도 있고 데이터에서 가장 중요한 열일 수도 있습니다.</p>
+  <h2>완전 상수와 준상수는 성격이 다르다</h2>
+  <p><strong>완전 상수</strong>는 고유값이 하나뿐인 열입니다. 정보량이 수학적으로 0이므로 분석에 기여할 방법이 없습니다. 다만 그 사실 자체가 정보입니다 — 원래 여러 값을 가져야 할 열이 상수라면 <strong>추출 조건이 좁았거나 필터가 걸린 상태로 데이터를 받았다</strong>는 뜻입니다. 국가 열이 전부 KR 하나라면 그 데이터는 국내 데이터이고, 그것을 모른 채 분석하면 결론의 적용 범위를 잘못 잡습니다.</p>
+  <p><strong>준상수</strong>는 최빈값이 대부분을 차지하지만 나머지 값이 존재하는 열입니다. 정보량이 0이 아니고, 그 소수의 값이 무엇이냐에 따라 가치가 완전히 달라집니다.</p>
+  <h2>언제 발견으로 올리나</h2>
+  <p>이 도구는 <strong>최빈값 하나가 열의 95% 이상</strong>을 차지하면 발견으로 올립니다. 완전 상수와 준상수를 하나의 기준으로 함께 잡습니다.</p>
+  <p>95%를 택한 이유는 그 지점부터 <strong>통상적인 요약 통계가 의미를 잃기 때문</strong>입니다. 최빈값 비율이 95%면 나머지 값들의 관측 수가 20분의 1 이하이고, 범주별 평균이나 교차표를 만들어도 소수 범주 칸의 추정이 불안정합니다. 막대그래프를 그리면 막대 하나만 보이고 나머지는 바닥에 붙습니다.</p>
+  <p>다만 이 기준은 <strong>행 수를 보지 않습니다.</strong> 1만 행에서 95%면 소수 값이 500건이라 충분히 분석할 수 있지만, 200행에서 95%면 10건뿐입니다. 발견이 떴을 때 비율과 함께 <strong>소수 값의 실제 건수</strong>를 확인해야 하는 이유입니다.</p>
+  <h2>준상수가 오히려 핵심인 경우</h2>
+  <p>아래에서는 소수 값이 분석의 목적 그 자체입니다. 열을 지우면 답을 지우는 셈이 됩니다.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>열</th><th>최빈값</th><th>소수 값의 의미</th></tr></thead>
+    <tbody>
+      <tr><td>불량 여부</td><td>정상</td><td>찾으려는 대상</td></tr>
+      <tr><td>이탈 여부</td><td>유지</td><td>예측하려는 사건</td></tr>
+      <tr><td>부정거래 플래그</td><td>정상</td><td>탐지 목표</td></tr>
+      <tr><td>장애·사고 발생</td><td>없음</td><td>분석의 이유</td></tr>
+      <tr><td>특수 처리 코드</td><td>일반</td><td>예외 처리 경로</td></tr>
+    </tbody>
+  </table></div>
+  <p>공통점은 <strong>희귀한 쪽이 관심 사건</strong>이라는 것입니다. 이런 열은 준상수인 것이 정상이고, 오히려 최빈값 비율이 낮아지면 이상 상황입니다.</p>
+  <p>이 열이 타깃이라면 준상수는 클래스 불균형 문제로 넘어갑니다. 정확도를 지표로 쓰면 안 되는 상황이므로 별도로 다뤄야 합니다.</p>
+  <h2>지워도 되는지 판단하기</h2>
+  <p>준상수 열을 만났을 때 순서대로 확인합니다.</p>
+  <ol>
+    <li><strong>이 열이 타깃이거나 타깃과 직결되는가.</strong> 그렇다면 지우지 않습니다</li>
+    <li><strong>소수 값이 몇 건인가.</strong> 건수가 두 자리 이하면 그 값으로 무엇을 추정하든 신뢰하기 어렵습니다. 지우거나, 남기되 그 열로 만든 통계는 참고로만 씁니다</li>
+    <li><strong>소수 값이 무작위로 흩어져 있는가, 특정 구간에 몰려 있는가.</strong> 몰려 있다면 수집 시점·출처가 바뀌었다는 신호일 수 있습니다. 이 경우 열 자체보다 <strong>그 구간을 조사하는 편</strong>이 얻는 것이 많습니다</li>
+    <li><strong>완전 상수라면 원래 그런 열인지 확인합니다.</strong> 추출 조건 때문에 상수가 된 것이라면 데이터의 범위를 다시 잡아야 할 수도 있습니다</li>
+  </ol>
+  <blockquote><p>준상수 열을 지우기로 했다면 <strong>어떤 열을 왜 지웠는지 기록해 둡니다.</strong> 나중에 모델 성능이 기대에 못 미칠 때 가장 먼저 되짚어야 할 목록이 이것입니다.</p></blockquote>
+  <h2>모델에 넣으면 생기는 일</h2>
+  <p>준상수 열을 그대로 특성으로 넣으면 대개 무해합니다. 트리 계열은 분기 이득이 거의 없어 쓰지 않고, 선형 모델도 계수가 작게 잡힙니다. 문제는 <strong>소수 값 쪽에서 발생</strong>합니다.</p>
+  <p>관측 수가 적은 범주에 모델이 큰 계수를 붙이면 그 몇 건에 과적합합니다. 학습 데이터에는 소수 값이 있었는데 검증 데이터에는 하나도 없는 상황도 흔하고, 그 반대도 마찬가지입니다. 원-핫 인코딩을 하면 거의 전부 0인 열이 하나 늘어나는데, 분산이 0에 가까운 특성을 제거하는 전처리 단계를 쓰고 있다면 그 단계에서 조용히 사라집니다.</p>
+  <p>즉 준상수 열은 <strong>성능을 크게 해치지는 않지만 예측을 불안정하게 만드는 쪽</strong>으로 기여합니다. 남기기로 했다면 그 열이 실제로 쓰이고 있는지 특성 중요도로 확인하는 편이 좋습니다.</p>
+  <h2>정리</h2>
+  <p>완전 상수는 지워도 되지만 <strong>왜 상수인지는 한 번 물어야 합니다.</strong> 준상수는 비율만 보고 판단할 수 없습니다. 소수 값이 잡음이면 지우고, 소수 값이 찾으려는 사건이면 그 열이 데이터에서 가장 중요한 열입니다. 이 도구가 준상수와 완전 상수를 같은 문구로 알리는 것은 <strong>둘 다 눈으로 확인하라는 뜻</strong>이지 둘을 같게 처리하라는 뜻이 아닙니다.</p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+</body>
+</html>

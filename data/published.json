@@ -1,9 +1,14 @@
 {
   "guide": [
+    "categorical-numeric-relation",
     "class-imbalance",
+    "constant-columns",
+    "correlation-coefficients",
     "csv-encoding",
     "data-leakage",
+    "duplicate-rows",
     "high-cardinality",
+    "id-columns",
     "korean-public-data",
     "missing-imputation",
     "missing-types",

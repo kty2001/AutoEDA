@@ -12,7 +12,7 @@
 
 ## 1. 현황 스냅숏
 
-**단계: Phase 1 완료·배포됨 (`https://autoeda.tyoujungzz.workers.dev`), 해설 11편 발행, 디자인 개편 반영(미배포).** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. 남은 코드는 `build_cases.py` 하나이고 데이터셋 이용 조건 판정을 기다림. 죽은 내부 링크 0건, 색인 대상 14 URL. **다음 관문은 사례 리포트(데이터셋 판정 선행)와 잔여 해설 11편이며, 둘 다 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
+**단계: Phase 1 완료·배포됨 (`https://autoeda.tyoujungzz.workers.dev`), 해설 16편 발행으로 콘텐츠 게이트 충족, 디자인 개편 반영. 최근 두 작업은 미배포.** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. 남은 코드는 `build_cases.py` 하나이고 데이터셋 이용 조건 판정을 기다림. 죽은 내부 링크 0건, 색인 대상 19 URL. **다음 관문은 사례 리포트(데이터셋 판정 선행)와 잔여 해설 11편이며, 둘 다 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
 
 ### 완성된 것
 
@@ -36,7 +36,7 @@
 | app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·5섹션 탭·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백 |
 | SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
 | 콘텐츠 빌드 | `scripts/build_guides.mjs` | 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. 인덱스는 `pages/{섹션}.html` 로 냄(디렉토리 인덱스는 307 을 만듦) |
-| 발행 콘텐츠 | `data/guide_source/*.md` `data/case_source/*.md` → `pages/guide.html` `pages/guide/*.html` `pages/case.html` | 해설 11편 + 사례 허브 1편 = 12편 · 17,249자. 잔여 해설 11편·사례 6편 미발행 |
+| 발행 콘텐츠 | `data/guide_source/*.md` `data/case_source/*.md` → `pages/guide.html` `pages/guide/*.html` `pages/case.html` | 해설 16편 + 사례 허브 1편 = 17편 · 25,596자 — [`content-strategy.md` §7](content-strategy.md) 분량 게이트 충족. 잔여 해설 6편·사례 6편 미발행 |
 | 테스트 | `tests/*.test.js` | 계약 21 + 동작 167 + 빌드 48 = 236건 (`integration.test.js` 가 계층 통합 스모크) |
 | 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` `sitemap.xml` | `sitemap.xml` 은 빌드 산출물이지만 배포 자산이라 커밋함 |
 | 페이지 골격 | `index.html` `404.html` `pages/*.html` | analyze 4상태 섹션 포함. 마크업은 손으로 쓴 9개 + `build_guides` 템플릿에 중복되므로 함께 고침 |
