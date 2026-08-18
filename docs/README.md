@@ -28,6 +28,7 @@
 | 스택 · 인프라 제약 · 디렉토리 · 배포 구성 | [`tech-stack.md`](tech-stack.md) |
 | 액터 · 유스케이스 · 추적 매트릭스 | [`use-cases.md`](use-cases.md) |
 | 페이지 구분 · 페이지별 기능 · 화면 상태 | [`screens.md`](screens.md) |
+| 색·타이포·컴포넌트 규격 · AutoEDA 적용 시 조정 | [`DESIGN.md`](DESIGN.md) |
 | 결과 JSON 스키마 · 저장소 키 · Worker 프로토콜 · 모듈 의존 | [`data-model.md`](data-model.md) |
 | Health Score 감점 · Finding 임계값 · 표시 상한 · 문구 규칙 | [`rules.md`](rules.md) |
 | 데이터셋 이용 조건 · 표시 요건 | [`data-sources.md`](data-sources.md) |
@@ -61,5 +62,6 @@
 | `use-cases.md` 추적 매트릭스 | 각 모듈 헤더 주석의 "대응 유스케이스" |
 | `screens.md §4` 4상태 | `pages/analyze.html` 의 `.state` 섹션 4개 · `js/app/analyze.page.js` |
 | `tech-stack.md §6` CSP 제약 | `js/domain/chart-svg.js` (인라인 style 금지) · `_headers` |
+| `DESIGN.md §0·§2` 토큰·조정 항목 | `css/style.css` 토큰 블록 · `js/domain/chart-svg.js` 히트맵 배색 |
 
 `npm test`가 `thresholds.js` ↔ `rules.md` 수치와 `finding-map.json` ↔ Finding 목록을 대조하므로, **문서만 고치고 코드를 안 고치면 테스트가 실패함.**

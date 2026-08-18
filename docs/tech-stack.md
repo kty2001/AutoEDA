@@ -12,7 +12,8 @@
 |---|---|---|---|
 | 호스팅·배포 | Cloudflare Workers Static Assets (`npx wrangler deploy`) | 무료 | 형제 프로젝트 3종과 동일 |
 | 마크업 | 순수 HTML, MPA (페이지마다 실제 `.html`) | — | 페이지당 고유 URL이 필요한 SEO 전략과 정합 |
-| 스타일 | 수기 `css/style.css` | — | TailwindCSS 미도입 (§7) |
+| 스타일 | 수기 `css/style.css` | — | TailwindCSS 미도입 (§7). 디자인 확정본은 [`DESIGN.md`](./DESIGN.md) |
+| 폰트 | **자체 호스팅** Inter + Noto Sans KR (`fonts/`, 252개 슬라이스 7.7MB) | 무료 | CSP 가 `font-src 'self'` 라 Google Fonts 직접 참조 불가. `scripts/fetch_fonts.mjs` 가 `unicode-range` 슬라이스를 그대로 미러링해 방문당 전송량을 실제 사용 구간으로 제한함 |
 | 스크립트 | Vanilla ES Module (프레임워크·번들러 없음) | — | React 미도입 (§7) |
 | **EDA 연산** | **브라우저 JavaScript** (Web Worker) | 무료 | 무료 티어 Worker는 요청당 CPU 10ms라 서버 연산 불가 |
 | 차트 | 자체 SVG 렌더링 | — | 필요한 차트가 5종뿐이라 라이브러리 불필요 |
@@ -32,7 +33,7 @@
 |---|---|---|
 | Worker CPU | 무료 티어 **요청당 10ms** | 서버측 EDA 연산 불가 → 연산을 브라우저로 |
 | 자산 한도 | 버전당 20,000 파일, **파일당 25 MiB** | 대용량 WASM 자체 호스팅에 상한 |
-| CSP | `weareants`가 `script-src 'self'` 적용 | 외부 CDN·인라인 스크립트 전부 차단. **인라인 핸들러 금지** |
+| CSP | `weareants`가 `script-src 'self'` 적용 | 외부 CDN·인라인 스크립트 전부 차단. **인라인 핸들러 금지.** `style-src`·`font-src` 도 `'self'` 라 인라인 `style=` 와 외부 웹폰트가 함께 막힘 |
 | 초기 로드 | `anime-semantle` 34MB → 이탈 구조. 0.18MB 개선 후에야 홍보 가능 판단 | Pyodide(~30MB) 배제의 결정적 근거 |
 | 배포 설정 | 루트 `wrangler.jsonc` 없으면 배포 차단 (2026-07-08 실제 장애) | 필수 파일로 취급 |
 | 자산 스캔 | `.gitignore`는 자산 스캔에 영향 없음. `.git/` pack(30MB)이 스캔돼 배포 실패 | `.assetsignore` 필수 |

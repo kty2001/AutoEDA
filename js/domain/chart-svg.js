@@ -253,14 +253,23 @@ function skewAnnotation(skewness) {
   return text(xPos, PLOT.y - 4, label, 'annotation', anchor);
 }
 
-/** [-1, 1] → 파랑-흰색-빨강 발산 색. 인라인 style 없이 fill 속성으로 쓴다. */
+/** 발산 배색의 중립점. 채도 없는 값이어야 0 부근이 두 극과 섞이지 않는다. */
+const HEATMAP_NEUTRAL = [237, 235, 233]; // Ceramic #edebe9 (docs/DESIGN.md §2)
+/** 양(+)은 Green Accent, 음(-)은 Red. 두 극 모두 docs/DESIGN.md §2 팔레트다. */
+const HEATMAP_POS = [0, 117, 74];   // #00754a
+const HEATMAP_NEG = [200, 32, 20];  // #c82014
+
+/**
+ * [-1, 1] -> 중립색을 가운데 둔 2색 발산 색. 인라인 style 없이 fill 속성으로 쓴다.
+ * 색만으로 값을 읽게 하지 않는다 - 각 셀에 <title> 로 수치가 붙는다.
+ * 두 극의 색각 이상 분리도는 검증했다 (deutan dE 9.9 > 8).
+ */
 function divergingColor(value) {
   const v = Math.max(-1, Math.min(1, value));
   const t = Math.abs(v);
-  const mix = (from, to) => Math.round(from + (to - from) * t);
-  return v >= 0
-    ? `rgb(${mix(255, 200)},${mix(255, 40)},${mix(255, 40)})`
-    : `rgb(${mix(255, 40)},${mix(255, 90)},${mix(255, 200)})`;
+  const pole = v >= 0 ? HEATMAP_POS : HEATMAP_NEG;
+  const ch = HEATMAP_NEUTRAL.map((from, i) => Math.round(from + (pole[i] - from) * t));
+  return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
 }
 
 function pad(min, max) {

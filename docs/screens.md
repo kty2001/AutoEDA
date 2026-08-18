@@ -188,8 +188,17 @@
 | **전역 메뉴** | 우상단 고정 `☰` + 드롭다운. `BDAnalyzer/js/menu.js`가 import만으로 버튼·패널을 스스로 생성해 `body`에 붙이는 방식이므로 **그 패턴을 재사용**함. 각 HTML에는 `<script type="module" src="/js/app/menu.js">` 한 줄만 추가 |
 | **푸터** | 정책 4종 링크. `noindex`이지만 `follow`이므로 크롤러·심사자 도달 경로로 유지함 |
 | **브레드크럼** | 해설·사례 하위 페이지. BreadcrumbList JSON-LD 동반 |
-| **CTA** | `내 데이터로 확인하기` — 모든 해설·사례 페이지 하단 고정. 광고와 시각적으로 구분 |
+| **CTA** | `내 데이터로 확인하기` — 모든 해설·사례 페이지 하단 고정. 짙은 녹색 밴드(House Green)에 흰 알약 버튼. 사이트에서 유일한 다크 밴드라 광고와 시각적으로 구분됨 |
 | **한 줄 소개** | 각 페이지 `<h1>` 아래 한 문장. 페이지마다 한 번만 등장하므로 공용 모듈을 만들지 않음 (`weareants/docs/page-intros.md` 판단과 동일) |
+
+**시각 규격**: 확정본은 [`DESIGN.md`](DESIGN.md)이고 구현은 `css/style.css` 토큰 블록 하나에 모여 있음. 요약하면
+
+- 페이지 캔버스는 크림(`#f2f0eb`), 카드·표는 흰색 + 2겹 저알파 그림자, 푸터·CTA 는 짙은 녹색 밴드
+- 버튼은 예외 없이 알약(`50px`)이고 누르면 `scale(0.95)`
+- 녹색은 역할별로 셋 — 제목 `#006241` · CTA·링크·차트 `#00754a` · 밴드 `#1e3932`
+- 금색 `#cba258` 은 품질 점수 '양호' 표시 한 곳에만, 글자색이 아닌 테두리로만 씀
+- 다크모드는 두지 않음 (`color-scheme: light`)
+- 폰트는 자체 호스팅 Inter + Noto Sans KR — CSP `font-src 'self'` 때문 ([`tech-stack.md` §1](tech-stack.md))
 
 **인라인 핸들러 금지**: CSP `script-src 'self'`가 인라인 스크립트를 차단하고 ES Module은 전역에 함수를 노출하지 않음. 이벤트는 전부 `addEventListener`로 연결함.
 

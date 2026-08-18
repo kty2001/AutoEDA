@@ -35,4 +35,4 @@ data/case_source
 
 # 아래는 서빙 대상이므로 절대 제외하지 않는다:
 #   index.html  404.html  robots.txt  sitemap.xml  favicon.svg
-#   pages/  css/  js/  data/finding-map.json
+#   pages/  css/  js/  fonts/  data/finding-map.json
