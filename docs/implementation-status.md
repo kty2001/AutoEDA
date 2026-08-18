@@ -12,7 +12,7 @@
 
 ## 1. 현황 스냅숏
 
-**단계: Phase 1 완료·배포됨 (`https://autoeda.tyoujungzz.workers.dev`), 해설 16편 발행으로 콘텐츠 게이트 충족, 디자인 개편 반영. 최근 두 작업은 미배포.** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. 남은 코드는 `build_cases.py` 하나이고 데이터셋 이용 조건 판정을 기다림. 죽은 내부 링크 0건, 색인 대상 19 URL. **다음 관문은 사례 리포트(데이터셋 판정 선행)와 잔여 해설 11편이며, 둘 다 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
+**단계: Phase 1 완료·배포됨 (`https://autoeda.tyoujungzz.workers.dev`), 해설 16편 발행으로 콘텐츠 게이트 충족, 디자인 개편 반영. 전부 배포·검증 완료.** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. 남은 코드는 `build_cases.py` 하나이고 데이터셋 이용 조건 판정을 기다림. 죽은 내부 링크 0건, 색인 대상 19 URL. **다음 관문은 GSC sitemap 재제출과 사례 리포트(데이터셋 판정 선행)이며, 둘 다 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
 
 ### 완성된 것
 
