@@ -89,6 +89,13 @@ export const INFER = Object.freeze({
   //                       식별자에는 공백이 없다 — 길이만으로는 짧은 자유 텍스트와 구분되지 않는다
 });
 
+/**
+ * 전처리 연산 한도. → rules.md §5
+ * onehotMaxUnique: 원-핫 인코딩 허용 고유값 수. 넘으면 열이 폭증해 결과가 쓸모없어지므로 거부한다
+ *                  (F-HIGH-CARD 의 uniqueCount 50 과 같은 자리에서 잡되, 열 생성은 더 보수적으로 본다).
+ */
+export const PREPROCESS = Object.freeze({ onehotMaxUnique: 20 });
+
 /** 처리 파일 크기 상한. 단일 원천: docs/direction.md §9. 초과 시 FILE_TOO_LARGE. */
 export const FILE_LIMIT = Object.freeze({ maxBytes: 25 * 1024 * 1024 }); // 25MB
 

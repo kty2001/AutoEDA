@@ -13,6 +13,7 @@
 // 동적 텍스트는 esc() 를 거치거나 textContent 로 넣는다 — 열 이름·범주 값이 XSS 경로다.
 
 import { selectForColumn, selectPairs, selectHeatmap } from '../domain/chart-select.js';
+import { suggestSteps, normalizeRecipe } from '../domain/recipe.js';
 import { renderChart, escapeXml as esc } from '../domain/chart-svg.js';
 import { DISPLAY_LIMIT } from '../domain/thresholds.js';
 import { percent, count, stat, bytes } from '../lib/format.js';
@@ -41,7 +42,18 @@ const TABS = [
   { id: 'findings', label: '발견' },
   { id: 'columns', label: '변수별' },
   { id: 'relations', label: '관계' },
+  { id: 'prep', label: '전처리' },
 ];
+
+const OP_LABEL = {
+  'drop-duplicates': '중복 행 제거',
+  'drop-column': '열 제거',
+  impute: '결측 대치',
+  outlier: '이상치 처리',
+  log1p: '로그 변환',
+  encode: '인코딩',
+  scale: '스케일링',
+};
 
 const TYPE_LABEL = {
   numeric: '수치', categorical: '범주', datetime: '날짜', boolean: '불리언', id: 'ID', text: '텍스트',
@@ -61,6 +73,13 @@ let currentResult = null;
 let currentWorker = null;
 let typeOverrides = {};
 let findingMapPromise = null;
+
+// 전처리(T7) — 레시피는 화면 상태이며 어디에도 저장하지 않는다.
+// 원본·변환 데이터는 Worker 안에만 있고 여기로 넘어오지 않는다(규약 8).
+let suggestions = [];
+let selectedSteps = new Set();
+let canPreprocess = false; // 불러온·복원한 결과에는 원본이 없어 전처리할 수 없다
+let activateTab = null;
 
 /** 상태를 전환하고 해당 섹션만 노출한다. */
 export function setState(state) {
@@ -113,10 +132,17 @@ export function handleWorkerMessage(message) {
       return;
     case 'done': {
       const cache = saveResult(message.result);
+      canPreprocess = true; // Worker 가 원본을 붙들고 있는 상태
       renderResult(message.result, cacheNotice(cache));
       setState('C');
       return;
     }
+    case 'preprocessed':
+      renderPrepReport(message.result, message.log);
+      return;
+    case 'csv':
+      downloadCsv(message.text);
+      return;
     case 'error':
       renderError(message.code, message.detail);
       setState('D');
@@ -203,7 +229,12 @@ export function renderResult(result, notice = null) {
     findings: renderFindings,
     columns: renderColumns,
     relations: renderRelations,
+    prep: renderPrep,
   };
+
+  // 새 결과에는 이전 레시피를 물려주지 않는다 — 열 이름이 우연히 겹치면 엉뚱한 열에 적용된다
+  suggestions = suggestSteps(result.findings, result.columns);
+  selectedSteps = new Set();
 
   const panelById = {};
   for (const tab of TABS) {
@@ -224,6 +255,7 @@ export function renderResult(result, notice = null) {
     }
     savePrefs({ activeTab: id });
   };
+  activateTab = activate;
 
   for (const tab of TABS) {
     const btn = button(tab.label, 'tab', () => activate(tab.id));
@@ -359,6 +391,21 @@ function renderFindings(panel, result) {
       </p>
       <p class="finding-why">${esc(f.why)}</p>
       <p class="finding-how">${esc(f.how)} <span data-guide-link="${esc(f.type)}"></span></p>`;
+
+    // 진단과 조치를 잇는 동선 — 이 발견에 대응하는 제안을 전처리 탭 레시피에 담는다
+    const related = suggestions.filter(
+      (step) => step.findingType === f.type && (!step.column || f.targets.includes(step.column))
+    );
+    if (related.length > 0) {
+      const p = document.createElement('p');
+      p.appendChild(
+        button('조치 담기 →', 'btn btn-secondary btn-small', () => {
+          for (const step of related) selectedSteps.add(step.id);
+          activateTab?.('prep');
+        })
+      );
+      item.appendChild(p);
+    }
     list.appendChild(item);
   });
   panel.appendChild(list);
@@ -523,6 +570,172 @@ function renderRelations(panel, result) {
   }
 }
 
+// 전처리 — 발견에서 나온 조치를 골라 적용하고 Before/After 로 검증한다 (docs/TODO.md T7)
+//
+// 기본 레시피는 비어 있다. 도구가 데이터를 알아서 고치지 않는다는 원칙(direction.md §8)이
+// 화면에서도 그대로 보여야 하므로, 제안은 전부 꺼진 채로 시작하고 대가를 함께 적는다.
+function renderPrep(panel, result) {
+  panel.insertAdjacentHTML(
+    'beforeend',
+    `<p class="hint">원본 파일은 바뀌지 않습니다. 고른 조치만 적용해 <strong>새 CSV</strong>를 만듭니다.
+     아무것도 고르지 않으면 아무 일도 일어나지 않습니다. 조치는 검토 대상이지 정답이 아닙니다.</p>`
+  );
+
+  if (!canPreprocess) {
+    panel.insertAdjacentHTML(
+      'beforeend',
+      '<p>불러오거나 복원한 결과에는 원본 데이터가 없어 전처리할 수 없습니다. 파일을 다시 분석해 주세요.</p>'
+    );
+    return;
+  }
+
+  if (suggestions.length === 0) {
+    panel.insertAdjacentHTML('beforeend', '<p>조치가 필요한 발견이 없습니다.</p>');
+  } else {
+    panel.insertAdjacentHTML('beforeend', '<h3>제안된 조치</h3>');
+    const list = document.createElement('ul');
+    list.className = 'prep-list';
+    for (const step of suggestions) {
+      const item = document.createElement('li');
+      item.className = 'prep-step';
+      item.innerHTML = `
+        <label><input type="checkbox" data-step="${esc(step.id)}"${selectedSteps.has(step.id) ? ' checked' : ''}>
+          <span class="prep-op">${esc(OP_LABEL[step.op] ?? step.op)}</span> ${esc(step.label)}</label>
+        <p class="hint prep-cost">${esc(step.cost)}</p>`;
+      const box = item.querySelector('input');
+      box.addEventListener('change', () => {
+        if (box.checked) selectedSteps.add(step.id);
+        else selectedSteps.delete(step.id);
+      });
+      list.appendChild(item);
+    }
+    panel.appendChild(list);
+  }
+
+  const actions = document.createElement('p');
+  const report = document.createElement('div');
+  report.id = 'prep-report';
+
+  const download = button('정제된 CSV 내려받기', 'btn btn-secondary', () => {
+    currentWorker?.postMessage({ type: 'export-csv', recipe: currentRecipe() });
+  });
+  download.disabled = true;
+  download.id = 'prep-download';
+
+  actions.append(
+    button('선택한 조치 적용', 'btn', () => {
+      const recipe = currentRecipe();
+      if (recipe.length === 0) {
+        report.innerHTML = '<p class="hint">고른 조치가 없습니다.</p>';
+        download.disabled = true;
+        return;
+      }
+      report.innerHTML = '<p class="hint">적용 중…</p>';
+      currentWorker?.postMessage({ type: 'preprocess', recipe });
+    }),
+    ' ',
+    download
+  );
+  panel.append(actions, report);
+}
+
+/** 화면에서 켠 조치를 적용 가능한 레시피로 만든다. 표시 순서와 적용 순서를 맞춘다. */
+function currentRecipe() {
+  return normalizeRecipe(
+    suggestions
+      .filter((step) => selectedSteps.has(step.id))
+      .map(({ op, column, method, action, value }) => ({ op, column, method, action, value }))
+  );
+}
+
+/** 전처리 결과 — Before/After 와 적합 파라미터를 낸다. */
+function renderPrepReport(after, log) {
+  const slot = document.getElementById('prep-report');
+  if (!slot || !after) return;
+  const before = currentResult;
+  slot.innerHTML = '';
+
+  const delta = (b, a, fmt) => {
+    const arrow = a === b ? '=' : a > b ? '▲' : '▼';
+    return `${fmt(b)} → <strong>${fmt(a)}</strong> <span class="prep-delta">${arrow}</span>`;
+  };
+  slot.insertAdjacentHTML(
+    'beforeend',
+    `<h3>적용 결과</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Health Score</th><td>${delta(before.health.total, after.health.total, (v) => `${v}점`)}</td></tr>
+      <tr><th>행 수</th><td>${delta(before.dataset.rowCount, after.dataset.rowCount, count)}</td></tr>
+      <tr><th>열 수</th><td>${delta(before.dataset.columnCount, after.dataset.columnCount, count)}</td></tr>
+      <tr><th>중복 행</th><td>${delta(before.dataset.duplicateRowCount, after.dataset.duplicateRowCount, count)}</td></tr>
+    </tbody></table></div>`
+  );
+
+  // 열별 변화 — 양쪽에 다 있는 열만 비교한다(인코딩·제거로 사라진 열은 대상이 아니다)
+  const afterByName = new Map(after.columns.map((c) => [c.name, c]));
+  const rows = before.columns
+    .filter((c) => afterByName.has(c.name))
+    .map((b) => {
+      const a = afterByName.get(b.name);
+      const num = (x) => (x === undefined ? '—' : stat(x));
+      return `<tr>
+        <td>${esc(b.name)}</td>
+        <td>${percent(b.missingRate)} → ${percent(a.missingRate)}</td>
+        <td>${num(b.stats.skewness)} → ${num(a.stats.skewness)}</td>
+        <td>${b.stats.outlierRate === undefined ? '—' : percent(b.stats.outlierRate)} → ${a.stats.outlierRate === undefined ? '—' : percent(a.stats.outlierRate)}</td>
+      </tr>`;
+    })
+    .join('');
+  slot.insertAdjacentHTML(
+    'beforeend',
+    `<div class="table-wrap"><table>
+      <thead><tr><th>열</th><th>결측</th><th>왜도</th><th>이상치율</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`
+  );
+
+  // 적합 파라미터 — 테스트 세트에 같은 변환을 적용하려면 이 값이 필요하다.
+  // 그 작업까지 이 도구가 대신하지는 않으므로 값을 그대로 보여 주는 것이 최선의 정직함이다.
+  const logRows = (log ?? [])
+    .map(
+      (entry) => `<tr>
+        <td>${esc(OP_LABEL[entry.op] ?? entry.op)}</td>
+        <td>${esc(entry.column ?? '—')}</td>
+        <td>${entry.note ? `<span class="verdict-warn">${esc(entry.note)}</span>` : esc(paramText(entry.params))}</td>
+      </tr>`
+    )
+    .join('');
+  slot.insertAdjacentHTML(
+    'beforeend',
+    `<h3>적용 파라미터</h3>
+    <p class="hint">테스트 세트에 같은 변환을 적용하려면 이 값을 그대로 써야 합니다. 이 도구는 그 작업을 대신하지 않습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>조치</th><th>열</th><th>내용</th></tr></thead>
+      <tbody>${logRows}</tbody>
+    </table></div>`
+  );
+
+  const download = document.getElementById('prep-download');
+  if (download) download.disabled = false;
+}
+
+function paramText(params) {
+  const entries = Object.entries(params ?? {});
+  if (entries.length === 0) return '—';
+  return entries
+    .map(([key, value]) => `${key}=${typeof value === 'number' ? stat(value) : JSON.stringify(value)}`)
+    .join(' · ');
+}
+
+/** 정제 CSV 를 내려준다. 문자열은 여기서만 잠깐 존재하며 어디에도 저장하지 않는다. */
+function downloadCsv(text) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'autoeda-preprocessed.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── 내보내기·불러오기 (UC-09·10) ───────────────────────────
 
 /** 결과 JSON 내보내기. 집계 통계만 담기므로 원본 데이터는 나가지 않는다. */
@@ -554,6 +767,7 @@ export async function importResult(file) {
     return;
   }
   currentFile = null; // 불러온 결과는 재계산 불가(타입 수정 비활성)
+  canPreprocess = false; // 원본 행이 없으므로 전처리도 불가
   const cache = saveResult(parsed);
   renderResult(parsed, cacheNotice(cache));
   setState('C');
@@ -606,6 +820,11 @@ function init() {
   document.getElementById('export-result')?.addEventListener('click', exportResult);
   document.getElementById('clear-result')?.addEventListener('click', () => {
     clearResult(); // UC-11 — 개인정보처리방침의 "직접 삭제" 근거
+    // Worker 가 전처리용으로 붙들고 있는 원본까지 함께 놓는다 — 캐시만 지우면
+    // "직접 삭제" 가 반쪽이 된다
+    currentWorker?.terminate();
+    currentWorker = null;
+    canPreprocess = false;
     currentResult = null;
     setState('A');
     document.getElementById('resume-notice')?.setAttribute('hidden', '');
@@ -633,6 +852,7 @@ function init() {
     notice.append(
       p,
       button('이어보기', 'btn', () => {
+        canPreprocess = false; // 캐시에는 집계만 남아 있다
         renderResult(cached);
         setState('C');
       }),

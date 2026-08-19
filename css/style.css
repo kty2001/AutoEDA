@@ -475,6 +475,36 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 }
 .column-picker label { display: contents; }
 
+/* ── 전처리 탭 (docs/TODO.md T7) ─────────────────────────── */
+/* 조치는 기본이 '꺼짐'이다. 켜는 것이 사용자의 선택임이 보이도록 체크박스를 앞세우고
+   대가 문구를 라벨 바로 아래 붙여 이득만 보고 켜지 않게 한다. */
+.prep-list { list-style: none; padding: 0; }
+.prep-step {
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+.prep-step:has(input:checked) { border-left-color: var(--accent); }
+.prep-step label { display: flex; align-items: baseline; gap: var(--sp-2); cursor: pointer; }
+.prep-step input { margin: 0; accent-color: var(--accent); }
+.prep-op {
+  flex: none;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-ui);
+}
+.prep-cost { margin: var(--sp-1) 0 0 calc(var(--sp-4) + var(--sp-2)); }
+/* 개선·악화를 색이 아니라 기호로도 알 수 있게 둔다 — 색만으로 값을 읽게 하지 않는다 */
+.prep-delta { color: var(--fg-muted); }
+/* 발견 카드 안의 '조치 담기' — 본문 버튼보다 작게 둬 카드의 무게중심을 문구에 남긴다 */
+.btn-small { padding: var(--sp-1) var(--sp-4); font-size: 0.9rem; }
+
 .is-dragover { outline: 2px dashed var(--accent); }
 
 .contact-preview {

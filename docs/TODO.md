@@ -138,7 +138,9 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 
 ---
 
-### T7. 진단에서 조치로 — 전처리 파이프라인 + 타깃 기반 EDA (계획 확정, 미착수)
+### T7. 진단에서 조치로 — 전처리 파이프라인 + 타깃 기반 EDA
+
+**1단계(전처리) 완료 (2026-08-19).** 2단계(타깃 기반 EDA) 미착수.
 
 **문제.** 도구가 데이터 상태를 알려주기만 하고 아무것도 바꾸지 못함. Finding 의 "무엇을 하면 되는지"가 문장으로만 존재해 사용자는 조치를 하려면 사이트를 떠나 코드를 써야 함. 이상치 제거·스케일링이 사이트에서 바로 되지 않으면 진단 자체의 쓸모가 반감됨.
 
@@ -156,7 +158,9 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 3. **자동으로 고치지 않음** — 기본 레시피는 비어 있고 모든 조치는 사용자가 명시적으로 켬. 조치마다 대가(정보 손실·분산 축소 등)를 함께 표시함
 4. `js/domain/*` 순수 함수 유지 · 임계값은 `thresholds.js` 에만
 
-#### 1단계 — 전처리 파이프라인
+#### 1단계 — 전처리 파이프라인 — **완료 (2026-08-19)**
+
+산출물: `js/domain/transform.js`(변환 엔진 7종) · `js/domain/recipe.js`(발견→조치 매핑) · `parse.serializeCsv` · `worker.profile()` 분리 + `preprocess`/`export-csv` 메시지 · 전처리 탭 + 발견 탭 `조치 담기`. 테스트 312건(신규 39건). 경위는 [`work-log.md` 2026-08-19](work-log.md).
 
 **1.1 파이프라인 재구성 (선행).** `analyze.worker.js` 의 `analyze()` 가 decode→parse→infer→stats→quality→finding 을 한 함수에 갖고 `parsed` 를 버림. 파싱 이후 단계를 변환된 데이터에 다시 돌려야 하므로 분리함.
 
@@ -224,7 +228,7 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 - **`pages/privacy.html`** — 정제 파일도 브라우저에서 생성되고 서버로 가지 않는다는 문장 추가. 실제 구현과 일치해야 함
 - [`data-model.md`](data-model.md)(§5 프로토콜·§3 `recipe`) · [`rules.md`](rules.md)(전처리 임계값) · [`screens.md §4`](screens.md)(탭 6개) · [`direction.md §4`](direction.md)(앞당긴 근거) · [`implementation-status.md §1`](implementation-status.md) · `work-log.md`
 
-#### 2단계 — 타깃 기반 EDA (1단계 완료 후)
+#### 2단계 — 타깃 기반 EDA — **다음 차례**
 
 - **타깃 지정 UI** — 개요 탭 상단 "타깃 열" select → `start { file, target }` 재계산. `analyze()` 는 이미 `target` 을 `buildFindings` 로 넘김
 - **`classDistribution` 부착** — `columnStats` 이후 **타깃 열에만** 붙임. 이것이 없어 `F-CLASS-IMBALANCE` 가 죽어 있음 ([`data-model.md §3.3`](data-model.md) 이 이미 "타깃 열에만 산출"로 규정)

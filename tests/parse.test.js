@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectDelimiter, parseCsv, toNumber } from '../js/domain/parse.js';
+import { detectDelimiter, parseCsv, serializeCsv, toNumber } from '../js/domain/parse.js';
 
 // ─── detectDelimiter ────────────────────────────────────────
 
@@ -132,4 +132,43 @@ test('toNumber — 거부', () => {
   assert.equal(toNumber('1.2.3'), null);
   assert.equal(toNumber('NaN'), null);
   assert.equal(toNumber('Infinity'), null);
+});
+
+
+// ─── serializeCsv (왕복) ────────────────────────────────────
+// 전처리 산출물을 다시 이 도구에 넣어 검증하는 경로가 변환 엔진과 직렬화를
+// 동시에 검사하는 유일한 수단이므로, 왕복 일치를 여기서 고정한다.
+
+test('serializeCsv — parseCsv 와 왕복이 일치한다 (인용·구분자·개행·결측)', () => {
+  const names = ['이름', '값', '메모'];
+  const columns = [
+    ['가, 나', '따"옴표', '줄\n바꿈', ''],
+    Float64Array.from([1, 2.5, NaN, -3]),
+    ['x', '', 'y', 'z'],
+  ];
+  const text = serializeCsv(names, columns, 4);
+  const back = parseCsv(text, { delimiter: ',' });
+
+  assert.deepEqual(back.names, names);
+  assert.equal(back.rowCount, 4);
+  assert.deepEqual(back.columns[0], columns[0]);
+  assert.deepEqual(Array.from(back.columns[1]), [1, 2.5, NaN, -3]);
+  assert.deepEqual(back.columns[2], columns[2]);
+});
+
+test('serializeCsv — 수치 열의 NaN 은 빈 문자열(결측 표기)로 나간다', () => {
+  const text = serializeCsv(['a'], [Float64Array.from([NaN, 1])], 2);
+  assert.equal(text, 'a\r\n\r\n1');
+});
+
+test('serializeCsv — 선행 0 문자열은 왕복에서 보존된다 (우편번호 회귀)', () => {
+  const text = serializeCsv(['우편번호'], [['06236', '00123']], 2);
+  const back = parseCsv(text, { delimiter: ',' });
+  assert.deepEqual(back.columns[0], ['06236', '00123']);
+});
+
+test('serializeCsv — 구분자를 바꾸면 그 구분자 기준으로 인용한다', () => {
+  const text = serializeCsv(['a', 'b'], [['x;y'], ['z']], 1, { delimiter: ';' });
+  assert.ok(text.includes('"x;y"'));
+  assert.deepEqual(parseCsv(text, { delimiter: ';' }).columns[0], ['x;y']);
 });

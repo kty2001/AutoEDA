@@ -6,8 +6,15 @@
 // UI 를 멈추지 않기 위해 파싱·연산을 전부 이 안에서 수행한다.
 // 무료 티어 Worker CPU 10ms 제약 때문에 서버 연산이 불가하므로 이 Worker 가 엔진 전체를 담당한다.
 //
-// 받는 메시지: start { file, encoding?, typeOverrides? } · cancel
+// 받는 메시지: start { file, encoding?, typeOverrides?, target? } · cancel
+//              preprocess { recipe } · export-csv { recipe }   (docs/TODO.md T7)
 // 보내는 메시지: progress { stage, ratio } · done { result } · error { code, detail }
+//              preprocessed { result, log } · csv { text }
+//
+// ⚠️ 파싱 결과(원본 행)는 이 Worker 밖으로 나가지 않는다. 전처리는 여기 붙들어 둔 parsed 에
+//    적용하고 집계 결과만 돌려준다. CSV 는 사용자가 내려받는 순간에만 문자열로 건너간다.
+//    → docs/implementation-status.md §2 규약 8
+//
 // stage: 'decode' | 'parse' | 'infer' | 'stats' | 'finding'
 // error code: ENCODING_UNDETECTED | FILE_TOO_LARGE | PARSE_FAILED  (→ docs/data-model.md §5.1)
 //
@@ -15,17 +22,18 @@
 // node --test 로 결과 JSON 조립을 검증하기 위함이다. 메시지 글루만 self 존재 시 배선한다.
 
 import { decode } from '../domain/decode.js';
-import { detectDelimiter, parseCsv, toNumber } from '../domain/parse.js';
+import { detectDelimiter, parseCsv, serializeCsv, toNumber } from '../domain/parse.js';
 import { inferColumns, parseDate } from '../domain/infer.js';
 import { numericStats, topValues, histogram, densityCurve } from '../domain/stats.js';
 import { iqrOutliers } from '../domain/outlier.js';
 import { correlationPairs } from '../domain/correlation.js';
 import { healthScore } from '../domain/quality.js';
 import { buildFindings } from '../domain/finding.js';
+import { applyRecipe } from '../domain/transform.js';
 import { FILE_LIMIT, DISPLAY_LIMIT } from '../domain/thresholds.js';
 import { bytes } from '../lib/format.js';
 
-const SCHEMA_VERSION = '1.1';
+const SCHEMA_VERSION = '1.2';
 
 /** 단계 진입 시 보고하는 진행률. 값 자체는 표시용 근사치다. */
 const STAGE_RATIO = { decode: 0.1, parse: 0.3, infer: 0.5, stats: 0.75, finding: 0.9 };
@@ -38,13 +46,17 @@ const STAGE_RATIO = { decode: 0.1, parse: 0.3, infer: 0.5, stats: 0.75, finding:
  *   typeOverrides?: Record<string, string>,
  *   target?: string,
  *   onProgress?: (stage: string, ratio: number) => void,
+ *   onParsed?: (parsed: object) => void,
  *   isCancelled?: () => boolean
  * }} [options]
+ *   onParsed: 파싱 결과를 Worker 가 붙들어 두기 위한 콜백. 전처리가 파싱 이후 단계를
+ *   변환된 데이터에 다시 돌려야 하기 때문이며, 메시지 글루만 이 콜백을 쓴다.
+ *   반환값에 넣지 않는 이유는 결과 JSON 에 원본 행이 섞이는 경로를 아예 만들지 않기 위함이다
  * @returns {object|null} 결과 JSON. 취소되면 null — 부분 결과를 내지 않는다(§5.2)
  * @throws {Error & {code: 'FILE_TOO_LARGE'|'ENCODING_UNDETECTED'|'PARSE_FAILED'}}
  */
 export function analyze(buffer, options = {}) {
-  const { encoding, typeOverrides, target, onProgress, isCancelled } = options;
+  const { encoding, typeOverrides, onProgress, isCancelled, onParsed } = options;
   const step = (stage) => {
     if (isCancelled?.()) return false;
     onProgress?.(stage, STAGE_RATIO[stage]);
@@ -70,6 +82,26 @@ export function analyze(buffer, options = {}) {
     .map(([name]) => name);
   const parsed = parseCsv(decoded.text, { delimiter, keepAsString });
 
+  onParsed?.(parsed);
+  return profile(parsed, { ...options, encoding: decoded.encoding, delimiter });
+}
+
+/**
+ * 파싱 이후 단계 전체 — 추론·통계·상관·품질·발견을 조립해 결과 JSON 을 만든다.
+ * analyze() 와 전처리(applyRecipe 산출물)가 **같은 엔진**을 타게 하려고 분리했다.
+ * Before/After 비교가 성립하려면 양쪽이 같은 계산을 거쳐야 한다.
+ * @param {{ names: string[], columns: Array<Float64Array|string[]>, rowCount: number }} parsed
+ * @param {object} [options] encoding·delimiter 는 dataset 표기용, 나머지는 analyze 와 같다
+ * @returns {object|null} 결과 JSON. 취소되면 null
+ */
+export function profile(parsed, options = {}) {
+  const { typeOverrides, target, onProgress, isCancelled, encoding, delimiter, recipe } = options;
+  const step = (stage) => {
+    if (isCancelled?.()) return false;
+    onProgress?.(stage, STAGE_RATIO[stage]);
+    return true;
+  };
+
   if (!step('infer')) return null;
   const inferred = inferColumns(parsed, typeOverrides);
 
@@ -88,11 +120,14 @@ export function analyze(buffer, options = {}) {
     columnCount: parsed.names.length,
     duplicateRowCount: duplicateRowCount(parsed),
     memoryBytes: estimateMemory(parsed.columns),
-    encoding: decoded.encoding,
+    encoding,
     delimiter,
     sampled: false, // Phase 1 은 샘플링 없음 (docs/data-model.md §3.2)
     createdAt: new Date().toISOString(),
   };
+  // 전처리 후 결과는 스스로 그 사실을 밝힌다 — 내보낸 JSON 이 원자료 분석으로 오인되면
+  // 그 자체가 허위 신호다 (schemaVersion 1.2 의 선택 필드)
+  if (recipe?.length) dataset.recipe = recipe;
 
   if (!step('finding')) return null;
   const health = healthScore({ columns, dataset });
@@ -230,6 +265,13 @@ function estimateMemory(columns) {
 /** 취소 플래그. cancel 을 받으면 세우고, 각 단계 진입 시 확인해 중단한다. */
 let cancelled = false;
 
+/**
+ * 직전 start 의 파싱 결과와 프로파일. 전처리가 파싱 이후 단계를 다시 돌려야 해서 붙들어 둔다.
+ * ⚠️ 여기 담긴 것이 원본 행이다 — postMessage 로 내보내지 않는다.
+ * 새 start 는 Page 가 Worker 를 terminate 하고 다시 만들므로 보유분은 그때 사라진다.
+ */
+let held = null;
+
 // self 존재만 보면 안 된다 — 일반 페이지의 window.self 도 참이 되어
 // window 의 message 이벤트(타 출처 postMessage 포함)에 파이프라인이 배선된다.
 if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
@@ -244,15 +286,58 @@ if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScop
     }
 
     if (type === 'start') {
-      run(event.data).catch((err) => {
-        self.postMessage({
-          type: 'error',
-          code: err?.code ?? 'PARSE_FAILED',
-          detail: err?.detail ?? String(err?.message ?? err),
-        });
-      });
+      run(event.data).catch(reportError);
+      return;
+    }
+
+    if (type === 'preprocess' || type === 'export-csv') {
+      try {
+        runRecipe(type, event.data);
+      } catch (err) {
+        reportError(err);
+      }
     }
   });
+}
+
+function reportError(err) {
+  self.postMessage({
+    type: 'error',
+    code: err?.code ?? 'PARSE_FAILED',
+    detail: err?.detail ?? String(err?.message ?? err),
+  });
+}
+
+/**
+ * 레시피를 적용해 다시 프로파일하거나 CSV 로 직렬화한다.
+ * 원본을 다시 파싱하지 않고 붙들어 둔 parsed 에 적용한다 — 레시피를 바꿔 가며 반복 적용하는
+ * 화면이라 매번 재파싱하면 쓸 수 없을 만큼 느려진다. applyRecipe 가 입력을 변형하지 않으므로
+ * 보유분은 매 적용에서 원본 그대로 유지된다.
+ */
+function runRecipe(type, payload) {
+  if (!held) {
+    reportError({ code: 'PARSE_FAILED', detail: '원본이 남아 있지 않습니다. 파일을 다시 분석해 주세요.' });
+    return;
+  }
+  const recipe = payload.recipe ?? [];
+  const applied = applyRecipe(held.parsed, held.columns, recipe);
+
+  if (type === 'export-csv') {
+    // 문자열은 여기서만 만들어 곧바로 넘긴다. Worker 도 Page 도 보관하지 않는다
+    self.postMessage({
+      type: 'csv',
+      text: serializeCsv(applied.names, applied.columns, applied.rowCount, { delimiter: held.delimiter }),
+    });
+    return;
+  }
+
+  const result = profile(applied, {
+    encoding: held.encoding,
+    delimiter: held.delimiter,
+    target: held.target,
+    recipe,
+  });
+  self.postMessage({ type: 'preprocessed', result, log: applied.log });
 }
 
 /**
@@ -262,13 +347,25 @@ if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScop
  */
 async function run(payload) {
   cancelled = false;
+  held = null;
   const buffer = await payload.file.arrayBuffer();
   const result = analyze(buffer, {
     encoding: payload.encoding,
     typeOverrides: payload.typeOverrides,
     target: payload.target,
     onProgress: (stage, ratio) => self.postMessage({ type: 'progress', stage, ratio }),
+    onParsed: (parsed) => {
+      held = { parsed, columns: null, encoding: null, delimiter: null, target: payload.target };
+    },
     isCancelled: () => cancelled,
   });
-  if (result !== null) self.postMessage({ type: 'done', result });
+  if (result === null) {
+    held = null; // 취소된 실행의 파싱 결과를 남겨 두지 않는다
+    return;
+  }
+  // 전처리는 열 타입을 알아야 대치 방식 기본값을 고를 수 있다
+  held.columns = result.columns;
+  held.encoding = result.dataset.encoding;
+  held.delimiter = result.dataset.delimiter;
+  self.postMessage({ type: 'done', result });
 }

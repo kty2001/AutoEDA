@@ -16,9 +16,12 @@ class FakeStorage {
   removeItem(k) { this.map.delete(k); }
 }
 
-let analyze, saveResult, loadResult;
+let analyze, profile, saveResult, loadResult;
 let selectForColumn, selectPairs, selectHeatmap, selectForFinding, renderChart;
+let applyRecipe, suggestSteps, normalizeRecipe, serializeCsv;
 let result;
+/** analyze 가 붙들어 준 파싱 결과 — 전처리 경로의 입력이다 (Worker 가 하는 일과 같다). */
+let parsed;
 
 /** 한글 열 이름 · 결측 · 중복행 · 극단값 · 강한 상관 · 코드값 · 자유 텍스트를 한 파일에 담는다. */
 function sampleCsv() {
@@ -39,13 +42,20 @@ function sampleCsv() {
 before(async () => {
   globalThis.sessionStorage = new FakeStorage();
   globalThis.localStorage = new FakeStorage();
-  ({ analyze } = await import('../js/worker/analyze.worker.js'));
+  ({ analyze, profile } = await import('../js/worker/analyze.worker.js'));
+  ({ applyRecipe } = await import('../js/domain/transform.js'));
+  ({ suggestSteps, normalizeRecipe } = await import('../js/domain/recipe.js'));
+  ({ serializeCsv } = await import('../js/domain/parse.js'));
   ({ saveResult, loadResult } = await import('../js/storage/local.js'));
   ({ selectForColumn, selectPairs, selectHeatmap, selectForFinding } = await import(
     '../js/domain/chart-select.js'
   ));
   ({ renderChart } = await import('../js/domain/chart-svg.js'));
-  result = analyze(new TextEncoder().encode(sampleCsv()).buffer);
+  result = analyze(new TextEncoder().encode(sampleCsv()).buffer, {
+    onParsed: (p) => {
+      parsed = p;
+    },
+  });
 });
 
 test('파이프라인 — 데이터셋 메타가 입력과 일치한다', () => {
@@ -126,4 +136,68 @@ test('타입 수정 재계산 — 오버라이드가 결과에 반영된다 (UC-
   const zip = re.columns.find((c) => c.name === '우편번호');
   assert.equal(zip.type, 'categorical');
   assert.ok(zip.evidence.sampleValues[0].startsWith('0'));
+});
+
+
+// ─── 전처리 루프 (docs/TODO.md T7) ──────────────────────────
+// 발견 → 조치 → 적용 → 검증 → 산출물이 실제로 이어지는지 한 번에 확인한다.
+// 모듈 단위 테스트는 각 단계가 옳다는 것만 보이고 루프가 닫힌다는 것은 보이지 않는다.
+
+test('전처리 — 발견에서 실행 가능한 조치가 나온다', () => {
+  const steps = suggestSteps(result.findings, result.columns);
+  assert.ok(steps.length > 0, '발견은 있는데 조치 제안이 하나도 없다');
+  assert.ok(steps.every((s) => s.op && s.label && s.cost), '조치마다 op·라벨·대가가 있어야 한다');
+  // 이 픽스처는 중복 행·결측·극단값을 담고 있으므로 대응 조치가 나와야 한다
+  const ops = new Set(steps.map((s) => s.op));
+  assert.ok(ops.has('drop-duplicates'), '완전 중복 행에 대한 조치가 없다');
+});
+
+test('전처리 — 조치를 적용하면 Health Score 가 개선된다', () => {
+  const steps = suggestSteps(result.findings, result.columns);
+  // 정보를 버리는 조치(열 제거)는 빼고, 품질 문제만 직접 겨냥한 것만 켠다
+  const recipe = normalizeRecipe(
+    steps.filter((s) => s.op === 'drop-duplicates' || s.op === 'impute' || (s.op === 'outlier' && s.action === 'clip'))
+  );
+  assert.ok(recipe.length > 0);
+
+  const applied = applyRecipe(parsed, result.columns, recipe);
+  const after = profile(applied, {
+    encoding: result.dataset.encoding,
+    delimiter: result.dataset.delimiter,
+    recipe,
+  });
+
+  assert.ok(after.health.total > result.health.total, `점수가 오르지 않았다: ${result.health.total} → ${after.health.total}`);
+  assert.equal(after.dataset.duplicateRowCount, 0, '중복 행 제거가 반영되지 않았다');
+  assert.deepEqual(after.dataset.recipe, recipe, '전처리 후 결과는 스스로 그 사실을 밝혀야 한다');
+  assert.equal(parsed.rowCount, 301, '원본 파싱 결과가 변형됐다');
+});
+
+test('전처리 — 내려받은 CSV 를 다시 분석하면 After 통계와 일치한다 (왕복)', () => {
+  // 변환 엔진과 직렬화가 동시에 맞아야만 통과하는 검사다
+  const recipe = [
+    { op: 'drop-duplicates' },
+    { op: 'impute', column: '나이', method: 'median' },
+    { op: 'outlier', column: '나이', action: 'clip' },
+    { op: 'scale', column: '연소득', method: 'standard' },
+  ];
+  const applied = applyRecipe(parsed, result.columns, recipe);
+  const after = profile(applied, { encoding: 'utf-8', delimiter: ',', recipe });
+
+  const csv = serializeCsv(applied.names, applied.columns, applied.rowCount, { delimiter: ',' });
+  const reread = analyze(new TextEncoder().encode(csv).buffer);
+
+  assert.equal(reread.dataset.rowCount, after.dataset.rowCount);
+  assert.deepEqual(reread.columns.map((c) => c.name), after.columns.map((c) => c.name));
+  const digest = (r) =>
+    r.columns.map((c) => [c.type, c.missingRate, c.stats.mean ?? null, c.stats.std ?? null]);
+  assert.deepEqual(digest(reread), digest(after));
+});
+
+test('전처리 — 적합 파라미터가 log 에 남는다 (테스트 세트에 다시 쓰려면 필요하다)', () => {
+  const recipe = [{ op: 'scale', column: '연소득', method: 'standard' }];
+  const { log } = applyRecipe(parsed, result.columns, recipe);
+  assert.equal(log.length, 1);
+  assert.equal(typeof log[0].params.center, 'number');
+  assert.equal(typeof log[0].params.spread, 'number');
 });

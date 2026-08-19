@@ -23,13 +23,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** 모듈별 필수 export. docs/data-model.md §6 의존 그래프 노드와 일치한다. */
 const CONTRACTS = {
   'decode.js': ['decode', 'stripBom'],
-  'parse.js': ['detectDelimiter', 'parseCsv'],
+  'parse.js': ['detectDelimiter', 'parseCsv', 'serializeCsv'],
   'infer.js': ['inferColumns', 'isValidFor', 'parseDate'],
   'stats.js': ['numericStats', 'quantile', 'topValues', 'classDistribution', 'histogram', 'densityCurve'],
   'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif'],
   'outlier.js': ['iqrOutliers', 'zScoreOutliers'],
   'quality.js': ['healthScore'],
   'finding.js': ['buildFindings', 'collapseByType'],
+  'transform.js': ['applyRecipe', 'STEP_ORDER'],
+  'recipe.js': ['suggestSteps', 'normalizeRecipe', 'EXCLUDED'],
   'chart-select.js': ['selectForColumn', 'selectPairs', 'selectForFinding'],
   'chart-svg.js': ['linearScale', 'renderAxis', 'renderChart', 'escapeXml'],
   'thresholds.js': [
@@ -42,6 +44,7 @@ const CONTRACTS = {
     'INFER',
     'FILE_LIMIT',
     'DISPLAY_LIMIT',
+    'PREPROCESS',
   ],
 };
 

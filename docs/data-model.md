@@ -126,7 +126,7 @@ erDiagram
 
 ```json
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "dataset": { },
   "columns": [ ],
   "health": { },
@@ -237,6 +237,8 @@ erDiagram
 
 `histogram`은 `{binEdges: number[], counts: number[], density?: [number, number][]}`. **§4의 용량 폴백에서 가장 먼저 제외되는 항목임.**
 
+`dataset.recipe`는 전처리를 적용한 결과에만 붙는 **선택 필드**임(`schemaVersion 1.1` → `1.2`). 적용한 조치 목록을 담아 **내보낸 JSON이 원자료 분석인지 전처리 후인지 스스로 밝히게 함** — 이것이 없으면 전처리 결과가 원본 통계로 오인될 수 있고 그 자체가 허위 신호임. 원본 행은 여기에도 들어가지 않음.
+
 `density`는 히스토그램 위에 겹쳐 그리는 커널 밀도 곡선(가우시안 KDE, 64점)임. `schemaVersion 1.1`에서 추가된 **선택 필드**이며 `numeric`에만 붙음 — `datetime`은 x가 epoch ms라 대역폭이 뜻을 잃음. y는 `counts`와 같은 축으로 환산해 저장함(밀도 × n × 구간폭). 표현 레이어가 `n`·구간폭을 되짚지 않고 그대로 겹쳐 그리게 하기 위한 것이며, 이것이 `chart-svg`가 `stats`를 역참조하지 않는다는 §6 계약을 유지하는 방식임. 상수 열이나 표본 5건 미만이면 붙지 않음.
 
 > **타입과 무관하게 채워지는 필드는 `stats` 밖에 있음** — `missingRate`·`invalidRate`·`uniqueCount`·`modeRate`는 `id`·`text`를 포함한 모든 타입에서 산출됨(§3.3). 위 표는 `stats` 하위만 다룸. 따라서 `F-CONST-COL`처럼 타입을 가리지 않는 규칙은 `stats`를 보지 않고 `columns[]` 공통 필드만 참조해 성립함.
@@ -275,8 +277,12 @@ sessionStorage 한도는 대략 5MB임. 열이 많으면 `histogram`과 `correla
 |---|---|---|
 | Page → Worker | `start` | `{file, encoding?, typeOverrides?}` |
 | Page → Worker | `cancel` | — |
+| Page → Worker | `preprocess` | `{recipe}` — 붙들어 둔 파싱 결과에 적용 후 재프로파일 ([`TODO.md` T7](./TODO.md)) |
+| Page → Worker | `export-csv` | `{recipe}` |
 | Worker → Page | `progress` | `{stage, ratio}` — `stage`는 `decode`·`parse`·`infer`·`stats`·`finding` |
 | Worker → Page | `done` | `{result}` — §3 결과 JSON |
+| Worker → Page | `preprocessed` | `{result, log}` — result 는 §3 결과 JSON(집계만), log 는 스텝별 적합 파라미터 |
+| Worker → Page | `csv` | `{text}` — 내려받기 직전에만 건너감. 어느 쪽도 보관하지 않음 |
 | Worker → Page | `error` | `{code, detail}` — §5.1 |
 
 ```mermaid
@@ -313,6 +319,8 @@ sequenceDiagram
     U->>P: 인코딩 지정
     P->>W: start {file, encoding}
 ```
+
+**전처리가 파싱 결과를 Worker에 붙들어 두는 이유**: 레시피를 바꿔 가며 반복 적용하는 화면이라 매번 재파싱하면 쓸 수 없을 만큼 느림. 붙든 것은 **원본 행이므로 `postMessage`로 내보내지 않음** — Page로 넘기면 결과 캐시에 섞여 들어갈 경로가 생기고, 그것은 [`implementation-status.md §2`](./implementation-status.md) 규약 8을 깨뜨림. `transform.applyRecipe`가 입력을 변형하지 않으므로 보유분은 매 적용에서 원본 그대로 유지됨. 새 `start`·`cancel`·`결과 지우기`는 Worker를 종료해 보유분을 함께 놓음.
 
 **타입 수정 시 `start`를 다시 보내는 이유**: 원본 파일 핸들이 Page 쪽에 남아 있으므로 Worker를 재기동해 처음부터 계산하는 편이 부분 재계산보다 단순하고, 파싱 결과를 Page로 넘겨 보관할 필요가 없어짐(메모리 이중 보유 회피).
 

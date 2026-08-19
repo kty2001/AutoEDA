@@ -16,7 +16,7 @@
 <meta property="og:description" content="CSV를 골라 브라우저에서 바로 EDA를 실행합니다. 품질 점수, 주요 발견, 변수별 분포, 변수 간 관계를 한 화면에서 확인합니다.">
 <meta name="twitter:card" content="summary">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"데이터 분석","item":"https://autoeda.tyoujungzz.workers.dev/pages/analyze"}]}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"결과를 다른 사람에게 보여줄 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다."}},{"@type":"Question","name":"열의 타입을 잘못 인식하면 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요."}},{"@type":"Question","name":"분석 결과를 지울 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 “결과 지우기”로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"결과를 다른 사람에게 보여줄 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다."}},{"@type":"Question","name":"열의 타입을 잘못 인식하면 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요."}},{"@type":"Question","name":"이상치 제거나 스케일링을 여기서 바로 할 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 전처리 탭에서 중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링을 골라 적용하고 정제된 CSV를 내려받을 수 있습니다. 적용 전후의 품질 점수와 열별 분포 변화를 나란히 보여 주며, 원본 파일은 바뀌지 않습니다."}},{"@type":"Question","name":"분석 결과를 지울 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 “결과 지우기”로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다."}}]}</script>
 <!-- build:seo:end -->
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -128,7 +128,10 @@
     <li>Excel 파일은 아직 지원하지 않습니다. CSV로 저장한 뒤 사용해 주세요.</li>
     <li>통계적 특징을 알려주는 도구이며, 도메인 지식이 필요한 판단은 대신하지 않습니다.
         제시되는 조치는 검토 대상이지 정답이 아닙니다.</li>
-    <li>결측이나 이상치를 자동으로 고치지 않습니다. 원본을 수정하지 않는 것이 원칙입니다.</li>
+    <li>결측이나 이상치를 자동으로 고치지 않습니다. 전처리 탭에서 직접 고른 조치만 적용하며,
+        그 결과는 새 CSV 파일로 만들어질 뿐 원본 파일은 그대로 둡니다.</li>
+    <li>전처리로 만든 파일에 적용된 평균·표준편차 같은 값은 화면에 표시하지만, 같은 변환을
+        다른 파일(테스트 세트 등)에 적용하는 일까지 대신하지는 않습니다.</li>
   </ul>
 
   <h2>자주 묻는 질문</h2>
@@ -136,6 +139,8 @@
   <p>결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다.</p>
   <h3>열의 타입을 잘못 인식하면 어떻게 하나요?</h3>
   <p>개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요.</p>
+  <h3>이상치 제거나 스케일링을 여기서 바로 할 수 있나요?</h3>
+  <p>결과 화면의 전처리 탭에서 중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링을 골라 적용하고 정제된 CSV를 내려받을 수 있습니다. 적용 전후의 품질 점수와 열별 분포 변화를 나란히 보여 주며, 원본 파일은 바뀌지 않습니다.</p>
   <h3>분석 결과를 지울 수 있나요?</h3>
   <p>결과 화면의 &ldquo;결과 지우기&rdquo;로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다.</p>
   </div>

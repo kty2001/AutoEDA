@@ -100,6 +100,39 @@ export function parseCsv(text, options) {
 }
 
 /**
+ * 열 단위 구조를 CSV 텍스트로 되돌린다. parseCsv 의 짝이며 왕복이 일치해야 한다
+ * (tests/parse.test.js 가 고정한다) — 전처리 산출물을 다시 이 도구에 넣어 검증하는 경로가
+ * 변환 엔진과 직렬화를 동시에 검사하는 유일한 수단이기 때문이다.
+ *
+ * RFC 4180 인용: 구분자·큰따옴표·개행을 담은 값만 감싸고 내부 큰따옴표는 두 번 쓴다.
+ * 수치 열의 NaN 은 빈 문자열로 낸다 — 결측의 표기가 빈 문자열이라는 파서 계약과 맞춘다.
+ * 줄바꿈은 CRLF 를 쓴다(RFC 4180 본문 규정. parseCsv 는 양쪽을 모두 받는다).
+ *
+ * @param {string[]} names
+ * @param {Array<Float64Array|string[]>} columns
+ * @param {number} rowCount
+ * @param {{ delimiter?: string }} [options]
+ * @returns {string}
+ */
+export function serializeCsv(names, columns, rowCount, options) {
+  const delimiter = options?.delimiter ?? ',';
+  const quote = (value) => {
+    const s = String(value);
+    return /["\r\n]/.test(s) || s.includes(delimiter) ? `"${s.replaceAll('"', '""')}"` : s;
+  };
+  const cell = (col, r) => {
+    if (col instanceof Float64Array) return Number.isNaN(col[r]) ? '' : String(col[r]);
+    return quote(col[r] ?? '');
+  };
+
+  const lines = [names.map(quote).join(delimiter)];
+  for (let r = 0; r < rowCount; r++) {
+    lines.push(columns.map((col) => cell(col, r)).join(delimiter));
+  }
+  return lines.join('\r\n');
+}
+
+/**
  * 선행 0 이 붙은 정수 표기인지 판정한다 — "06236"(우편번호), "007"(코드값) 등.
  * 이런 값은 수치가 아니라 코드값이며, 수치로 바꾸면 선행 0 이 비가역으로 사라진다.
  * "0.5" 나 "0" 은 해당하지 않는다.
