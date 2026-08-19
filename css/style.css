@@ -103,6 +103,11 @@ img, svg { max-width: 100%; height: auto; }
 
 /* ── 레이아웃 ───────────────────────────────────────── */
 .container { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--sp-4); }
+/* 도구 화면은 차트 2열과 열 목록 표를 담아야 해 산문 폭(900)보다 넓게 쓴다.
+   .container 가 max-width 로 참조하는 토큰을 이 요소에서만 덮는다. */
+.container-wide { --maxw: 1200px; }
+/* 넓힌 폭 안에서도 한글 산문의 행 길이는 그대로 둔다 — 1200px 짜리 문단은 읽기 어렵다. */
+.prose { max-width: 900px; }
 
 .site-header {
   background: var(--bg-card);
@@ -407,8 +412,31 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 .chart text { fill: var(--fg-muted); }
 .chart .axis-title { fill: var(--fg); }
 .chart .annotation { fill: var(--warn); }
+/* 막대 끝 수치는 눈금이 아니라 읽어야 할 값이다 — muted 로 흐리지 않는다 */
+.chart .value { fill: var(--fg); }
+/* 히트맵 셀 안 수치. 어느 쪽을 쓸지는 채움의 상대 휘도를 보고 chart-svg.js 의
+   needsLightText() 가 클래스로 정한다(인라인 style 금지).
+   여기서만 순수 검정을 쓴다 — 본문의 --fg(알파 0.87)로는 뒤집히는 지점의 대비가
+   4.37:1 로 AA 에 못 미친다. 크림 캔버스의 온도 규칙은 채도 높은 셀 위에 걸리지 않는다. */
+.chart .cell-value { fill: #000; }
+.chart .cell-value-on-dark { fill: #fff; }
+/* 히트맵은 20열이면 셀이 25단위뿐이라 480px 상한에서는 셀 수치가 뭉갠다 */
+.chart-heatmap { max-width: 640px; }
 
 .column-block, .scatter-block { margin-bottom: var(--sp-8); }
+
+/* 변수별 탭 — 차트 2열 (js/app/analyze.page.js renderColumns) */
+.column-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-6);
+}
+/* 한 칸이 좁아지면 차트 레이블이 다시 붙는다. 그 전에 1열로 접는다. */
+@media (max-width: 900px) {
+  .column-grid { grid-template-columns: 1fr; }
+}
+.column-grid .column-block { margin-bottom: 0; } /* 간격은 grid gap 이 담당한다 */
+.column-grid .chart { max-width: 100%; }         /* 480px 상한을 칸 폭까지 풀어 준다 */
 
 .is-dragover { outline: 2px dashed var(--accent); }
 

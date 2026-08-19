@@ -152,6 +152,49 @@ test('renderChart — 열 이름·범주 값이 이스케이프된다 (XSS 경�
   assert.ok(svg.includes('&lt;'));
 });
 
+// ── 막대 좌우 레이블 (공용 여백 좌 48·우 12 에서 viewBox 밖으로 잘렸음) ──
+
+test('renderChart — 막대: 긴 한글 범주명과 7자리 빈도가 캔버스 안에 들어온다 (잘림 회귀)', () => {
+  const col = {
+    name: '지역',
+    type: 'categorical',
+    stats: {
+      topValues: [
+        { value: '서울특별시 강남구 역삼동', count: 1234567 },
+        { value: '부산', count: 1 },
+      ],
+    },
+  };
+  const svg = renderChart(selectForColumn(col)[0]);
+  assert.ok(svg.startsWith('<svg viewBox="0 0 480 260"'));
+
+  // text-anchor="end" 인 범주 레이블은 앵커에서 왼쪽으로 자라므로 절단 길이만큼 뺀 자리가 시작점이다
+  const labels = [...svg.matchAll(/<text x="([-\d.]+)"[^>]*class="tick"[^>]*>([^<]*)</g)];
+  assert.ok(labels.length > 0);
+  for (const [, x, label] of labels) {
+    assert.ok(Number(x) - [...label].length * 10 >= 0, `범주 레이블이 왼쪽으로 넘침: ${label}`);
+  }
+
+  // text-anchor="start" 인 수치 레이블은 앵커에서 오른쪽으로 자란다
+  const values = [...svg.matchAll(/<text x="([-\d.]+)"[^>]*class="value"[^>]*>([^<]*)</g)];
+  assert.equal(values.length, 2);
+  for (const [, x, label] of values) {
+    assert.ok(Number(x) + label.length * 6 <= 480, `수치 레이블이 오른쪽으로 넘침: ${label}`);
+  }
+});
+
+test('renderChart — 막대: 절단된 범주명 전체를 <title> 로 남긴다', () => {
+  const col = {
+    name: '지역',
+    type: 'categorical',
+    stats: { topValues: [{ value: '서울특별시 강남구 역삼동', count: 3 }] },
+  };
+  const svg = renderChart(selectForColumn(col)[0]);
+  assert.ok(svg.includes('<title>서울특별시 강남구 역삼동: 3</title>'));
+  assert.ok(svg.includes('…')); // 축 옆 레이블은 절단돼 있다
+  assert.ok(!svg.includes('style='));
+});
+
 test('renderChart — 박스플롯: 중앙값 선과 IQR 경계 점선', () => {
   const finding = { type: 'F-OUTLIER-RATE', scope: 'column', targets: ['x'] };
   const [spec] = selectForFinding(finding, [numericCol('x')]);
@@ -215,6 +258,52 @@ test('renderChart — 히트맵: 폰트가 셀 크기를 넘지 않는다 (겹�
     assert.ok(sizes.length > 0);
     assert.ok(Math.max(...sizes) <= cell, `${count}열: 폰트 ${Math.max(...sizes)} > 셀 ${cell}`);
   }
+});
+
+test('renderChart — 히트맵: 셀마다 수치를 그리고 짙은 셀만 흰 글자로 뒤집는다', () => {
+  const spec = {
+    kind: 'heatmap',
+    data: {
+      names: ['a', 'b', 'c'],
+      cells: [
+        { row: 0, col: 1, value: 0.95 },   // 짙은 녹색 — 흰 글자
+        { row: 0, col: 2, value: -0.12 },  // 거의 중립 — 검은 글자
+      ],
+      reduced: false,
+    },
+    axis: { method: 'pearson' },
+  };
+  const svg = renderChart(spec);
+  // 대각 3 + 대칭 채운 4 = 7 셀, 셀마다 수치 하나
+  assert.equal((svg.match(/class="cell"/g) ?? []).length, 7);
+  assert.equal((svg.match(/class="cell-value/g) ?? []).length, 7);
+  assert.equal((svg.match(/cell-value-on-dark/g) ?? []).length, 5); // 대각 3(=1) + 0.95 대칭 2
+  assert.ok(svg.includes('>.95<'));   // 선행 0 을 떼 4자 안에 넣는다
+  assert.ok(svg.includes('>-.12<'));
+  assert.ok(svg.includes('>1<'));     // 대각선
+});
+
+test('renderChart — 히트맵: 글자색은 |r| 이 아니라 채움 휘도로 갈린다 (극별 곡선 차이)', () => {
+  // 녹색 극은 |r| ≈ 0.86, 적색 극은 ≈ 0.80 에서 뒤집힌다. 같은 0.83 이 서로 다르게 나와야 한다.
+  // 2×2 는 대각선 2칸(=1, 항상 흰 글자) + 값 2칸이다. on-dark 가 2면 값 칸은 검은 글자다.
+  const lightCells = (value) => {
+    const svg = renderChart({
+      kind: 'heatmap',
+      data: { names: ['a', 'b'], cells: [{ row: 0, col: 1, value }], reduced: false },
+      axis: { method: 'pearson' },
+    });
+    return (svg.match(/cell-value-on-dark/g) ?? []).length;
+  };
+  assert.equal(lightCells(0.83), 2, '녹색 0.83 은 검은 글자가 더 읽힌다');
+  assert.equal(lightCells(-0.83), 4, '적색 0.83 은 이미 흰 글자 구간이다');
+});
+
+test('renderChart — 히트맵: 셀 수치 폰트도 셀 크기를 넘지 않는다 (20열)', () => {
+  const svg = renderChart(heatmapSpec(20));
+  const cell = Number(svg.match(/<rect[^>]*width="([\d.]+)"[^>]*class="cell"/)[1]);
+  const sizes = [...svg.matchAll(/class="cell-value[^"]*"[^>]*font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+  assert.ok(sizes.length > 0, '20열에서도 수치를 그린다');
+  assert.ok(Math.max(...sizes) <= cell, `폰트 ${Math.max(...sizes)} > 셀 ${cell}`);
 });
 
 test('renderChart — 히트맵: 인라인 style 없이 회전한다 (CSP style-src self)', () => {

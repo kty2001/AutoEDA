@@ -364,11 +364,15 @@ function renderFindings(panel, result) {
   panel.appendChild(list);
 
   if (result.findings.length > DISPLAY_LIMIT.findings) {
+    // 버튼을 패널에 직접 붙이면 여백이 없어 바로 아래 결과 액션 버튼 줄과 맞닿는다.
+    // pages/analyze.html 이 쓰는 <p><button> 관례를 따라 블록 여백을 얻는다.
+    const wrap = document.createElement('p');
     const more = button(`전체 보기 (${result.findings.length}건)`, 'btn btn-secondary', () => {
       for (const li of list.children) li.hidden = false;
-      more.remove();
+      wrap.remove(); // 버튼만 지우면 빈 <p> 의 여백이 남는다
     });
-    panel.appendChild(more);
+    wrap.appendChild(more);
+    panel.appendChild(wrap);
   }
 
   attachGuideLinks(panel);
@@ -432,8 +436,13 @@ function renderColumns(panel, result) {
     return;
   }
 
+  // 차트는 2열 그리드로 깐다 — 1열이면 본문 폭의 절반이 비고 세로가 지나치게 길어진다.
+  // 좁은 화면에서 1열로 접는 것은 css/style.css 의 .column-grid 미디어 쿼리가 맡는다.
   const initial = chartable.slice(0, DISPLAY_LIMIT.columnCharts);
-  for (const col of initial) panel.appendChild(columnBlock(col));
+  const grid = document.createElement('div');
+  grid.className = 'column-grid';
+  for (const col of initial) grid.appendChild(columnBlock(col));
+  panel.appendChild(grid);
 
   const rest = chartable.slice(DISPLAY_LIMIT.columnCharts);
   if (rest.length > 0) {
@@ -443,6 +452,7 @@ function renderColumns(panel, result) {
       ${rest.map((c) => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
     </select></label>`;
     const slot = document.createElement('div');
+    slot.className = 'column-grid'; // 추가로 고른 열도 같은 그리드에 들어간다
     panel.append(picker, slot);
     picker.querySelector('select').addEventListener('change', (event) => {
       const col = chartable.find((c) => c.name === event.target.value);

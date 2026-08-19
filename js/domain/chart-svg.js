@@ -20,16 +20,26 @@ const PLOT = { x: M.left, y: M.top, w: W - M.left - M.right, h: H - M.top - M.bo
 const LABEL_MAX = 12; // 축·범주 레이블 최대 표시 길이
 
 /**
- * 종류별 캔버스 예외. 히트맵만 정사각으로 키운다 — 공용 높이 220 에서는 20열일 때
- * 셀이 8.6 단위라 폰트 10 인 행·열 레이블이 서로 겹쳐 판독이 불가능하다(docs/TODO.md T6).
- * 나머지 4종은 공용 규격(W × H)을 그대로 쓴다.
+ * 종류별 캔버스 예외. 두 종류만 공용 규격을 벗어난다.
+ * - 히트맵: 정사각으로 키운다. 공용 높이 220 에서는 20열일 때 셀이 8.6 단위라
+ *   폰트 10 인 행·열 레이블이 서로 겹친다(docs/TODO.md T6). 셀 안에 수치까지 넣으려면
+ *   셀이 더 커야 하므로 640 으로 다시 키웠다.
+ * - 막대: 좌측 범주 레이블과 우측 수치 레이블이 공용 여백(좌 48·우 12)을 넘어
+ *   viewBox 밖으로 잘렸다. 두 레이블 자리를 확보한 전용 규격을 쓴다.
+ * 나머지 3종은 공용 규격(W × H)을 그대로 쓴다.
  */
-const CANVAS = { heatmap: { w: 420, h: 420 } };
+const CANVAS = { heatmap: { w: 640, h: 640 }, bar: { w: 480, h: 260 } };
 
 /** 히트맵 전용 여백 — 좌측은 행 레이블, 하단은 45° 회전한 열 레이블 자리다. */
-const HEAT = { left: 88, top: 16, right: 12, bottom: 88 };
-/** 히트맵 레이블 절단 길이. 한글 8자 ≈ 80단위 < HEAT.left. 전체 이름은 셀 <title> 에 있다. */
+const HEAT = { left: 112, top: 16, right: 12, bottom: 112 };
+/** 히트맵 레이블 절단 길이. 한글 8자 ≈ 96단위(폰트 12) < HEAT.left. 전체 이름은 셀 <title> 에 있다. */
 const HEAT_LABEL_MAX = 8;
+
+/** 막대 전용 여백 — 좌측은 범주 레이블, 우측은 막대 끝에 붙는 수치 레이블 자리다. */
+const BAR = { left: 128, top: 16, right: 56, bottom: 32 };
+/** 막대 범주 레이블 절단 길이. 절단 기호까지 한글 11자 ≈ 110단위 < BAR.left − 6.
+ *  전체 값은 막대 <title> 에 있다. */
+const BAR_LABEL_MAX = 10;
 
 /**
  * 값 범위를 픽셀 좌표로 매핑하는 선형 스케일을 만든다.
@@ -48,27 +58,30 @@ export function linearScale(domain, range) {
 
 /**
  * 축(선·눈금 레이블)을 SVG 문자열로 만든다.
- * @param {{ orient: 'x'|'y', ticks: Array<{ pos: number, label: string }>, title?: string }} axisSpec
+ * plot·height 는 공용 캔버스를 벗어난 차트(막대)가 자기 기하를 넘기기 위한 선택 인자다.
+ * 생략하면 공용 규격을 쓰므로 기존 호출부는 그대로 동작한다.
+ * @param {{ orient: 'x'|'y', ticks: Array<{ pos: number, label: string }>, title?: string,
+ *           plot?: { x: number, y: number, w: number, h: number }, height?: number }} axisSpec
  * @returns {string}
  */
 export function renderAxis(axisSpec) {
   // 제목·눈금 레이블은 열 이름 등 값에서 온 문자열일 수 있으므로 여기서 이스케이프한다
-  const { orient, ticks } = axisSpec;
+  const { orient, ticks, plot = PLOT, height = H } = axisSpec;
   const title = axisSpec.title === undefined ? undefined : escapeXml(axisSpec.title);
   const parts = [`<g class="axis axis-${orient}">`];
   if (orient === 'x') {
-    const y = PLOT.y + PLOT.h;
-    parts.push(line(PLOT.x, y, PLOT.x + PLOT.w, y, 'axis-line'));
+    const y = plot.y + plot.h;
+    parts.push(line(plot.x, y, plot.x + plot.w, y, 'axis-line'));
     for (const t of ticks) {
       parts.push(text(t.pos, y + 14, escapeXml(t.label), 'tick', 'middle'));
     }
-    if (title) parts.push(text(PLOT.x + PLOT.w / 2, H - 4, title, 'axis-title', 'middle'));
+    if (title) parts.push(text(plot.x + plot.w / 2, height - 4, title, 'axis-title', 'middle'));
   } else {
-    parts.push(line(PLOT.x, PLOT.y, PLOT.x, PLOT.y + PLOT.h, 'axis-line'));
+    parts.push(line(plot.x, plot.y, plot.x, plot.y + plot.h, 'axis-line'));
     for (const t of ticks) {
-      parts.push(text(PLOT.x - 6, t.pos + 3, escapeXml(t.label), 'tick', 'end'));
+      parts.push(text(plot.x - 6, t.pos + 3, escapeXml(t.label), 'tick', 'end'));
     }
-    if (title) parts.push(text(10, PLOT.y - 4, title, 'axis-title', 'start'));
+    if (title) parts.push(text(10, plot.y - 4, title, 'axis-title', 'start'));
   }
   parts.push('</g>');
   return parts.join('');
@@ -174,18 +187,30 @@ const RENDERERS = {
 
   bar(data, axis) {
     const items = data.items;
-    const x = linearScale([0, Math.max(...items.map((d) => d.count), 1)], [0, PLOT.w]);
-    const rowH = PLOT.h / items.length;
+    // 공용 PLOT 을 쓰지 않는다 — 좌우 레이블 자리를 BAR 여백으로 따로 잡는다(CANVAS 주석)
+    const canvas = CANVAS.bar;
+    const plot = {
+      x: BAR.left,
+      y: BAR.top,
+      w: canvas.w - BAR.left - BAR.right,
+      h: canvas.h - BAR.top - BAR.bottom,
+    };
+    const x = linearScale([0, Math.max(...items.map((d) => d.count), 1)], [0, plot.w]);
+    const rowH = plot.h / items.length;
     const barH = Math.min(rowH * 0.7, 24);
     const parts = items.map((d, i) => {
-      const cy = PLOT.y + rowH * i + rowH / 2;
+      const cy = plot.y + rowH * i + rowH / 2;
+      // 절단된 범주 이름은 막대 <title> 로 전체를 확인한다 (히트맵 셀과 같은 관례)
+      const bar =
+        `<rect x="${n(plot.x)}" y="${n(cy - barH / 2)}" width="${n(Math.max(x(d.count), 1))}"` +
+        ` height="${n(barH)}" class="bar"><title>${escapeXml(d.value)}: ${fmtNum(d.count)}</title></rect>`;
       return (
-        rect(PLOT.x, cy - barH / 2, Math.max(x(d.count), 1), barH, 'bar') +
-        text(PLOT.x - 6, cy + 3, truncate(d.value), 'tick', 'end') +
-        text(PLOT.x + x(d.count) + 4, cy + 3, fmtNum(d.count), 'value', 'start')
+        bar +
+        text(plot.x - 6, cy + 3, truncate(d.value, BAR_LABEL_MAX), 'tick', 'end') +
+        text(plot.x + x(d.count) + 4, cy + 3, fmtNum(d.count), 'value', 'start')
       );
     });
-    parts.push(renderAxis({ orient: 'x', title: axis.x, ticks: [] }));
+    parts.push(renderAxis({ orient: 'x', title: axis.x, ticks: [], plot, height: canvas.h }));
     return parts.join('');
   },
 
@@ -226,7 +251,11 @@ const RENDERERS = {
     const originX = HEAT.left;
     const originY = HEAT.top;
     // 레이블이 셀보다 크면 이웃과 겹친다 — 폰트를 셀 크기에 종속시켜 겹침을 치수로 막는다
-    const fontSize = Math.max(6, Math.min(10, size * 0.85));
+    const fontSize = Math.max(6, Math.min(12, size * 0.85));
+    // 셀 안 수치. '-.83' 4자 폭(≈ 4 × 0.55 × 폰트)이 셀의 90% 안에 들어가는 크기다.
+    // 7 미만이면 읽을 수 없어 그리지 않는다 — 그 경우에도 수치는 셀 <title> 에 남는다.
+    const valueFont = Math.min(12, size * 0.36);
+    const showValues = valueFont >= 7;
     const byKey = new Map();
     for (const c of cells) {
       byKey.set(`${c.row}:${c.col}`, c.value);
@@ -237,9 +266,24 @@ const RENDERERS = {
       for (let c = 0; c < names.length; c++) {
         const value = r === c ? 1 : byKey.get(`${r}:${c}`);
         if (value === undefined) continue;
+        const fill = divergingChannels(value);
         parts.push(
-          `<rect x="${n(originX + c * size)}" y="${n(originY + r * size)}" width="${n(size)}" height="${n(size)}" fill="${divergingColor(value)}" class="cell"><title>${escapeXml(names[r])} × ${escapeXml(names[c])}: ${fmtNum(value)}</title></rect>`
+          `<rect x="${n(originX + c * size)}" y="${n(originY + r * size)}" width="${n(size)}" height="${n(size)}" fill="rgb(${fill[0]},${fill[1]},${fill[2]})" class="cell"><title>${escapeXml(names[r])} × ${escapeXml(names[c])}: ${fmtNum(value)}</title></rect>`
         );
+        if (showValues) {
+          // 짙은 극색 위에서는 검은 글자가 읽히지 않는다. 인라인 style 금지(CSP)라 클래스로 가른다.
+          const cls = needsLightText(fill) ? 'cell-value cell-value-on-dark' : 'cell-value';
+          parts.push(
+            text(
+              originX + c * size + size / 2,
+              originY + r * size + size / 2 + valueFont * 0.35,
+              fmtCorr(value),
+              cls,
+              'middle',
+              valueFont
+            )
+          );
+        }
       }
       parts.push(
         text(
@@ -300,16 +344,35 @@ const HEATMAP_POS = [0, 117, 74];   // #00754a
 const HEATMAP_NEG = [200, 32, 20];  // #c82014
 
 /**
- * [-1, 1] -> 중립색을 가운데 둔 2색 발산 색. 인라인 style 없이 fill 속성으로 쓴다.
- * 색만으로 값을 읽게 하지 않는다 - 각 셀에 <title> 로 수치가 붙는다.
+ * [-1, 1] -> 중립색을 가운데 둔 2색 발산 색의 RGB 채널. 인라인 style 없이 fill 속성으로 쓴다.
+ * 색만으로 값을 읽게 하지 않는다 - 각 셀에 수치와 <title> 이 함께 붙는다.
  * 두 극의 색각 이상 분리도는 검증했다 (deutan dE 9.9 > 8).
+ * 문자열이 아니라 채널로 돌려준다 - 셀 안 수치의 글자색을 이 채널로 정하기 때문이다.
+ * @param {number} value
+ * @returns {[number, number, number]}
  */
-function divergingColor(value) {
+function divergingChannels(value) {
   const v = Math.max(-1, Math.min(1, value));
   const t = Math.abs(v);
   const pole = v >= 0 ? HEATMAP_POS : HEATMAP_NEG;
-  const ch = HEATMAP_NEUTRAL.map((from, i) => Math.round(from + (pole[i] - from) * t));
-  return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
+  return HEATMAP_NEUTRAL.map((from, i) => Math.round(from + (pole[i] - from) * t));
+}
+
+/**
+ * 이 채움 위에서는 흰 글자가 더 잘 읽히는지 판정한다.
+ * |r| 로 자르면 안 된다 — 녹색 극(#00754a)과 적색 극(#c82014)의 휘도 곡선이 달라
+ * 뒤집히는 지점이 각각 |r| ≈ 0.86 · 0.80 으로 갈린다. 채움의 상대 휘도로 직접 판정한다.
+ * 경계 0.179 는 흰색 대비와 검정 대비가 교차하는 값이며, 그 지점의 대비가 4.58:1 로
+ * 양쪽 모두 AA(4.5:1)를 넘는다. → docs/DESIGN.md §2
+ * @param {[number, number, number]} ch
+ * @returns {boolean}
+ */
+function needsLightText(ch) {
+  const [r, g, b] = ch.map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.179;
 }
 
 function pad(min, max) {
@@ -335,6 +398,14 @@ function fmtNum(value) {
   if (!Number.isFinite(value)) return '—';
   if (Number.isInteger(value)) return String(value);
   return String(Number(value.toPrecision(3)));
+}
+
+/** 히트맵 셀 표기 — 선행 0 을 떼 4자 안에 넣는다(.83 / -.83). ±1 은 한 자로 줄인다. */
+function fmtCorr(value) {
+  const v = Math.round(value * 100) / 100;
+  if (v >= 1) return '1';
+  if (v <= -1) return '-1';
+  return v.toFixed(2).replace('0.', '.');
 }
 
 function fmtDate(epochMs) {
