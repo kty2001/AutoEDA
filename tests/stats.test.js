@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { numericStats, quantile, topValues, classDistribution, histogram } from '../js/domain/stats.js';
+import { numericStats, quantile, topValues, classDistribution, histogram, densityCurve } from '../js/domain/stats.js';
 
 const F = (arr) => Float64Array.from(arr);
 const approx = (actual, expected, eps = 1e-9) =>
@@ -100,4 +100,64 @@ test('histogram — 상수 열은 단일 구간', () => {
 test('histogram — 기본 빈 수는 Sturges 규칙', () => {
   const h = histogram(F(Array.from({ length: 100 }, (_, i) => i)));
   assert.equal(h.counts.length, Math.ceil(Math.log2(100)) + 1); // 8
+});
+
+// ─── densityCurve (KDE) ─────────────────────────────────────
+
+/** 표준정규 1000점을 결정적으로 만든다 — Box-Muller, 고정 시드 LCG. */
+function normalSample(n) {
+  let seed = 12345;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return (seed + 1) / 2147483650; // (0, 1)
+  };
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand()));
+  }
+  return F(out);
+}
+
+test('densityCurve — 히스토그램 counts 축으로 환산된 곡선', () => {
+  const values = normalSample(1000);
+  const stats = numericStats(values);
+  const hist = histogram(values);
+  const curve = densityCurve(values, stats, hist);
+
+  assert.equal(curve.length, 64);
+  // 좌표는 용량을 위해 유효숫자 6자리로 줄이므로 엄밀 일치가 아니라 근사로 본다
+  approx(curve[0][0], hist.binEdges[0], 1e-4);
+  approx(curve[63][0], hist.binEdges[hist.binEdges.length - 1], 1e-4);
+  assert.ok(curve.every(([, y]) => y >= 0));
+
+  // 곡선 아래 면적 ≈ n × 구간폭 (counts 축이므로 막대 면적 총합과 같아야 한다)
+  const step = curve[1][0] - curve[0][0];
+  let area = 0;
+  for (let i = 1; i < curve.length; i++) area += ((curve[i][1] + curve[i - 1][1]) / 2) * step;
+  const binWidth = hist.binEdges[1] - hist.binEdges[0];
+  approx(area / (values.length * binWidth), 1, 0.05);
+
+  // 정규 표본이므로 봉우리는 평균 근처다
+  const peak = curve.reduce((a, b) => (b[1] > a[1] ? b : a));
+  assert.ok(Math.abs(peak[0] - stats.mean) < 0.3, `봉우리 ${peak[0]} 가 평균 ${stats.mean} 에서 멀다`);
+});
+
+test('densityCurve — 그릴 수 없는 입력은 undefined', () => {
+  const constant = F([5, 5, 5, 5, 5, 5]);
+  assert.equal(densityCurve(constant, numericStats(constant), histogram(constant)), undefined);
+
+  const few = F([1, 2, 3]);
+  assert.equal(densityCurve(few, numericStats(few), histogram(few)), undefined);
+});
+
+test('densityCurve — 이상치가 있어도 대역폭이 무너지지 않는다 (IQR 병용)', () => {
+  const base = Array.from({ length: 200 }, (_, i) => i / 200);
+  const withOutlier = F([...base, 500]); // std 는 폭발하지만 IQR 은 그대로다
+  const stats = numericStats(withOutlier);
+  const hist = histogram(withOutlier);
+  const curve = densityCurve(withOutlier, stats, hist);
+  assert.ok(curve);
+  // 본체(0~1)에 봉우리가 남아야 한다 — std 만 썼다면 곡선이 500 폭에 걸쳐 평평해진다
+  const peak = curve.reduce((a, b) => (b[1] > a[1] ? b : a));
+  assert.ok(peak[0] < 50, `봉우리가 본체를 벗어남: ${peak[0]}`);
 });

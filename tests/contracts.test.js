@@ -25,7 +25,7 @@ const CONTRACTS = {
   'decode.js': ['decode', 'stripBom'],
   'parse.js': ['detectDelimiter', 'parseCsv'],
   'infer.js': ['inferColumns', 'isValidFor', 'parseDate'],
-  'stats.js': ['numericStats', 'quantile', 'topValues', 'classDistribution', 'histogram'],
+  'stats.js': ['numericStats', 'quantile', 'topValues', 'classDistribution', 'histogram', 'densityCurve'],
   'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif'],
   'outlier.js': ['iqrOutliers', 'zScoreOutliers'],
   'quality.js': ['healthScore'],

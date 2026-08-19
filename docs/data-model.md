@@ -126,7 +126,7 @@ erDiagram
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "dataset": { },
   "columns": [ ],
   "health": { },
@@ -137,7 +137,7 @@ erDiagram
 
 | 경로 | 타입 | 필수 | 설명 |
 |---|---|:---:|---|
-| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부 |
+| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`) |
 | `dataset` | object | ○ | §3.2 |
 | `columns` | array | ○ | §3.3. 원본 열 순서 |
 | `health` | object | ○ | §3.4 |
@@ -235,7 +235,9 @@ erDiagram
 | `boolean` | `topValues` |
 | `id` / `text` | 없음 (통계를 산출하지 않음) |
 
-`histogram`은 `{binEdges: number[], counts: number[]}`. **§4의 용량 폴백에서 가장 먼저 제외되는 항목임.**
+`histogram`은 `{binEdges: number[], counts: number[], density?: [number, number][]}`. **§4의 용량 폴백에서 가장 먼저 제외되는 항목임.**
+
+`density`는 히스토그램 위에 겹쳐 그리는 커널 밀도 곡선(가우시안 KDE, 64점)임. `schemaVersion 1.1`에서 추가된 **선택 필드**이며 `numeric`에만 붙음 — `datetime`은 x가 epoch ms라 대역폭이 뜻을 잃음. y는 `counts`와 같은 축으로 환산해 저장함(밀도 × n × 구간폭). 표현 레이어가 `n`·구간폭을 되짚지 않고 그대로 겹쳐 그리게 하기 위한 것이며, 이것이 `chart-svg`가 `stats`를 역참조하지 않는다는 §6 계약을 유지하는 방식임. 상수 열이나 표본 5건 미만이면 붙지 않음.
 
 > **타입과 무관하게 채워지는 필드는 `stats` 밖에 있음** — `missingRate`·`invalidRate`·`uniqueCount`·`modeRate`는 `id`·`text`를 포함한 모든 타입에서 산출됨(§3.3). 위 표는 `stats` 하위만 다룸. 따라서 `F-CONST-COL`처럼 타입을 가리지 않는 규칙은 `stats`를 보지 않고 `columns[]` 공통 필드만 참조해 성립함.
 

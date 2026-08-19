@@ -17,7 +17,7 @@
 import { decode } from '../domain/decode.js';
 import { detectDelimiter, parseCsv, toNumber } from '../domain/parse.js';
 import { inferColumns, parseDate } from '../domain/infer.js';
-import { numericStats, topValues, histogram } from '../domain/stats.js';
+import { numericStats, topValues, histogram, densityCurve } from '../domain/stats.js';
 import { iqrOutliers } from '../domain/outlier.js';
 import { correlationPairs } from '../domain/correlation.js';
 import { healthScore } from '../domain/quality.js';
@@ -25,7 +25,7 @@ import { buildFindings } from '../domain/finding.js';
 import { FILE_LIMIT, DISPLAY_LIMIT } from '../domain/thresholds.js';
 import { bytes } from '../lib/format.js';
 
-const SCHEMA_VERSION = '1.0';
+const SCHEMA_VERSION = '1.1';
 
 /** 단계 진입 시 보고하는 진행률. 값 자체는 표시용 근사치다. */
 const STAGE_RATIO = { decode: 0.1, parse: 0.3, infer: 0.5, stats: 0.75, finding: 0.9 };
@@ -108,7 +108,14 @@ function columnStats(col, raw) {
       const compact = compactNumeric(raw);
       if (compact.length === 0) return {};
       const s = numericStats(compact);
-      return { ...s, outlierRate: iqrOutliers(compact, s).rate, histogram: histogram(compact) };
+      const hist = histogram(compact);
+      // KDE 는 수치형에만 붙인다 — 날짜 히스토그램은 x 가 epoch 라 곡선의 대역폭이 뜻을 잃는다
+      const density = densityCurve(compact, s, hist);
+      return {
+        ...s,
+        outlierRate: iqrOutliers(compact, s).rate,
+        histogram: density ? { ...hist, density } : hist,
+      };
     }
     case 'categorical':
     case 'boolean':

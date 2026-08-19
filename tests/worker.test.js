@@ -20,7 +20,7 @@ const SAMPLE = [
 
 test('결과 JSON — 최상위·dataset 필드 (data-model.md §3.1·§3.2)', () => {
   const r = analyze(buf(SAMPLE));
-  assert.equal(r.schemaVersion, '1.0');
+  assert.equal(r.schemaVersion, '1.1'); // 1.1 — histogram.density(KDE) 추가
   assert.equal(r.dataset.rowCount, 5);
   assert.equal(r.dataset.columnCount, 5);
   assert.equal(r.dataset.duplicateRowCount, 1);

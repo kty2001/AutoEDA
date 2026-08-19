@@ -140,6 +140,38 @@ test('renderChart — 히스토그램: svg 루트·막대 수·인라인 style �
   assert.ok(!svg.includes('style=')); // CSP style-src 'self' (tech-stack.md §6)
 });
 
+test('renderChart — 히스토그램·박스플롯·막대: 데이터가 플롯 경계에 붙지 않는다', () => {
+  // PLOT = { x: 48, y: 16, w: 340, h: 172 } — 축선(x=48)과 우측 끝(x=388)에 여백이 있어야 한다
+  const [hist, box] = selectForColumn(numericCol());
+
+  const bars = [...renderChart(hist).matchAll(/<rect x="([\d.]+)"[^>]*width="([\d.]+)"[^>]*class="bar"/g)];
+  assert.equal(bars.length, 4);
+  assert.ok(Number(bars[0][1]) > 48, `첫 막대가 축선에 붙음: ${bars[0][1]}`);
+  const right = Number(bars[3][1]) + Number(bars[3][2]);
+  assert.ok(right < 388, `마지막 막대가 우측 끝에 붙음: ${right}`);
+
+  // 세로 박스플롯은 최소·최대 수염이 위아래 끝이다 (BOX: top 16 · 캔버스 300 · bottom 32)
+  const svg = renderChart(box);
+  const ys = [...svg.matchAll(/<line[^>]*y1="([\d.]+)"[^>]*y2="([\d.]+)"[^>]*class="(?:whisker|median)"/g)]
+    .flatMap((m) => [Number(m[1]), Number(m[2])]);
+  assert.ok(ys.length > 0);
+  assert.ok(Math.min(...ys) - 16 > 5, `최댓값 수염이 위 경계에 붙음: ${Math.min(...ys)}`);
+  assert.ok(268 - Math.max(...ys) > 5, `최솟값 수염이 아래 경계에 붙음: ${Math.max(...ys)}`);
+
+  // 가로 막대는 0 에서 출발하므로 여백이 세로로 붙는다 (BAR: top 16 · 캔버스 260 · bottom 32)
+  const cat = {
+    name: 'g',
+    type: 'categorical',
+    stats: { topValues: Array.from({ length: 10 }, (_, i) => ({ value: `v${i}`, count: 10 - i })) },
+  };
+  const barSvg = renderChart(selectForColumn(cat)[0]);
+  const rows = [...barSvg.matchAll(/<rect x="128" y="([\d.]+)"[^>]*height="([\d.]+)"/g)];
+  assert.equal(rows.length, 10);
+  assert.ok(Number(rows[0][1]) - 16 > 10, `첫 막대가 위 경계에 붙음: ${rows[0][1]}`);
+  const bottom = Number(rows[9][1]) + Number(rows[9][2]);
+  assert.ok(228 - bottom > 10, `마지막 막대가 x축선에 붙음: ${bottom}`);
+});
+
 test('renderChart — 열 이름·범주 값이 이스케이프된다 (XSS 경로 차단)', () => {
   const col = {
     name: '<img onerror=x>',
@@ -201,6 +233,44 @@ test('renderChart — 박스플롯: 중앙값 선과 IQR 경계 점선', () => {
   const svg = renderChart(spec);
   assert.ok(svg.includes('class="median"'));
   assert.equal((svg.match(/stroke-dasharray/g) ?? []).length, 2);
+});
+
+test('renderChart — 박스플롯: 세로로 그린다 (값 축이 y)', () => {
+  const [, box] = selectForColumn(numericCol());
+  const svg = renderChart(box);
+  assert.ok(svg.startsWith('<svg viewBox="0 0 300 300"'));
+
+  // 중앙값 선은 가로 — 세로 박스플롯에서만 y1 === y2 다
+  const median = svg.match(/<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)" class="median"/);
+  assert.ok(median, '중앙값 선이 없다');
+  assert.equal(median[2], median[4], '중앙값 선이 가로가 아니다');
+  assert.ok(Number(median[3]) > Number(median[1]));
+
+  // 큰 값이 위에 온다 — 최댓값 눈금의 y 가 최솟값 눈금보다 작아야 한다
+  const ticks = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)" class="tick"[^>]*>([-\d.]+)</g)].map(
+    (m) => [Number(m[1]), Number(m[2])]
+  );
+  assert.equal(ticks.length, 3); // min · median · max
+  const [minTick, , maxTick] = [...ticks].sort((a, b) => a[1] - b[1]);
+  assert.ok(maxTick[0] < minTick[0], '최댓값이 아래에 그려졌다');
+});
+
+test('renderChart — 히스토그램: density 가 있으면 KDE 곡선을 얹는다', () => {
+  const col = numericCol('x', {
+    histogram: { binEdges: [1, 3, 5, 7, 9], counts: [2, 3, 3, 2], density: [[1, 1], [5, 4], [9, 1]] },
+  });
+  const svg = renderChart(selectForColumn(col)[0]);
+  const path = svg.match(/<path d="([^"]+)" class="kde" fill="none"\/>/);
+  assert.ok(path, 'KDE path 가 없다');
+  assert.equal((path[1].match(/[ML]/g) ?? []).length, 3);
+  assert.ok(!svg.includes('style='));
+
+  // 봉우리(4)가 최다 구간(3)보다 높아도 잘리지 않는다 — y 상한이 곡선을 포함해야 한다
+  const peakY = Number(path[1].match(/L([\d.]+) ([\d.]+)/)[2]);
+  assert.ok(peakY >= 16, `곡선이 캔버스 위로 넘침: ${peakY}`);
+
+  // density 가 없으면 곡선도 없다 (캐시 축소·날짜 히스토그램)
+  assert.ok(!renderChart(selectForColumn(numericCol())[0]).includes('class="kde"'));
 });
 
 test('renderChart — 산점도: 점 개수만큼 circle', () => {
@@ -278,9 +348,9 @@ test('renderChart — 히트맵: 셀마다 수치를 그리고 짙은 셀만 흰
   assert.equal((svg.match(/class="cell"/g) ?? []).length, 7);
   assert.equal((svg.match(/class="cell-value/g) ?? []).length, 7);
   assert.equal((svg.match(/cell-value-on-dark/g) ?? []).length, 5); // 대각 3(=1) + 0.95 대칭 2
-  assert.ok(svg.includes('>.95<'));   // 선행 0 을 떼 4자 안에 넣는다
-  assert.ok(svg.includes('>-.12<'));
-  assert.ok(svg.includes('>1<'));     // 대각선
+  assert.ok(svg.includes('>0.95<')); // 소수 둘째 자리 고정 — 선행 0 을 떼지 않는다
+  assert.ok(svg.includes('>-0.12<'));
+  assert.ok(svg.includes('>1.00<')); // 대각선
 });
 
 test('renderChart — 히트맵: 글자색은 |r| 이 아니라 채움 휘도로 갈린다 (극별 곡선 차이)', () => {

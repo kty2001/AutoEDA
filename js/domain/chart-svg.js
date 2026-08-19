@@ -20,15 +20,24 @@ const PLOT = { x: M.left, y: M.top, w: W - M.left - M.right, h: H - M.top - M.bo
 const LABEL_MAX = 12; // 축·범주 레이블 최대 표시 길이
 
 /**
+ * 플롯 안쪽 여백. 데이터 범위를 플롯 폭·높이에 그대로 매핑하면 양 끝 막대가 축선과
+ * 캔버스 경계에 딱 붙어 읽기 어렵다. 산점도의 pad() 와 같은 목적이며,
+ * 이쪽은 도메인이 아니라 범위(픽셀)에서 뺀다 — 구간 경계 수치를 왜곡하지 않기 위해서다.
+ */
+const GUTTER = 10;
+
+/**
  * 종류별 캔버스 예외. 두 종류만 공용 규격을 벗어난다.
  * - 히트맵: 정사각으로 키운다. 공용 높이 220 에서는 20열일 때 셀이 8.6 단위라
  *   폰트 10 인 행·열 레이블이 서로 겹친다(docs/TODO.md T6). 셀 안에 수치까지 넣으려면
  *   셀이 더 커야 하므로 640 으로 다시 키웠다.
  * - 막대: 좌측 범주 레이블과 우측 수치 레이블이 공용 여백(좌 48·우 12)을 넘어
  *   viewBox 밖으로 잘렸다. 두 레이블 자리를 확보한 전용 규격을 쓴다.
- * 나머지 3종은 공용 규격(W × H)을 그대로 쓴다.
+ * - 박스플롯: 세로로 그리므로 폭보다 높이가 필요하다. 공용 220 높이에서는
+ *   수염·사분위가 눌려 형태를 읽을 수 없다.
+ * 나머지 2종은 공용 규격(W × H)을 그대로 쓴다.
  */
-const CANVAS = { heatmap: { w: 640, h: 640 }, bar: { w: 480, h: 260 } };
+const CANVAS = { heatmap: { w: 640, h: 640 }, bar: { w: 480, h: 260 }, boxplot: { w: 300, h: 300 } };
 
 /** 히트맵 전용 여백 — 좌측은 행 레이블, 하단은 45° 회전한 열 레이블 자리다. */
 const HEAT = { left: 112, top: 16, right: 12, bottom: 112 };
@@ -40,6 +49,9 @@ const BAR = { left: 128, top: 16, right: 56, bottom: 32 };
 /** 막대 범주 레이블 절단 길이. 절단 기호까지 한글 11자 ≈ 110단위 < BAR.left − 6.
  *  전체 값은 막대 <title> 에 있다. */
 const BAR_LABEL_MAX = 10;
+
+/** 박스플롯 전용 여백 — 좌측은 세로축 눈금(다섯 수치) 자리다. */
+const BOX = { left: 56, top: 16, right: 16, bottom: 32 };
 
 /**
  * 값 범위를 픽셀 좌표로 매핑하는 선형 스케일을 만든다.
@@ -121,9 +133,14 @@ export function escapeXml(value) {
 
 const RENDERERS = {
   histogram(data, axis) {
-    const { binEdges, counts } = data;
-    const x = linearScale([binEdges[0], binEdges[binEdges.length - 1]], [PLOT.x, PLOT.x + PLOT.w]);
-    const y = linearScale([0, Math.max(...counts, 1)], [PLOT.y + PLOT.h, PLOT.y]);
+    const { binEdges, counts, density } = data;
+    const last = binEdges.length - 1;
+    const x = linearScale([binEdges[0], binEdges[last]], [PLOT.x + GUTTER, PLOT.x + PLOT.w - GUTTER]);
+    const maxCount = Math.max(...counts, 1);
+    // KDE 봉우리가 최다 구간보다 높을 수 있다 — 잘리지 않게 y 상한에 함께 넣는다.
+    // density 의 y 는 stats.densityCurve 가 이미 counts 와 같은 축으로 환산해 준다.
+    const yMax = Math.max(maxCount, ...(density ?? []).map((point) => point[1]));
+    const y = linearScale([0, yMax], [PLOT.y + PLOT.h, PLOT.y]);
     const bars = counts
       .map((c, i) => {
         const x0 = x(binEdges[i]);
@@ -131,57 +148,82 @@ const RENDERERS = {
         return rect(x0, y(c), Math.max(x1 - x0 - 1, 1), PLOT.y + PLOT.h - y(c), 'bar');
       })
       .join('');
+    // 커널 밀도 곡선. 구간 폭에 따라 모양이 달라지는 히스토그램의 한계를 보완한다.
+    // d 속성은 presentation attribute 가 아니라 기하 속성이라 인라인 style 금지와 무관하다.
+    const curve = density?.length
+      ? `<path d="${density
+          .map(([px, py], i) => `${i === 0 ? 'M' : 'L'}${n(x(px))} ${n(y(py))}`)
+          .join(' ')}" class="kde" fill="none"/>`
+      : '';
     const fmt = axis.time ? fmtDate : fmtNum;
     const annotation = skewAnnotation(axis.highlight?.skewness);
     return (
       bars +
+      curve +
       renderAxis({
         orient: 'x',
         title: axis.x,
         ticks: [
-          { pos: PLOT.x, label: fmt(binEdges[0]) },
-          { pos: PLOT.x + PLOT.w, label: fmt(binEdges[binEdges.length - 1]) },
+          { pos: x(binEdges[0]), label: fmt(binEdges[0]) },
+          { pos: x(binEdges[last]), label: fmt(binEdges[last]) },
         ],
       }) +
-      renderAxis({ orient: 'y', title: axis.y, ticks: [{ pos: PLOT.y, label: fmtNum(Math.max(...counts, 1)) }] }) +
+      renderAxis({ orient: 'y', title: axis.y, ticks: [{ pos: y(maxCount), label: fmtNum(maxCount) }] }) +
       annotation
     );
   },
 
   boxplot(data, axis) {
+    // 값 축이 세로다 — 다섯 수치를 세로로 읽는 것이 박스플롯의 관례이고,
+    // 가로로 눕히면 같은 열의 히스토그램과 축 방향이 겹쳐 어느 쪽이 값 축인지 흐려진다.
+    const canvas = CANVAS.boxplot;
+    const plot = {
+      x: BOX.left,
+      y: BOX.top,
+      w: canvas.w - BOX.left - BOX.right,
+      h: canvas.h - BOX.top - BOX.bottom,
+    };
     const values = [data.min, data.max, data.bounds?.lower, data.bounds?.upper].filter(
       (v) => v !== undefined
     );
-    const x = linearScale([Math.min(...values), Math.max(...values)], [PLOT.x, PLOT.x + PLOT.w]);
-    const cy = PLOT.y + PLOT.h / 2;
-    const boxH = 60;
+    // 위가 큰 값이 되도록 범위를 뒤집어 넘긴다
+    const y = linearScale(
+      [Math.min(...values), Math.max(...values)],
+      [plot.y + plot.h - GUTTER, plot.y + GUTTER]
+    );
+    const cx = plot.x + plot.w / 2;
+    const boxW = Math.min(plot.w * 0.5, 80);
+    const capW = boxW / 2;
     const parts = [
-      line(x(data.min), cy, x(data.q1), cy, 'whisker'),
-      line(x(data.q3), cy, x(data.max), cy, 'whisker'),
-      line(x(data.min), cy - 10, x(data.min), cy + 10, 'whisker'),
-      line(x(data.max), cy - 10, x(data.max), cy + 10, 'whisker'),
-      rect(x(data.q1), cy - boxH / 2, Math.max(x(data.q3) - x(data.q1), 1), boxH, 'box'),
-      line(x(data.median), cy - boxH / 2, x(data.median), cy + boxH / 2, 'median'),
+      line(cx, y(data.min), cx, y(data.q1), 'whisker'),
+      line(cx, y(data.q3), cx, y(data.max), 'whisker'),
+      line(cx - capW / 2, y(data.min), cx + capW / 2, y(data.min), 'whisker'),
+      line(cx - capW / 2, y(data.max), cx + capW / 2, y(data.max), 'whisker'),
+      rect(cx - boxW / 2, y(data.q3), boxW, Math.max(y(data.q1) - y(data.q3), 1), 'box'),
+      line(cx - boxW / 2, y(data.median), cx + boxW / 2, y(data.median), 'median'),
     ];
     if (data.bounds) {
       // 이상치 경계 — 박스 요소와 구분되는 점선 (stroke-dasharray 는 presentation attribute)
       for (const bound of [data.bounds.lower, data.bounds.upper]) {
         parts.push(
-          `<line x1="${n(x(bound))}" y1="${PLOT.y}" x2="${n(x(bound))}" y2="${PLOT.y + PLOT.h}" class="bound" stroke-dasharray="4 3"/>`
+          `<line x1="${n(plot.x)}" y1="${n(y(bound))}" x2="${n(plot.x + plot.w)}" y2="${n(y(bound))}" class="bound" stroke-dasharray="4 3"/>`
         );
       }
     }
     parts.push(
       renderAxis({
-        orient: 'x',
-        title: axis.x,
+        orient: 'y',
         ticks: [
-          { pos: x(data.min), label: fmtNum(data.min) },
-          { pos: x(data.median), label: fmtNum(data.median) },
-          { pos: x(data.max), label: fmtNum(data.max) },
+          { pos: y(data.min), label: fmtNum(data.min) },
+          { pos: y(data.median), label: fmtNum(data.median) },
+          { pos: y(data.max), label: fmtNum(data.max) },
         ],
+        plot,
+        height: canvas.h,
       })
     );
+    // 열 이름은 세로축 제목 자리(좌상단)에 두면 긴 한글 이름이 캔버스를 넘는다 — 하단 중앙에 둔다
+    parts.push(text(cx, canvas.h - 4, escapeXml(axis.x), 'axis-title', 'middle'));
     return parts.join('');
   },
 
@@ -195,11 +237,14 @@ const RENDERERS = {
       w: canvas.w - BAR.left - BAR.right,
       h: canvas.h - BAR.top - BAR.bottom,
     };
+    // 막대는 0 에서 출발해야 하므로 가로는 여백을 두지 않는다. 첫·마지막 막대가
+    // 위 경계·x축선에 붙는 것을 막기 위해 여백을 세로에만 준다.
     const x = linearScale([0, Math.max(...items.map((d) => d.count), 1)], [0, plot.w]);
-    const rowH = plot.h / items.length;
+    const bandY = plot.y + GUTTER;
+    const rowH = (plot.h - GUTTER * 2) / items.length;
     const barH = Math.min(rowH * 0.7, 24);
     const parts = items.map((d, i) => {
-      const cy = plot.y + rowH * i + rowH / 2;
+      const cy = bandY + rowH * i + rowH / 2;
       // 절단된 범주 이름은 막대 <title> 로 전체를 확인한다 (히트맵 셀과 같은 관례)
       const bar =
         `<rect x="${n(plot.x)}" y="${n(cy - barH / 2)}" width="${n(Math.max(x(d.count), 1))}"` +
@@ -252,9 +297,9 @@ const RENDERERS = {
     const originY = HEAT.top;
     // 레이블이 셀보다 크면 이웃과 겹친다 — 폰트를 셀 크기에 종속시켜 겹침을 치수로 막는다
     const fontSize = Math.max(6, Math.min(12, size * 0.85));
-    // 셀 안 수치. '-.83' 4자 폭(≈ 4 × 0.55 × 폰트)이 셀의 90% 안에 들어가는 크기다.
+    // 셀 안 수치. '-0.83' 5자 폭(≈ 5 × 0.55 × 폰트)이 셀의 90% 안에 들어가는 크기다.
     // 7 미만이면 읽을 수 없어 그리지 않는다 — 그 경우에도 수치는 셀 <title> 에 남는다.
-    const valueFont = Math.min(12, size * 0.36);
+    const valueFont = Math.min(12, size * 0.32);
     const showValues = valueFont >= 7;
     const byKey = new Map();
     for (const c of cells) {
@@ -400,12 +445,9 @@ function fmtNum(value) {
   return String(Number(value.toPrecision(3)));
 }
 
-/** 히트맵 셀 표기 — 선행 0 을 떼 4자 안에 넣는다(.83 / -.83). ±1 은 한 자로 줄인다. */
+/** 히트맵 셀 표기 — 소수 둘째 자리 고정(0.55 / -0.55). 자릿수가 같아야 눈으로 비교된다. */
 function fmtCorr(value) {
-  const v = Math.round(value * 100) / 100;
-  if (v >= 1) return '1';
-  if (v <= -1) return '-1';
-  return v.toFixed(2).replace('0.', '.');
+  return Math.max(-1, Math.min(1, value)).toFixed(2);
 }
 
 function fmtDate(epochMs) {

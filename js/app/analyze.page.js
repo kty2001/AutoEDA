@@ -447,6 +447,7 @@ function renderColumns(panel, result) {
   const rest = chartable.slice(DISPLAY_LIMIT.columnCharts);
   if (rest.length > 0) {
     const picker = document.createElement('p');
+    picker.className = 'column-picker';
     picker.innerHTML = `<label>다른 열 보기 <select id="column-picker">
       <option value="">선택…</option>
       ${rest.map((c) => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
