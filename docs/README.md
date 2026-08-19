@@ -1,4 +1,5 @@
 # 문서 안내
+URL: [AutoEDA](https://autoeda.tyoujungzz.workers.dev/)
 
 설계 문서 10종 + 작업 문서 3종의 진입점임. 프로젝트 개요는 [`../README.md`](../README.md) 참조.
 

@@ -1,7 +1,8 @@
 # Design System Inspired by Starbucks
 
-> **적용 상태 (2026-08-18):** `css/style.css` 에 토큰·컴포넌트 수준으로 반영됨.
-> 구조(히어로 40/60 분할, 페이지 중간 feature band, 플로팅 CTA)는 아직 반영하지 않았음.
+> **적용 상태 (2026-08-19):** `css/style.css` 에 토큰·컴포넌트·**구조**까지 반영됨.
+> 구조 3종(히어로 40/60 분할, 페이지 중간 feature band, 플로팅 CTA)은 2026-08-19 에 반영했음
+> ([`work-log.md`](work-log.md) 참조). 남은 미반영 항목 없음.
 > 화면별 규격은 [`screens.md` §6](screens.md), 스택 영향은 [`tech-stack.md` §1](tech-stack.md) 참조.
 
 ## 0. AutoEDA 적용 시 조정
@@ -19,6 +20,9 @@
 | Yellow(경고) | `#fbbc05` | `#b06f00` | 원값은 글자 대비 3:1 미만 |
 | 폰트 | SoDoSans → Inter, Noto Sans KR | 동일하되 **자체 호스팅** | CSP 가 `font-src 'self'` 라 Google Fonts 직접 참조 불가 |
 | 다크모드 | 규격 없음 | 두지 않음 (`color-scheme: light`) | 사양 없는 반쪽 다크모드를 남기지 않음 |
+| 히어로 40% 칸 | 제품 사진 | **결과 미리보기 카드** (`.health-total` + `.finding` 2건) | 사진 자산이 없음. §4 가 "generic generated graphics" 를 금지하므로 장식 일러스트 대신 도구가 실제로 그리는 마크업을 그대로 씀. `<figcaption>` 으로 예시임을 명시함 |
+| Feature band | 페이지 중간 + 본문 하단 | **페이지 중간만 전면 폭**, 본문 하단 CTA 는 라운드 카드 유지 | 하단 CTA 를 전면 폭으로 올리면 짙은 녹색 푸터와 맞붙어 색블록 교대 리듬이 무너짐 |
+| 플로팅 CTA | 전 쇼핑 화면 상시 | 도구 화면(`/pages/analyze`)만 제외 | 도구 화면에서는 자기 자신을 가리킴. 판정은 `js/app/float-cta.js` 의 `shouldMount()` 한 곳 |
 | 상관 히트맵 | 규격 없음 | Green Accent(+) ↔ Red(−), 중립점은 Ceramic | 발산 배색은 두 극 + 무채 중립점이 필요함. 색각 이상 분리도 검증함(deutan ΔE 9.9 > 8), 각 셀에 수치 `<title>` 동반 |
 
 **브랜드 경계:** 색·형태 언어만 차용하고 Starbucks 워드마크·로고·사이렌은 쓰지 않음.

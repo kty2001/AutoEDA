@@ -446,6 +446,7 @@ ${
 
 <script type="module" src="/js/app/common.js"></script>
 <script type="module" src="/js/app/menu.js"></script>
+<script type="module" src="/js/app/float-cta.js"></script>
 </body>
 </html>
 `;

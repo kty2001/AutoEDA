@@ -4,7 +4,7 @@
 
 도구가 계산을 수행하고, 지식 베이스가 그 결과의 의미를 설명함. 도구는 제품이고 사이트는 리소스임.
 
-> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 260건 · 브라우저 실기 11항목 · 배포본 검증이 통과함.
+> **상태: Phase 1 완료, 배포됨 — <https://autoeda.tyoujungzz.workers.dev>.** CSV 읽기부터 통계·품질 점수·발견 목록·차트·화면 배선까지 구현되어 있고 테스트 262건 · 브라우저 실기 11항목 · 배포본 검증이 통과함.
 > 해설 20편 · 사례 리포트 3편 · 용어집이 발행되어(색인 27 URL) 죽은 내부 링크는 0건이고, 콘텐츠 게이트(15편·25,000자)를 24편·42,728자로 넘겼음. 필수 페이지 4종도 확정했음.
 > **남은 관문은 콘텐츠가 아니라 인프라임** — 커스텀 도메인 취득, 광고 배치·`ads.txt`, GSC 등록.
 > 다음 작업은 [docs/TODO.md](docs/TODO.md), 파일별 현황은 [docs/implementation-status.md](docs/implementation-status.md) 참조.
@@ -126,7 +126,7 @@ EDA Engine (JavaScript) → 통계 JSON
 ## 개발
 
 ```bash
-npm test            # 전체 테스트 260건 (계약·동작·통합·빌드·산출물 폐합)
+npm test            # 전체 테스트 262건 (계약·동작·통합·빌드·산출물 폐합)
 npm run serve       # 로컬 서빙 → http://localhost:8000
 npm run build       # 콘텐츠 빌드 — build:guides → build:seo 를 순서대로
 npx wrangler deploy

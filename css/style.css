@@ -57,6 +57,8 @@
   /* 무거운 그림자 하나 대신 저알파 2~3겹을 쌓는다 (DESIGN.md §6) */
   --shadow-card: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 1px 1px rgba(0, 0, 0, 0.24);
   --shadow-nav: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 2px rgba(0, 0, 0, 0.06), 0 0 2px rgba(0, 0, 0, 0.07);
+  /* 플로팅 CTA 는 페이지에서 가장 높이 뜬 요소다 — 헤일로 + 방향성 앰비언트 2겹 */
+  --shadow-float: 0 0 6px rgba(0, 0, 0, 0.24), 0 8px 12px rgba(0, 0, 0, 0.14);
 
   /* Latin 은 Inter, 한글은 폴백인 Noto Sans KR 로 떨어진다 (DESIGN.md §3) */
   --font: Inter, "Noto Sans KR", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
@@ -74,6 +76,10 @@
 html { font-size: 100%; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
+  /* 전면 폭 밴드(.band)가 50vw 로 여백을 되미는데 50vw 는 스크롤바 폭을 포함한다.
+     그만큼의 가로 넘침을 여기서 잘라 낸다. hidden 이 아니라 clip 을 쓰는 이유는
+     clip 이 스크롤 컨테이너를 만들지 않아 고정 요소(전역 메뉴)에 영향이 없기 때문이다. */
+  overflow-x: clip;
   font-family: var(--font);
   /* 한글 산문은 기본 행간으로는 빽빽하다 (형제 프로젝트 실측) */
   line-height: 1.7;
@@ -133,6 +139,26 @@ img, svg { max-width: 100%; height: auto; }
    특정도로 이겨서, 요소 선택자만 쓰면 세로 여백이 통째로 무시된다. 전 페이지가
    `<main class="container">` 이므로 이 선택자 하나로 덮인다. */
 main.container { padding-top: var(--sp-10); padding-bottom: var(--sp-16); }
+
+/* 히어로 비대칭 분할 (DESIGN.md §5). 원문은 40% 가 제품 사진이지만 AutoEDA 에는
+   사진 자산이 없어 결과 미리보기 카드를 그 자리에 둔다 (DESIGN.md §0 조정표).
+   마크업은 콘텐츠가 먼저다 — 모바일 스택 순서와 낭독 순서가 함께 맞는다. */
+.hero {
+  display: grid;
+  grid-template-columns: 60fr 40fr;
+  gap: var(--sp-8);
+  align-items: center;
+  margin-bottom: var(--sp-12);
+}
+/* DESIGN.md §9 — 분할은 태블릿 아래에서 세로로 접힌다 */
+@media (max-width: 768px) {
+  .hero { grid-template-columns: 1fr; gap: var(--sp-6); }
+}
+.hero-preview { margin: 0; }
+.hero-preview .health-total, .hero-preview .finding { margin-bottom: var(--sp-3); }
+.hero-preview .finding { font-size: 0.9rem; }
+.hero-preview .finding p:last-child { margin-bottom: 0; }
+.hero-preview figcaption { color: var(--fg-muted); font-size: 0.8rem; }
 
 /* 크림 본문을 짙은 녹색으로 닫는다 (DESIGN.md §1 색블록 리듬) */
 .site-footer {
@@ -213,6 +239,31 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ── 플로팅 CTA (js/app/float-cta.js 가 생성) ─────────────── */
+/* 우하단 고정 원형 도구 진입점. 우상단 메뉴 버튼과 화면 반대쪽이고,
+   z-index 는 메뉴 패널(20)보다 아래에 둬 패널이 열리면 그 뒤로 간다. */
+.float-cta {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: var(--tracking-ui);
+  text-decoration: none;
+  box-shadow: var(--shadow-float);
+  transition: transform 0.2s ease;
+}
+.float-cta:active { transform: scale(0.95); }
 
 /* ── 전역 메뉴 (js/app/menu.js 가 생성) ─────────────────── */
 .menu-button {
@@ -412,7 +463,25 @@ blockquote p { margin: 0; }
 
 hr { border: 0; border-top: 1px solid var(--border); margin: var(--sp-12) 0; }
 
-/* 본문 끝의 도구 유도 — 이 사이트의 유일한 짙은 녹색 밴드 (DESIGN.md §4 Feature Band) */
+/* 페이지 중간의 전면 폭 색블록 (DESIGN.md §4 Feature Band).
+   `main.container` 안에 있으므로 좌우 여백을 뷰포트까지 되밀어 전면 폭을 만든다 —
+   전 페이지가 <main class="container"> 라 구조를 바꾸지 않으려는 선택이다.
+   50vw 가 만드는 가로 넘침은 body 의 overflow-x: clip 이 받는다. */
+.band {
+  margin: var(--sp-12) calc(50% - 50vw);
+  /* calc(50vw - 50%) 이 되민 만큼을 그대로 되돌린다 — 밴드 본문이 컨테이너 본문과
+     같은 x 에서 시작해야 페이지가 어긋나 보이지 않는다. */
+  padding: var(--sp-10) calc(50vw - 50%);
+  background: var(--bg-band);
+  color: var(--fg-on-dark);
+}
+.band h2 { margin-top: 0; color: var(--fg-on-dark); }
+.band p { color: var(--fg-on-dark-soft); }
+.band p:last-child { margin-bottom: 0; }
+
+/* 본문 끝의 도구 유도 — 라운드 카드로 둔다. 전면 폭으로 올리면 짙은 녹색 푸터와
+   맞붙어 하나의 큰 다크 블록이 되고, 색블록 리듬(크림↔다크 교대)이 오히려 무너진다.
+   (DESIGN.md §4 Feature Band) */
 .cta {
   padding: var(--sp-8);
   border-radius: var(--radius);
@@ -422,10 +491,12 @@ hr { border: 0; border-top: 1px solid var(--border); margin: var(--sp-12) 0; }
 .cta h2 { margin-top: 0; color: var(--fg-on-dark); }
 .cta p { color: var(--fg-on-dark-soft); }
 /* 짙은 녹색 위에서는 녹색 알약이 보이지 않는다 — 흰 채움에 녹색 글자로 뒤집는다 */
-.cta .btn { background: #fff; border-color: #fff; color: var(--accent); }
+.cta .btn, .band .btn { background: #fff; border-color: #fff; color: var(--accent); }
+/* 다크 위의 보조 버튼은 흰 테두리만 남긴다 (DESIGN.md §4 Outlined on Dark) */
+.band .btn-secondary { background: transparent; color: var(--fg-on-dark); }
 
 /* 움직임을 줄이도록 설정한 사용자에게는 눌림 효과를 주지 않는다 */
 @media (prefers-reduced-motion: reduce) {
-  .btn, .tab { transition: none; }
-  .btn:active { transform: none; }
+  .btn, .tab, .float-cta { transition: none; }
+  .btn:active, .float-cta:active { transform: none; }
 }

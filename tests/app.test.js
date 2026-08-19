@@ -5,11 +5,32 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-test('app 모듈 4종 — document 없이 import 가능 (부작용 가드)', async () => {
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** 배포되는 HTML 전부. 루트와 pages/ 아래를 훑는다. */
+function deployedPages(dir = ROOT) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (dir === ROOT && entry.name !== 'pages') continue;
+      out.push(...deployedPages(full));
+    } else if (entry.name.endsWith('.html')) {
+      out.push(relative(ROOT, full).split(sep).join('/'));
+    }
+  }
+  return out;
+}
+
+test('app 모듈 5종 — document 없이 import 가능 (부작용 가드)', async () => {
   await assert.doesNotReject(async () => {
     await import('../js/app/common.js');
     await import('../js/app/menu.js');
+    await import('../js/app/float-cta.js');
     await import('../js/app/contact.page.js');
     await import('../js/app/analyze.page.js');
   });
@@ -55,6 +76,18 @@ test('menu.sublistEntries — 목록이 없거나 비면 빈 배열 (하위목�
   assert.deepEqual(sublistEntries({ url: '/pages/case', groups: [] }), []);
 });
 
+test('floatCta.shouldMount — 도구 화면에서만 붙지 않는다', async () => {
+  const { shouldMount, TARGET } = await import('../js/app/float-cta.js');
+  // 확장자·꼬리 슬래시로 들어와도 같은 화면이다 (common.normalizePath 재사용)
+  assert.equal(shouldMount('/pages/analyze'), false);
+  assert.equal(shouldMount('/pages/analyze.html'), false);
+  assert.equal(shouldMount('/pages/analyze/'), false);
+  for (const path of ['/', '/pages/guide', '/pages/guide/skewness', '/pages/case/air-quality', '/pages/privacy']) {
+    assert.equal(shouldMount(path), true, `${path} 에는 붙어야 함`);
+  }
+  assert.ok(!TARGET.endsWith('.html'), '확장자 없는 URL 이어야 함 (307 리디렉션 회피)');
+});
+
 test('buildMailto — 제목 접두사·본문 인코딩', async () => {
   const { buildMailto } = await import('../js/app/contact.page.js');
   const url = buildMailto('bug', '1행에서 오류 & 중단');
@@ -74,4 +107,24 @@ test('analyze.page 의 data-guide-slug 안내 링크가 발행된 해설을 가�
   for (const slug of slugs) {
     assert.ok(published.guide.includes(slug), `${slug} 가 미발행이라 링크가 렌더되지 않음`);
   }
+});
+
+// 고정 UI 는 스크립트 한 줄로만 붙는다 — 페이지를 새로 만들 때 그 줄을 빠뜨리면
+// 화면에서만 조용히 사라진다. 산출물을 실제로 훑어 폐합을 기계로 고정한다.
+// (build_guides 템플릿을 고치고 npm run build 를 잊은 경우도 여기서 걸린다.)
+test('산출물 — 배포되는 모든 HTML 이 공용 스크립트 3종을 싣는다', () => {
+  const pages = deployedPages();
+  assert.ok(pages.length >= 30, `HTML 을 ${pages.length}개만 찾음 — 스캔 범위가 어긋남`);
+  const missing = [];
+  for (const file of pages) {
+    const html = readFileSync(join(ROOT, file), 'utf8');
+    for (const src of ['/js/app/common.js', '/js/app/float-cta.js']) {
+      if (!html.includes(`src="${src}"`)) missing.push(`${file} ← ${src}`);
+    }
+    // 404 는 전역 메뉴를 두지 않는다 (docs/screens.md §3.8)
+    if (file !== '404.html' && !html.includes('src="/js/app/menu.js"')) {
+      missing.push(`${file} ← /js/app/menu.js`);
+    }
+  }
+  assert.deepEqual(missing, [], '공용 스크립트 줄이 빠진 페이지가 있다');
 });
