@@ -138,6 +138,121 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 
 ---
 
+### T7. 진단에서 조치로 — 전처리 파이프라인 + 타깃 기반 EDA (계획 확정, 미착수)
+
+**문제.** 도구가 데이터 상태를 알려주기만 하고 아무것도 바꾸지 못함. Finding 의 "무엇을 하면 되는지"가 문장으로만 존재해 사용자는 조치를 하려면 사이트를 떠나 코드를 써야 함. 이상치 제거·스케일링이 사이트에서 바로 되지 않으면 진단 자체의 쓸모가 반감됨.
+
+**동시에 확인된 것** — 축 3(타깃 기반 EDA)의 규칙 엔진은 **이미 구현돼 있는데 죽어 있음**:
+- `js/domain/finding.js:213-270` 의 `F-LEAKAGE`·`F-CLASS-IMBALANCE`·`F-TARGET-SKEW`·`F-SCALE-DIFF` 가 `target` 인자에 걸려 있으나 **타깃을 지정할 UI 가 없음**
+- `classDistribution`(`js/domain/stats.js:104`)은 계산 함수만 있고 열에 부착되지 않아 `F-CLASS-IMBALANCE` 는 조건 자체에 도달하지 못함
+- 해설 `target-distribution`·`scaling` 은 `data/finding-map.json` 이 가리키는데 **미발행**이라 "자세히" 링크가 뜨지 않음
+
+**순서**: 1단계 전처리 → 2단계 타깃 EDA. [`direction.md §4`](direction.md) 기준으로 Phase 3 후보(전처리 지원)를 Phase 2 앞으로 당기는 결정임.
+
+#### 지켜야 할 계약 (T7 전체에 걸림)
+
+1. **원본 무수정** — 원본 파일을 건드리지 않고 새 CSV 만 만듦 ([`direction.md §8`](direction.md))
+2. **변환된 데이터도 저장·전송하지 않음** — Worker 메모리에만 두고 `sessionStorage` 에 넣지 않음. 사용자가 내려받는 순간만 메인 스레드를 지나감 ([`implementation-status.md §2`](implementation-status.md) 규약 8)
+3. **자동으로 고치지 않음** — 기본 레시피는 비어 있고 모든 조치는 사용자가 명시적으로 켬. 조치마다 대가(정보 손실·분산 축소 등)를 함께 표시함
+4. `js/domain/*` 순수 함수 유지 · 임계값은 `thresholds.js` 에만
+
+#### 1단계 — 전처리 파이프라인
+
+**1.1 파이프라인 재구성 (선행).** `analyze.worker.js` 의 `analyze()` 가 decode→parse→infer→stats→quality→finding 을 한 함수에 갖고 `parsed` 를 버림. 파싱 이후 단계를 변환된 데이터에 다시 돌려야 하므로 분리함.
+
+```js
+export function profile(parsed, { typeOverrides, target, onProgress, isCancelled })
+  → { columns, correlations, dataset, health, findings }
+// analyze() = FILE_LIMIT 검사 + decode + parseCsv + profile(...)
+```
+- `analyze()` 의 인자·반환 형태는 바꾸지 않음 (`tests/contracts.test.js`·기존 호출부 유지)
+- `parsed` 를 Worker 가 붙들 수 있게 선택 옵션 `onParsed(parsed)` 추가 — `onProgress` 와 같은 패턴이며 메시지 글루만 씀
+- Before/After 를 **같은 엔진으로 다시 계산**하게 만드는 핵심. 별도 통계 경로를 만들지 않음
+
+**1.2 새 도메인 모듈 (전부 순수 함수)**
+
+| 파일 | 역할 |
+|---|---|
+| `js/domain/transform.js` | `applyRecipe(parsed, columns, recipe)` → `{ names, columns, rowCount, log }`. 입력 배열을 변형하지 않고 새 배열을 만듦 |
+| `js/domain/recipe.js` | `suggestSteps(findings, columns)` — Finding → 조치 스텝 제안. `normalizeRecipe(steps)` — 순서 정규화·유효성 검사 |
+| `js/domain/parse.js` (추가) | `serializeCsv(names, columns, rowCount)` — RFC 4180 인용. `parseCsv` 의 짝이라 같은 파일 |
+
+스텝은 배열이지만 **삽입 순서와 무관하게 아래 정규 순서로 적용함** — 대치 전 스케일링 같은 무의미한 조합을 구조로 막음.
+
+| 순서 | op | 파라미터 | 대응 Finding |
+|---|---|---|---|
+| 1 | `drop-duplicates` | — | `F-DUP-ROW` |
+| 2 | `drop-column` | `column` | `F-CONST-COL` · `F-ID-COL` · `F-HIGH-CARD` |
+| 3 | `impute` | `column`, `method: median\|mean\|mode\|constant`, `value?` | `F-MISSING-HIGH` · `F-MISSING-IMPUTE` |
+| 4 | `outlier` | `column`, `action: clip\|drop-rows` (IQR 1.5배) | `F-OUTLIER-RATE` · `F-OUTLIER-ACTION` |
+| 5 | `log1p` | `column` (음수 있으면 거부) | `F-SKEW` |
+| 6 | `encode` | `column`, `method: onehot\|ordinal\|frequency` | 범주형 일반 |
+| 7 | `scale` | `column`, `method: standard\|minmax\|robust` | `F-SCALE-DIFF` |
+
+- 이상치 경계는 `js/domain/outlier.js` 의 `iqrOutliers()` 를 그대로 씀 — **판정과 조치가 같은 정의를 쓰게 함**
+- 분위수·평균·표준편차는 `js/domain/stats.js` 의 `numericStats`·`quantile` 재사용
+- `applyRecipe` 는 각 스텝의 **적합 파라미터**(대치값·IQR 경계·평균/표준편차·인코딩 사전)를 `log` 에 담아 돌려줌 — 사용자가 테스트 세트에 같은 변환을 적용하려면 이 값이 필요함
+- `encode: onehot` 고유값 상한 등 새 임계값 `PREPROCESS` 를 `thresholds.js` 에 추가하고 [`rules.md`](rules.md) 에 표로 폐합
+
+**1.3 Worker 프로토콜 확장** ([`data-model.md §5`](data-model.md))
+
+| 방향 | 타입 | 페이로드 |
+|---|---|---|
+| Page → Worker | `preprocess` | `{ recipe }` → 변환 후 `profile()` 재실행 |
+| Worker → Page | `preprocessed` | `{ result, log }` — result 는 §3 결과 JSON(집계만) |
+| Page → Worker | `export-csv` | `{ recipe }` |
+| Worker → Page | `csv` | `{ text }` — 다운로드 직전에만 건너감. 저장하지 않음 |
+
+- Worker 가 `onParsed` 로 받은 `parsed` 를 모듈 스코프에 붙듦. **메인 스레드로 넘기지 않음** — §5 의 "파싱 결과를 Page 로 넘겨 보관하지 않는다(메모리 이중 보유 회피)" 근거를 그대로 유지하는 방식
+- 새 `start`·`cancel` 은 Worker 를 종료·재생성하므로 보유분이 자연히 해제됨. "결과 지우기"(UC-11)에서도 `terminate()` 하도록 추가
+- 메모리 — 변환 결과는 별개 사본이라 최대 2배. `FILE_LIMIT` 25MB 가 경계를 잡지만 한계로 명시함
+
+**1.4 UI — 결과 탭 6번째 "전처리"**
+
+`analyze.page.js` 의 `TABS` 에 `{ id: 'prep', label: '전처리' }` 추가. 기존 탭 기구(`renderResult` 의 `renderers` 맵·`activate`)를 그대로 씀.
+
+- **제안 목록** — `suggestSteps()` 산출물을 카드로. 체크박스 + 방식 select + **대가 한 줄**("평균 대치는 분산을 줄여 상관을 과대평가하게 만듭니다")
+- **직접 추가** — 열 select + 연산 select
+- **발견 탭 연동** — 각 Finding 카드에 "조치 담기" 버튼. 진단과 조치를 잇는 동선이며 이 작업의 제품적 핵심임
+- **적용** → `preprocess` 왕복 → **Before/After 비교표**: Health Score 총점·항목별 감점, 행·열 수, 열별 결측률·왜도·이상치율. `renderQuality` 의 표 구조와 `js/lib/format.js` 재사용
+- **정제된 CSV 내려받기** → `export-csv` 왕복 → `Blob` + `URL.createObjectURL` (`exportResult()` 와 같은 패턴)
+- 적합 파라미터를 표로 노출하되, **테스트 세트 변환은 이 도구가 대신 해 주지 않는다**는 한계를 함께 적음
+
+**1.5 스키마·문구·문서**
+- **`schemaVersion` 1.1 → 1.2** — After 결과의 `dataset` 에 `recipe`(적용 조치 목록) 추가. 내보낸 결과가 원자료인지 전처리 후인지 스스로 밝히게 함. 선택 필드라 major 유지
+- **`pages/analyze.html`** — 한계 절의 "결측이나 이상치를 자동으로 고치지 않습니다"는 유지하되 "사용자가 고른 조치만 새 파일로 만들며 원본은 그대로 둡니다"를 덧붙임. FAQ 에 전처리 항목 1개 추가(초기 HTML 색인 코퍼스라 SEO 이득)
+- **`pages/privacy.html`** — 정제 파일도 브라우저에서 생성되고 서버로 가지 않는다는 문장 추가. 실제 구현과 일치해야 함
+- [`data-model.md`](data-model.md)(§5 프로토콜·§3 `recipe`) · [`rules.md`](rules.md)(전처리 임계값) · [`screens.md §4`](screens.md)(탭 6개) · [`direction.md §4`](direction.md)(앞당긴 근거) · [`implementation-status.md §1`](implementation-status.md) · `work-log.md`
+
+#### 2단계 — 타깃 기반 EDA (1단계 완료 후)
+
+- **타깃 지정 UI** — 개요 탭 상단 "타깃 열" select → `start { file, target }` 재계산. `analyze()` 는 이미 `target` 을 `buildFindings` 로 넘김
+- **`classDistribution` 부착** — `columnStats` 이후 **타깃 열에만** 붙임. 이것이 없어 `F-CLASS-IMBALANCE` 가 죽어 있음 ([`data-model.md §3.3`](data-model.md) 이 이미 "타깃 열에만 산출"로 규정)
+- **타깃 탭(7번째)** — 타깃 유형 판정 후 분기
+  - 회귀(수치): 타깃 분포·왜도 + **피처별 |Pearson| 순위** — `result.correlations` 재사용, 새 통계 없음
+  - 분류(범주·불리언): 클래스 분포 막대 + **클래스별 수치형 요약표**(평균·표준편차) — η²·Cramér's V 는 범위 밖이므로 기존 통계만으로 구성
+- **해설 2편 발행** — `data/guide_source/target-distribution.md`·`scaling.md` → `npm run build`. `finding-map.json` 이 이미 가리키므로 발행만 하면 링크가 살아남(`published.json` 게이트)
+- `F-SCALE-DIFF` 가 `addTargetFindings` 안에 있어 타깃 없이는 발화하지 않음. 스케일 차이는 타깃과 무관하므로 **밖으로 꺼낼지 판단**하고 [`rules.md §3.5`](rules.md) 와 함께 정리
+
+#### 범위 밖 (이번에 넣지 않음)
+
+재현 코드(pandas/sklearn) 생성 · 레시피 JSON 내보내기/불러오기 · 범주형 연관 지표(η²·Cramér's V) · 결측 패턴 분석 · AI 해석 레이어. 관계 탭의 범주형 안내 문구(`renderMixedRelationNote`)는 그대로 둠.
+
+#### 검증
+
+1. **`npm test`**
+   - `tests/transform.test.js` — 연산 7종 산출값, **입력 배열 불변**, 정규 순서 강제, `log` 파라미터 정확성
+   - `tests/parse.test.js` 확장 — `serializeCsv` → `parseCsv` **왕복 일치**(인용·구분자·개행·결측)
+   - `tests/recipe.test.js` — 조치형 Finding 유형이 전부 스텝으로 매핑되거나 명시적으로 제외됨(`finding-map.json` 폐합 검사와 같은 방식)
+   - `tests/integration.test.js` 확장 — `analyze` → `suggestSteps` → `applyRecipe` → `profile` 을 이어 실행하고 **Health Score 개선**을 단정
+   - `tests/worker.test.js` — `target` 지정 시 `classDistribution` 부착과 `F-CLASS-IMBALANCE` 발화
+2. **왕복 검증(가장 중요)** — 내려받은 정제 CSV 를 도구에 다시 넣으면 **After 통계와 일치**해야 함. 변환 엔진과 직렬화가 동시에 맞아야만 통과함
+3. **`npx wrangler dev --persist-to <프로젝트 밖>`** — CSP 적용 상태에서 다운로드(`Blob`+`createObjectURL`)와 새 UI 확인. `npm run serve` 는 CSP 를 재현하지 못함
+4. **메모리 실측** — 25MB 근처 CSV 로 적용·다운로드까지. 넘치면 스텝 적용을 열 단위 스트리밍으로 전환
+5. **`npm run build`** (2단계) — 해설 2편 발행 후 `published.json` 갱신과 "자세히" 링크 생존 확인
+
+---
+
 ## 3. 완료 이력
 
 결정 근거와 함정은 [`work-log.md`](work-log.md)에 날짜별로 있음. 여기서는 무엇을 끝냈는지만 봄.
@@ -184,4 +299,6 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 착수 전에 재검토함 — 구현 전에 폐기될 수 있으므로 상세 명세를 만들지 않음 ([`README.md` §문서를 고칠 때](README.md)). 범위의 확정본은 [`direction.md`](direction.md)임.
 
 **Phase 2** 단계별 가이드 UI · 타깃 기반 EDA(UC-21, T군 Finding 3종이 이미 대기 중) · AI 해석 레이어(BYO API Key) · 대용량 샘플링
-**Phase 3 후보** AI 질의응답 · 데이터셋 비교 · 전처리 지원 · 시계열 분석 · 분석 이력 비교
+**Phase 3 후보** AI 질의응답 · 데이터셋 비교 · ~~전처리 지원~~ · 시계열 분석 · 분석 이력 비교
+
+> **전처리 지원은 T7 로 앞당겼음 (2026-08-19).** 진단만 하고 조치를 못 하면 진단의 쓸모가 반감된다는 판단이며, 같은 작업의 2단계로 Phase 2 의 타깃 기반 EDA 를 함께 처리함. 근거는 위 T7.
