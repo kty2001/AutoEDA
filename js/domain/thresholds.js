@@ -107,4 +107,5 @@ export const DISPLAY_LIMIT = Object.freeze({
   scatterPairs: 6, // 관계 탭 산점도
   scatterPoints: 200, // 산점도 쌍당 점 수 (초과 시 균등 간격 다운샘플)
   heatmapColumns: 20, // 상관 히트맵 (초과 시 분산 상위 20열로 축소)
+  targetRanking: 10, // 타깃 탭 — 피처-타깃 |Pearson| 랭킹 바 차트
 });

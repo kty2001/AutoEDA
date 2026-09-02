@@ -201,3 +201,28 @@ test('전처리 — 적합 파라미터가 log 에 남는다 (테스트 세트�
   assert.equal(typeof log[0].params.center, 'number');
   assert.equal(typeof log[0].params.spread, 'number');
 });
+
+// ─── 타깃 기반 EDA (docs/TODO.md T7 2단계) ──────────────────
+// 규칙 엔진은 이미 있었으나 classDistribution 미부착으로 죽어 있던 경로다.
+// 실제 혼합 데이터로 한 번의 analyze() 호출 안에서 조립되는지 확인한다.
+
+test('타깃 지정 — 분류 타깃의 classDistribution·classStats 가 한 번의 analyze() 로 조립된다', () => {
+  const withTarget = analyze(new TextEncoder().encode(sampleCsv()).buffer, { target: '등급' });
+  const grade = withTarget.columns.find((c) => c.name === '등급');
+  assert.ok(grade.classDistribution);
+  const total = Object.values(grade.classDistribution).reduce((a, b) => a + b, 0);
+  assert.equal(total, withTarget.dataset.rowCount - grade.missingCount);
+
+  const age = withTarget.columns.find((c) => c.name === '나이');
+  assert.ok(age.classStats);
+  for (const cls of Object.keys(grade.classDistribution)) {
+    assert.ok(cls in age.classStats, `클래스 ${cls} 의 수치 요약이 없다`);
+  }
+});
+
+test('타깃 지정 — F-LEAKAGE 가 실제로 발화한다 (거의 결정론적 관계, 이전에는 도달 불가였던 경로)', () => {
+  const withTarget = analyze(new TextEncoder().encode(sampleCsv()).buffer, { target: '나이' });
+  const leakage = withTarget.findings.find((f) => f.type === 'F-LEAKAGE');
+  assert.ok(leakage, 'F-LEAKAGE 가 발화하지 않았다 — 연소득은 나이의 거의 결정론적 함수다');
+  assert.ok(leakage.targets.includes('연소득') && leakage.targets.includes('나이'));
+});

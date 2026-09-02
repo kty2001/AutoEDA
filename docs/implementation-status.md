@@ -23,7 +23,7 @@
 | 인코딩 감지·디코드 | `js/domain/decode.js` | UTF-8 fatal 우선, EUC-KR 폴백, BOM 제거 |
 | CSV 파싱 | `js/domain/parse.js` | RFC 4180 상태기계, 구분자 감지, 수치 열 Float64Array, `keepAsString` 옵션 |
 | 타입 추론 | `js/domain/infer.js` | 6타입 추론, 결측/불일치 구분, 오버라이드, 한국식 날짜 |
-| 기술통계 | `js/domain/stats.js` | 적률·R-7 분위수·topValues·classDistribution·히스토그램. 추정량 선택은 파일 헤더에 문서화 |
+| 기술통계 | `js/domain/stats.js` | 적률·R-7 분위수·topValues·classDistribution·numericStatsByClass·히스토그램. 추정량 선택은 파일 헤더에 문서화 |
 | 이상치 | `js/domain/outlier.js` | IQR(경계·비율), z-score 대조군 |
 | 상관·공선성 | `js/domain/correlation.js` | Pearson(쌍별 제거)·Spearman(평균 순위)·VIF(정규방정식, listwise) |
 | Health Score | `js/domain/quality.js` | 항목 6종 감점·verdict·evidence, id/text 제외 규칙 |
@@ -32,11 +32,11 @@
 | 규칙 엔진 | `js/domain/finding.js` | Finding 18종(타깃군은 target 지정 시), 3단 문구 확정, 정렬·유형당 5건 묶기 |
 | 표시 포맷 | `js/lib/format.js` | percent·count·stat·bytes |
 | Finding→해설 매핑 | `data/finding-map.json` | 18종 전부. 테스트가 폐합 검사함 |
-| Worker 파이프라인 | `js/worker/analyze.worker.js` | 순수 함수 `analyze()`가 결과 JSON([`data-model.md §3`](data-model.md)) 조립 — FILE_LIMIT 검사·progress·취소·중복행·메모리 추정 포함. **파싱 이후 단계는 `profile()` 로 분리**해 전처리 결과가 같은 엔진을 타게 함. 원본 행은 Worker 안에만 두고 `preprocess`·`export-csv` 로만 다룸. 메시지 글루는 Worker 전역에서만 배선 |
+| Worker 파이프라인 | `js/worker/analyze.worker.js` | 순수 함수 `analyze()`가 결과 JSON([`data-model.md §3`](data-model.md)) 조립 — FILE_LIMIT 검사·progress·취소·중복행·메모리 추정 포함. **파싱 이후 단계는 `profile()` 로 분리**해 전처리 결과가 같은 엔진을 타게 함. 원본 행은 Worker 안에만 두고 `preprocess`·`export-csv` 로만 다룸. 메시지 글루는 Worker 전역에서만 배선. **분류 타깃 지정 시 `attachTargetInfo()`가 `classDistribution`·`classStats`를 대상 열에만 부착**(schemaVersion 1.3) |
 | 저장소 | `js/storage/local.js` | 결과 캐시 3단 축소 폴백([`data-model.md §4`](data-model.md))·major 검증·prefs 병합 저장 |
 | 차트 선택 | `js/domain/chart-select.js` | 타입별 대표 차트·산점도 상위 6쌍·히트맵 20열 축소·Finding 강조(왜도·IQR 경계) |
 | SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프. **캔버스는 공용 400×220 이고 히트맵만 420×420 예외**(행·열 레이블 자리. 레이블 폰트는 셀 크기에 종속) |
-| app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·**6섹션 탭(전처리 포함)**·발견 카드의 `조치 담기`·Before/After·정제 CSV 내려받기·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백 |
+| app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·**7섹션 탭(전처리·타깃 포함)**·발견 카드의 `조치 담기`·Before/After·정제 CSV 내려받기·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백. **타깃 탭**은 개요 select로 재계산을 트리거하고 회귀/분류로 분기 렌더 |
 | SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
 | 콘텐츠 빌드 | `scripts/build_guides.mjs` | 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. 인덱스는 `pages/{섹션}.html` 로 냄(디렉토리 인덱스는 307 을 만듦) |
 | 발행 콘텐츠 | `data/{guide,case,glossary}_source/*.md` → `pages/{guide,case,glossary}.html` · `pages/{guide,case}/*.html` | 해설 20편 + 사례 4편(허브 1 + 리포트 3) = **24편 · 42,728자** — [`content-strategy.md` §7](content-strategy.md) 게이트의 171%. 미발행은 T2·T3 해설(Phase 2)과 국내 사례(데이터셋 미선정) |

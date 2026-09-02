@@ -18,7 +18,9 @@
     "multicollinearity",
     "outlier-methods",
     "outlier-removal",
-    "skewness"
+    "scaling",
+    "skewness",
+    "target-distribution"
   ],
   "case": [
     "air-quality",

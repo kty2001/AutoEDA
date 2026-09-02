@@ -2,7 +2,7 @@
 // 대응 유스케이스: UC-01 ~ UC-11, UC-15 (docs/use-cases.md)
 // 대응 화면: /pages/analyze — 4상태 단일 페이지 (docs/screens.md §3.2·§4)
 //
-// 상태 A 파일 선택 → B 진행(Worker) → C 결과(5섹션 탭) → D 오류
+// 상태 A 파일 선택 → B 진행(Worker) → C 결과(7섹션 탭) → D 오류
 // 상태를 히스토리에 넣지 않는다 — 뒤로가기로 결과가 사라지는 혼란을 만들지 않는다.
 // 대신 해설 페이지에서 돌아오면 sessionStorage 로 결과를 복원한다(docs/screens.md §4).
 //
@@ -12,7 +12,7 @@
 //
 // 동적 텍스트는 esc() 를 거치거나 textContent 로 넣는다 — 열 이름·범주 값이 XSS 경로다.
 
-import { selectForColumn, selectPairs, selectHeatmap } from '../domain/chart-select.js';
+import { selectForColumn, selectForFinding, selectPairs, selectHeatmap } from '../domain/chart-select.js';
 import { suggestSteps, normalizeRecipe } from '../domain/recipe.js';
 import { renderChart, escapeXml as esc } from '../domain/chart-svg.js';
 import { DISPLAY_LIMIT } from '../domain/thresholds.js';
@@ -43,6 +43,7 @@ const TABS = [
   { id: 'columns', label: '변수별' },
   { id: 'relations', label: '관계' },
   { id: 'prep', label: '전처리' },
+  { id: 'target', label: '타깃' },
 ];
 
 const OP_LABEL = {
@@ -72,6 +73,7 @@ let currentFile = null;
 let currentResult = null;
 let currentWorker = null;
 let typeOverrides = {};
+let currentTarget = '';
 let findingMapPromise = null;
 
 // 전처리(T7) — 레시피는 화면 상태이며 어디에도 저장하지 않는다.
@@ -98,7 +100,10 @@ export function setState(state) {
  */
 export function startAnalysis(file, options = {}) {
   currentFile = file;
-  if (options.resetOverrides !== false) typeOverrides = {};
+  if (options.resetOverrides !== false) {
+    typeOverrides = {};
+    currentTarget = ''; // 새 파일에는 이전 파일의 타깃 열 이름을 물려주지 않는다
+  }
   runWorker(options.encoding);
 }
 
@@ -114,6 +119,7 @@ function runWorker(encoding) {
     file: currentFile,
     encoding,
     typeOverrides: Object.keys(typeOverrides).length > 0 ? typeOverrides : undefined,
+    target: currentTarget || undefined,
   });
 }
 
@@ -204,7 +210,7 @@ function detailText(detail) {
 // ─── 상태 C — 결과 5섹션 (UC-03 ~ UC-08) ────────────────────
 
 /**
- * 결과 5섹션(개요·품질·발견·변수별·관계)을 렌더한다.
+ * 결과 7섹션(개요·품질·발견·변수별·관계·전처리·타깃)을 렌더한다.
  * @param {object} result 결과 JSON (docs/data-model.md §3)
  * @param {string|null} [notice] 캐시 축소 등 결과 화면에 표시할 안내
  */
@@ -230,6 +236,7 @@ export function renderResult(result, notice = null) {
     columns: renderColumns,
     relations: renderRelations,
     prep: renderPrep,
+    target: renderTarget,
   };
 
   // 새 결과에는 이전 레시피를 물려주지 않는다 — 열 이름이 우연히 겹치면 엉뚱한 열에 적용된다
@@ -271,9 +278,17 @@ export function renderResult(result, notice = null) {
 // 개요 — 데이터셋 기본 정보 + 열 목록 (타입 배지·오버라이드, UC-02·03)
 function renderOverview(panel, result) {
   const d = result.dataset;
+  const targetOptions = result.columns
+    .map((c) => `<option value="${esc(c.name)}"${c.name === currentTarget ? ' selected' : ''}>${esc(c.name)}</option>`)
+    .join('');
   panel.insertAdjacentHTML(
     'beforeend',
-    `<div class="table-wrap"><table><tbody>
+    `<p class="hint">타깃 열을 지정하면 타깃 탭에서 클래스 불균형·타깃 왜도·데이터 누수 등을 함께 확인할 수 있습니다.</p>
+    <p><label>타깃 열 <select id="target-select">
+      <option value="">(선택 안 함)</option>
+      ${targetOptions}
+    </select></label></p>
+    <div class="table-wrap"><table><tbody>
       <tr><th>행 수</th><td>${count(d.rowCount)}</td><th>열 수</th><td>${count(d.columnCount)}</td></tr>
       <tr><th>완전 중복 행</th><td>${count(d.duplicateRowCount)}</td><th>메모리 추정</th><td>${bytes(d.memoryBytes)}</td></tr>
       <tr><th>인코딩</th><td>${esc(d.encoding)}</td><th>구분자</th><td>${esc(DELIMITER_LABEL[d.delimiter] ?? d.delimiter)}</td></tr>
@@ -281,6 +296,19 @@ function renderOverview(panel, result) {
     <h3>열 목록</h3>
     <p class="hint">타입이 잘못 잡혔으면 직접 바꿀 수 있습니다. 바꾸면 전체를 다시 계산합니다.</p>`
   );
+
+  const targetSelect = panel.querySelector('#target-select');
+  if (targetSelect) {
+    if (!currentFile) {
+      targetSelect.disabled = true;
+      targetSelect.title = '파일을 다시 선택하면 타깃을 지정할 수 있습니다';
+    } else {
+      targetSelect.addEventListener('change', () => {
+        currentTarget = targetSelect.value;
+        runWorker();
+      });
+    }
+  }
 
   const rows = result.columns
     .map(
@@ -726,6 +754,110 @@ function paramText(params) {
     .join(' · ');
 }
 
+// 타깃 — 회귀/분류 분기 (docs/TODO.md T7 2단계, UC-21)
+function renderTarget(panel, result) {
+  if (!currentTarget) {
+    panel.insertAdjacentHTML('beforeend', '<p>개요 탭에서 타깃 열을 선택하면 이 탭에 분석이 나타납니다.</p>');
+    return;
+  }
+  const targetCol = result.columns.find((c) => c.name === currentTarget);
+  if (!targetCol) {
+    panel.insertAdjacentHTML('beforeend', '<p>선택한 타깃 열을 찾을 수 없습니다. 개요 탭에서 다시 지정해 주세요.</p>');
+    return;
+  }
+  if (targetCol.type === 'numeric') renderRegressionTarget(panel, result, targetCol);
+  else if (targetCol.type === 'categorical' || targetCol.type === 'boolean') renderClassificationTarget(panel, result, targetCol);
+  else panel.insertAdjacentHTML('beforeend', '<p>이 타입의 열은 타깃 분석을 지원하지 않습니다.</p>');
+}
+
+function renderRegressionTarget(panel, result, targetCol) {
+  panel.insertAdjacentHTML('beforeend', `<h3>${esc(targetCol.name)} 분포 (회귀 타깃)</h3>`);
+
+  const skewFinding = result.findings.find(
+    (f) => f.type === 'F-TARGET-SKEW' && f.targets.includes(targetCol.name)
+  );
+  const specs = skewFinding ? selectForFinding(skewFinding, result.columns) : selectForColumn(targetCol);
+  for (const spec of specs) panel.insertAdjacentHTML('beforeend', renderChart(spec));
+  if (skewFinding) {
+    panel.insertAdjacentHTML(
+      'beforeend',
+      `<p class="hint">${esc(skewFinding.what)} <span data-guide-link="F-TARGET-SKEW"></span></p>`
+    );
+  }
+
+  const ranking = result.correlations
+    .filter((p) => (p.left === targetCol.name || p.right === targetCol.name) && p.pearson !== null)
+    .map((p) => ({ value: p.left === targetCol.name ? p.right : p.left, count: Math.abs(p.pearson) }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, DISPLAY_LIMIT.targetRanking);
+  if (ranking.length > 0) {
+    panel.insertAdjacentHTML('beforeend', '<h3>피처 상관 순위 (|Pearson|)</h3>');
+    panel.insertAdjacentHTML(
+      'beforeend',
+      renderChart({ kind: 'bar', data: { items: ranking }, axis: { x: '피처', y: '|Pearson|' } })
+    );
+  }
+  attachGuideLinks(panel);
+}
+
+function renderClassificationTarget(panel, result, targetCol) {
+  panel.insertAdjacentHTML('beforeend', `<h3>${esc(targetCol.name)} 클래스 분포</h3>`);
+
+  if (targetCol.classDistribution) {
+    const items = Object.entries(targetCol.classDistribution)
+      .map(([value, cnt]) => ({ value, count: cnt }))
+      .sort((a, b) => b.count - a.count);
+    panel.insertAdjacentHTML(
+      'beforeend',
+      renderChart({ kind: 'bar', data: { items }, axis: { x: targetCol.name, y: '빈도' } })
+    );
+    const imbalance = result.findings.find(
+      (f) => f.type === 'F-CLASS-IMBALANCE' && f.targets.includes(targetCol.name)
+    );
+    if (imbalance) {
+      panel.insertAdjacentHTML(
+        'beforeend',
+        `<p class="hint">${esc(imbalance.what)} <span data-guide-link="F-CLASS-IMBALANCE"></span></p>`
+      );
+    }
+  } else {
+    panel.insertAdjacentHTML(
+      'beforeend',
+      '<p class="hint">타깃의 범주 수가 많아 전체 분포 대신 상위 값만 표시합니다. 클래스 불균형 판정은 제공하지 않습니다.</p>'
+    );
+    for (const spec of selectForColumn(targetCol)) panel.insertAdjacentHTML('beforeend', renderChart(spec));
+  }
+
+  const withClassStats = result.columns.filter((c) => c.type === 'numeric' && c.classStats);
+  if (withClassStats.length > 0) {
+    panel.insertAdjacentHTML('beforeend', '<h3>클래스별 수치 요약</h3>');
+    const shown = withClassStats.slice(0, DISPLAY_LIMIT.columnCharts);
+    for (const col of shown) {
+      const rows = Object.entries(col.classStats)
+        .map(
+          ([cls, s]) =>
+            `<tr><td>${esc(cls)}</td><td>${count(s.count)}</td><td>${stat(s.mean)}</td><td>${stat(s.std)}</td></tr>`
+        )
+        .join('');
+      panel.insertAdjacentHTML(
+        'beforeend',
+        `<div class="table-wrap"><table>
+          <caption>${esc(col.name)}</caption>
+          <thead><tr><th>클래스</th><th>표본수</th><th>평균</th><th>표준편차</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`
+      );
+    }
+    if (withClassStats.length > shown.length) {
+      panel.insertAdjacentHTML(
+        'beforeend',
+        `<p class="hint">나머지 ${withClassStats.length - shown.length}개 수치형 열은 변수별 탭에서 확인하세요.</p>`
+      );
+    }
+  }
+  attachGuideLinks(panel);
+}
+
 /** 정제 CSV 를 내려준다. 문자열은 여기서만 잠깐 존재하며 어디에도 저장하지 않는다. */
 function downloadCsv(text) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
@@ -768,6 +900,7 @@ export async function importResult(file) {
   }
   currentFile = null; // 불러온 결과는 재계산 불가(타입 수정 비활성)
   canPreprocess = false; // 원본 행이 없으므로 전처리도 불가
+  currentTarget = ''; // 이 결과가 어떤 타깃으로 계산됐는지는 개요 select 상태로 복원되지 않는다
   const cache = saveResult(parsed);
   renderResult(parsed, cacheNotice(cache));
   setState('C');
@@ -853,6 +986,7 @@ function init() {
       p,
       button('이어보기', 'btn', () => {
         canPreprocess = false; // 캐시에는 집계만 남아 있다
+        currentTarget = ''; // 캐시에는 타깃 열 이름이 별도로 남지 않는다
         renderResult(cached);
         setState('C');
       }),

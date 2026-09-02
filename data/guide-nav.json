@@ -100,6 +100,14 @@
           {
             "slug": "class-imbalance",
             "label": "클래스 불균형"
+          },
+          {
+            "slug": "scaling",
+            "label": "스케일링"
+          },
+          {
+            "slug": "target-distribution",
+            "label": "타깃 분포"
           }
         ]
       }

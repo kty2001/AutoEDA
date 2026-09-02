@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스케일링 — 값의 범위가 왜 결과를 지배하는가 — AutoEDA</title>
+<meta name="description" content="거리 기반 방법과 경사 하강 기반 학습에서 스케일 차이가 결과를 지배하는 이유를 설명하고, 표준화·정규화·로버스트 스케일링 중 무엇을 고를지 정리했습니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/guide/scaling">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/guide/scaling">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="스케일링 — 값의 범위가 왜 결과를 지배하는가 — AutoEDA">
+<meta property="og:description" content="거리 기반 방법과 경사 하강 기반 학습에서 스케일 차이가 결과를 지배하는 이유를 설명하고, 표준화·정규화·로버스트 스케일링 중 무엇을 고를지 정리했습니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"해설","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide"},{"@type":"ListItem","position":3,"name":"스케일링","item":"https://autoeda.tyoujungzz.workers.dev/pages/guide/scaling"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"스케일링","description":"거리 기반 방법과 경사 하강 기반 학습에서 스케일 차이가 결과를 지배하는 이유를 설명하고, 표준화·정규화·로버스트 스케일링 중 무엇을 고를지 정리했습니다.","inLanguage":"ko","mainEntityOfPage":"https://autoeda.tyoujungzz.workers.dev/pages/guide/scaling","publisher":{"@type":"Organization","name":"AutoEDA"}}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="breadcrumb" aria-label="위치">
+    <a href="/">홈</a> › <a href="/pages/guide">해설</a> › <span aria-current="page">스케일링 — 값의 범위가 왜 결과를 지배하는가</span>
+  </nav>
+
+  <h1>스케일링 — 값의 범위가 왜 결과를 지배하는가</h1>
+  <p class="page-intro">표준편차가 수백 배 차이 나는 두 수치형 열을 그대로 넣으면 큰 쪽이 결과를 지배합니다. 메커니즘과 방식 선택 기준을 정리했습니다.</p>
+
+  <p>수치형 열마다 단위와 범위가 다릅니다. 나이는 대개 0에서 100 사이지만 연소득은 수백만에서 수천만 단위입니다. 이 도구는 수치형 열 간 표준편차의 최대·최소 비가 100배 이상이면 발견으로 올립니다.</p>
+  <p>스케일 차이가 실제로 문제가 되는 것은 특정 계열의 방법에서만입니다. 어디서 왜 문제가 되는지를 알아야 언제 대응이 필요한지 판단할 수 있습니다.</p>
+  <h2>거리 기반 방법 — 큰 축이 거리를 독점한다</h2>
+  <p>유클리드 거리는 각 변수의 차이를 제곱해 더한 값입니다. 연소득 차이가 수만 단위이고 나이 차이가 수십 단위라면, 거리 값은 사실상 연소득 차이만으로 정해집니다. 나이는 계산에 참여하고 있지만 결과에는 거의 기여하지 못합니다.</p>
+  <p>k-최근접 이웃, k-평균 군집화, 방사 기저 커널을 쓰는 서포트 벡터 머신, 주성분분석처럼 거리나 분산을 직접 비교하는 방법은 전부 이 문제를 그대로 물려받습니다. 스케일을 맞추지 않으면 변수를 여러 개 넣은 의미가 사라지고 사실상 가장 큰 축 하나로 계산하는 것과 비슷해집니다.</p>
+  <h2>경사 하강 기반 학습 — 축마다 다른 보폭이 필요해진다</h2>
+  <p>선형·로지스틱 회귀나 신경망처럼 경사 하강으로 학습하는 모델은 모든 축에 같은 학습률을 적용합니다. 축마다 값의 범위가 크게 다르면 축마다 필요한 보폭도 달라지는데, 학습률은 하나이므로 큰 축에서는 진동하고 작은 축에서는 거의 움직이지 않는 상태가 됩니다. 그 결과 수렴이 느려지거나 아예 발산하기도 합니다.</p>
+  <h2>스케일에 영향받지 않는 경우</h2>
+  <p>결정 트리와 그 앙상블(랜덤 포레스트, 그래디언트 부스팅)은 변수의 절대값이 아니라 값의 순서로 분기 기준을 정하므로 스케일 차이에 영향받지 않습니다. 또한 Pearson 상관계수는 정의 자체에 표준편차로 나누는 과정이 들어 있어 스케일이 달라도 값이 바뀌지 않습니다. 스케일링이 필요한지는 다음에 쓸 방법이 무엇인지에 달려 있습니다.</p>
+  <h2>어떤 방식을 고르나</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>방식</th><th>계산</th><th>특징</th><th>언제 쓰나</th></tr></thead>
+    <tbody>
+      <tr><td>표준화</td><td>평균을 빼고 표준편차로 나눔</td><td>평균 0, 분산 1. 이상치에 민감</td><td>분포가 정규에 가까울 때</td></tr>
+      <tr><td>정규화</td><td>최솟값을 빼고 최댓값과 최솟값의 차이로 나눔</td><td>0에서 1 사이로 고정. 이상치에 매우 민감</td><td>신경망처럼 고정 범위 입력이 필요할 때</td></tr>
+      <tr><td>로버스트 스케일링</td><td>중앙값을 빼고 사분위 범위로 나눔</td><td>이상치의 영향이 작음</td><td>이상치가 있는 열</td></tr>
+    </tbody>
+  </table></div>
+  <p>이상치가 많은 열에 표준화나 정규화를 쓰면 극단값 한두 개가 나머지 값을 좁은 구간으로 몰아넣습니다. 이상치를 먼저 처리했는지, 아니면 그대로 둔 채 스케일링만 할 것인지에 따라 방식을 다르게 골라야 합니다.</p>
+  <h2>순서 주의</h2>
+  <p>스케일링 기준(평균·표준편차 또는 최솟값·최댓값)은 학습 데이터에서만 구하고, 검증·테스트 데이터에는 그 기준을 그대로 적용해야 합니다. 전체 데이터로 기준을 구한 뒤 나누면 검증 데이터의 정보가 학습 과정에 이미 스며든 셈이 되어 성능이 부풀려집니다.</p>
+  <p>이 도구의 전처리 탭에서 스케일링을 적용하면 열마다 표준화·정규화·로버스트 중 하나를 고를 수 있고, 적용 후에는 계산에 쓰인 기준값이 함께 표시됩니다. 다만 그 기준값을 별도의 테스트 데이터에 다시 적용하는 작업은 이 도구가 대신하지 않으므로, 값을 그대로 옮겨 써야 합니다.</p>
+  <h2>정리</h2>
+  <p>스케일 차이는 데이터의 결함이 아니라 단위가 다른 변수를 함께 쓸 때 자연히 생기는 현상입니다. 문제가 되는지는 다음에 쓸 방법이 거리나 경사 하강에 의존하는지에 달려 있고, 대응이 필요하다면 분포 모양과 이상치 유무를 보고 방식을 고르면 됩니다.</p>
+
+  <nav class="related" aria-label="관련 해설">
+    <h2>관련 해설</h2>
+    <ul class="doc-list">
+      <li><a href="/pages/guide/class-imbalance">클래스 불균형 — 정확도를 쓰면 안 되는 이유와 지표 선택</a> — 소수 클래스가 1%인 문제에서 정확도 99%는 아무 일도 하지 않은 모델의 점수입니다. 지표와 대응 방법을 정리했습니다.</li>
+      <li><a href="/pages/guide/target-distribution">타깃 분포 — 회귀 타깃이 치우치면 무엇이 달라지는가</a> — 회귀 타깃의 왜도가 크면 모델이 흔한 구간에만 맞춰지고 드문 구간의 예측이 무너집니다. 이유와 로그 변환의 효과를 정리했습니다.</li>
+    </ul>
+    <p><a href="/pages/guide">해설 전체 보기</a> ·
+    <a href="/pages/glossary">용어집</a></p>
+  </nav>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 확인하기</h2>
+    <p>여기서 설명한 항목을 직접 가진 파일에서 확인할 수 있습니다. 파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+<script type="module" src="/js/app/float-cta.js"></script>
+</body>
+</html>

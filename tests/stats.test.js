@@ -3,7 +3,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { numericStats, quantile, topValues, classDistribution, histogram, densityCurve } from '../js/domain/stats.js';
+import {
+  numericStats,
+  quantile,
+  topValues,
+  classDistribution,
+  numericStatsByClass,
+  histogram,
+  densityCurve,
+} from '../js/domain/stats.js';
 
 const F = (arr) => Float64Array.from(arr);
 const approx = (actual, expected, eps = 1e-9) =>
@@ -79,6 +87,27 @@ test('topValues — 동률은 먼저 등장한 값이 앞선다', () => {
 test('classDistribution — 전체 분포 (최소 클래스가 잘리지 않는다)', () => {
   const values = [...Array(9).fill('major'), 'minor'];
   assert.deepEqual(classDistribution(values), { major: 9, minor: 1 });
+});
+
+// ─── numericStatsByClass ────────────────────────────────────
+
+test('numericStatsByClass — 클래스별로 묶어 기술통계를 낸다', () => {
+  const values = F([1, 2, 3, 10, 20, 30]);
+  const classes = ['a', 'a', 'a', 'b', 'b', 'b'];
+  const result = numericStatsByClass(values, classes);
+  assert.equal(result.a.count, 3);
+  assert.equal(result.a.mean, 2);
+  assert.equal(result.b.count, 3);
+  assert.equal(result.b.mean, 20);
+});
+
+test('numericStatsByClass — 결측 클래스(빈 문자열)와 NaN 값은 제외한다', () => {
+  const values = F([1, 2, NaN, 4]);
+  const classes = ['a', 'a', 'a', ''];
+  const result = numericStatsByClass(values, classes);
+  assert.deepEqual(Object.keys(result), ['a']);
+  assert.equal(result.a.count, 2); // 인덱스 2(NaN)·3(결측 클래스) 제외
+  assert.equal(result.a.mean, 1.5);
 });
 
 // ─── histogram ──────────────────────────────────────────────

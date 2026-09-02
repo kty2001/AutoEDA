@@ -25,7 +25,15 @@ const CONTRACTS = {
   'decode.js': ['decode', 'stripBom'],
   'parse.js': ['detectDelimiter', 'parseCsv', 'serializeCsv'],
   'infer.js': ['inferColumns', 'isValidFor', 'parseDate'],
-  'stats.js': ['numericStats', 'quantile', 'topValues', 'classDistribution', 'histogram', 'densityCurve'],
+  'stats.js': [
+    'numericStats',
+    'quantile',
+    'topValues',
+    'classDistribution',
+    'numericStatsByClass',
+    'histogram',
+    'densityCurve',
+  ],
   'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif'],
   'outlier.js': ['iqrOutliers', 'zScoreOutliers'],
   'quality.js': ['healthScore'],
@@ -146,6 +154,7 @@ test('표시 개수 상한 (rules.md §4)', () => {
     scatterPairs: 6,
     scatterPoints: 200,
     heatmapColumns: 20,
+    targetRanking: 10,
   });
 });
 

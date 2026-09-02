@@ -106,6 +106,28 @@ export function classDistribution(values) {
 }
 
 /**
+ * 수치형 열을 타깃 클래스별로 묶어 기술통계를 낸다. 분류 타깃 지정 시에만 쓴다(Phase 2).
+ * 결측(빈 클래스 문자열)이거나 값이 NaN 인 행은 두 배열 모두에서 같은 인덱스이므로 함께 제외한다.
+ * @param {Float64Array} values correlation 계약과 같은 정렬 배열 — 결측·타입 불일치는 NaN
+ * @param {string[]} classValues 같은 길이의 클래스 값(정렬 유지). 빈 문자열은 결측
+ * @returns {Record<string, { count: number, mean: number, median: number, std: number,
+ *   min: number, max: number, q1: number, q3: number, skewness: number, kurtosis: number }>}
+ */
+export function numericStatsByClass(values, classValues) {
+  const groups = new Map();
+  for (let i = 0; i < values.length; i++) {
+    if (Number.isNaN(values[i]) || !classValues[i]) continue;
+    if (!groups.has(classValues[i])) groups.set(classValues[i], []);
+    groups.get(classValues[i]).push(values[i]);
+  }
+  const result = {};
+  for (const [cls, arr] of groups) {
+    result[cls] = { count: arr.length, ...numericStats(Float64Array.from(arr)) };
+  }
+  return result;
+}
+
+/**
  * 히스토그램 구간. 용량 폴백에서 가장 먼저 제외되는 항목이다(docs/data-model.md §4).
  * 등폭 구간이며 마지막 구간은 최댓값을 포함한다.
  * @param {Float64Array} values 결측 제외

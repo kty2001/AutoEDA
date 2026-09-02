@@ -16,7 +16,7 @@
 <meta property="og:description" content="CSV를 골라 브라우저에서 바로 EDA를 실행합니다. 품질 점수, 주요 발견, 변수별 분포, 변수 간 관계를 한 화면에서 확인합니다.">
 <meta name="twitter:card" content="summary">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"데이터 분석","item":"https://autoeda.tyoujungzz.workers.dev/pages/analyze"}]}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"결과를 다른 사람에게 보여줄 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다."}},{"@type":"Question","name":"열의 타입을 잘못 인식하면 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요."}},{"@type":"Question","name":"이상치 제거나 스케일링을 여기서 바로 할 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 전처리 탭에서 중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링을 골라 적용하고 정제된 CSV를 내려받을 수 있습니다. 적용 전후의 품질 점수와 열별 분포 변화를 나란히 보여 주며, 원본 파일은 바뀌지 않습니다."}},{"@type":"Question","name":"분석 결과를 지울 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 “결과 지우기”로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"결과를 다른 사람에게 보여줄 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과를 JSON 파일로 내보내 전달하면 상대가 이 화면에서 불러와 같은 결과를 볼 수 있습니다. 집계 통계와 발견만 담기므로 원본 데이터는 전달되지 않습니다."}},{"@type":"Question","name":"열의 타입을 잘못 인식하면 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면에서 열의 타입을 직접 바꿀 수 있고, 바꾸면 관련 분석이 다시 계산됩니다. 우편번호나 코드값이 수치로 인식되는 경우에 사용하세요."}},{"@type":"Question","name":"이상치 제거나 스케일링을 여기서 바로 할 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 전처리 탭에서 중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링을 골라 적용하고 정제된 CSV를 내려받을 수 있습니다. 적용 전후의 품질 점수와 열별 분포 변화를 나란히 보여 주며, 원본 파일은 바뀌지 않습니다."}},{"@type":"Question","name":"분석 결과를 지울 수 있나요?","acceptedAnswer":{"@type":"Answer","text":"결과 화면의 “결과 지우기”로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다."}},{"@type":"Question","name":"타깃 열을 지정하면 무엇이 달라지나요?","acceptedAnswer":{"@type":"Answer","text":"개요 화면 상단에서 예측하려는 열을 타깃으로 지정하면 전체를 다시 계산하고 타깃 탭이 열립니다. 회귀 타깃(수치형)이면 타깃 분포와 피처별 상관 순위를, 분류 타깃(범주형·불리언)이면 클래스 분포와 클래스별 수치 요약을 보여 주며, 클래스 불균형·타깃 왜도·데이터 누수 발견도 함께 나타납니다."}}]}</script>
 <!-- build:seo:end -->
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -69,7 +69,7 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════
-       상태 C — 결과 (5섹션 탭)
+       상태 C — 결과 (7섹션 탭)
        ※ 결과 UI 는 초기 HTML 에 내용을 두지 않는다. 색인 코퍼스가 도구 설명으로만
          구성되게 하기 위한 것이며, 이것이 noindex 없이도 결과가 색인되지 않는 근거다.
          → docs/screens.md §3.2
@@ -143,6 +143,8 @@
   <p>결과 화면의 전처리 탭에서 중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링을 골라 적용하고 정제된 CSV를 내려받을 수 있습니다. 적용 전후의 품질 점수와 열별 분포 변화를 나란히 보여 주며, 원본 파일은 바뀌지 않습니다.</p>
   <h3>분석 결과를 지울 수 있나요?</h3>
   <p>결과 화면의 &ldquo;결과 지우기&rdquo;로 브라우저에 남은 결과를 즉시 삭제할 수 있습니다.</p>
+  <h3>타깃 열을 지정하면 무엇이 달라지나요?</h3>
+  <p>개요 화면 상단에서 예측하려는 열을 타깃으로 지정하면 전체를 다시 계산하고 타깃 탭이 열립니다. 회귀 타깃(수치형)이면 타깃 분포와 피처별 상관 순위를, 분류 타깃(범주형·불리언)이면 클래스 분포와 클래스별 수치 요약을 보여 주며, 클래스 불균형·타깃 왜도·데이터 누수 발견도 함께 나타납니다.</p>
   </div>
 
 </main>

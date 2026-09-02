@@ -24,16 +24,23 @@
 import { decode } from '../domain/decode.js';
 import { detectDelimiter, parseCsv, serializeCsv, toNumber } from '../domain/parse.js';
 import { inferColumns, parseDate } from '../domain/infer.js';
-import { numericStats, topValues, histogram, densityCurve } from '../domain/stats.js';
+import {
+  numericStats,
+  topValues,
+  histogram,
+  densityCurve,
+  classDistribution,
+  numericStatsByClass,
+} from '../domain/stats.js';
 import { iqrOutliers } from '../domain/outlier.js';
 import { correlationPairs } from '../domain/correlation.js';
 import { healthScore } from '../domain/quality.js';
 import { buildFindings } from '../domain/finding.js';
 import { applyRecipe } from '../domain/transform.js';
-import { FILE_LIMIT, DISPLAY_LIMIT } from '../domain/thresholds.js';
+import { FILE_LIMIT, DISPLAY_LIMIT, FINDING } from '../domain/thresholds.js';
 import { bytes } from '../lib/format.js';
 
-const SCHEMA_VERSION = '1.2';
+const SCHEMA_VERSION = '1.3';
 
 /** 단계 진입 시 보고하는 진행률. 값 자체는 표시용 근사치다. */
 const STAGE_RATIO = { decode: 0.1, parse: 0.3, infer: 0.5, stats: 0.75, finding: 0.9 };
@@ -113,6 +120,7 @@ export function profile(parsed, options = {}) {
   const numericArrays = columns
     .filter((c) => c.type === 'numeric')
     .map((c) => ({ name: c.name, values: alignedNumeric(parsed.columns[c.index]) }));
+  attachTargetInfo(columns, numericArrays, parsed, target);
   const correlations = attachScatterPoints(correlationPairs(numericArrays), numericArrays);
 
   const dataset = {
@@ -134,6 +142,28 @@ export function profile(parsed, options = {}) {
   const findings = buildFindings({ dataset, columns, health, correlations, target });
 
   return { schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings, correlations };
+}
+
+/**
+ * 타깃 열이 분류 대상(범주형·불리언)이면 classDistribution·classStats 를 부착한다(Phase 2).
+ * 회귀 타깃(수치형)에는 붙이지 않는다 — 클래스 개념이 없다.
+ * 타깃의 고유값이 F-HIGH-CARD 상한 이상이면 붙이지 않는다 — 분포 객체가 지나치게 커지고
+ * 클래스 불균형 판정 자체가 의미를 잃는다(docs/data-model.md §8). 이 경우 F-CLASS-IMBALANCE 는
+ * classDistribution 부재로 자연히 발화하지 않는다(finding.js 의 기존 가드가 no-op 처리).
+ * → docs/data-model.md §3.3
+ */
+function attachTargetInfo(columns, numericArrays, parsed, target) {
+  if (!target) return;
+  const targetCol = columns.find((c) => c.name === target);
+  if (!targetCol || (targetCol.type !== 'categorical' && targetCol.type !== 'boolean')) return;
+  if (targetCol.uniqueCount >= FINDING['F-HIGH-CARD'].uniqueCount) return;
+
+  const targetValues = stringValues(parsed.columns[targetCol.index]);
+  targetCol.classDistribution = classDistribution(targetValues);
+  for (const col of numericArrays) {
+    const numericCol = columns.find((c) => c.name === col.name);
+    numericCol.classStats = numericStatsByClass(col.values, targetValues);
+  }
 }
 
 /** 타입별 stats 필드 조립(docs/data-model.md §3.7). id·text 는 빈 객체. */
@@ -343,7 +373,7 @@ function runRecipe(type, payload) {
 /**
  * 분석 실행. 단계마다 progress 를 보낸다.
  * 타입 수정 재계산도 이 경로를 다시 타므로(start 재호출) 부분 재계산 코드를 두지 않는다.
- * @param {{ file: File, encoding?: string, typeOverrides?: object }} payload
+ * @param {{ file: File, encoding?: string, typeOverrides?: object, target?: string }} payload
  */
 async function run(payload) {
   cancelled = false;

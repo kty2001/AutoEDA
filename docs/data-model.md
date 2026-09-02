@@ -58,6 +58,7 @@ erDiagram
         int uniqueCount
         float modeRate
         json classDistribution
+        json classStats
         boolean typeOverridden
     }
     ColumnStats {
@@ -126,7 +127,7 @@ erDiagram
 
 ```json
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "dataset": { },
   "columns": [ ],
   "health": { },
@@ -137,7 +138,7 @@ erDiagram
 
 | 경로 | 타입 | 필수 | 설명 |
 |---|---|:---:|---|
-| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`) |
+| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`, 1.2 → 1.3: `columns[].classStats`) |
 | `dataset` | object | ○ | §3.2 |
 | `columns` | array | ○ | §3.3. 원본 열 순서 |
 | `health` | object | ○ | §3.4 |
@@ -172,7 +173,8 @@ erDiagram
 | `invalidCount` / `invalidRate` | int / float | ○ | 추론된 타입으로 변환되지 않는 값의 수·비율. Health Score `invalid` 항목의 입력 ([`rules.md §2.1`](./rules.md)) |
 | `uniqueCount` | int | ○ | |
 | `modeRate` | float | ○ | 최빈값이 차지하는 비율. **모든 타입에서 산출.** Health Score `constant`와 `F-CONST-COL`의 입력 |
-| `classDistribution` | object | △ | `{값: 빈도}` 전체 분포. **타깃 열로 지정된 열에만 채워짐**(Phase 2). `F-CLASS-IMBALANCE`의 입력 |
+| `classDistribution` | object | △ | `{값: 빈도}` 전체 분포. **분류 타깃(범주형·불리언)으로 지정되고 고유값이 `F-HIGH-CARD.uniqueCount`(50) 미만인 열에만 채워짐**(Phase 2). `F-CLASS-IMBALANCE`의 입력 |
+| `classStats` | object | △ | `{클래스: {count, mean, median, std, ...}}` — 수치형 열에, 분류 타깃이 지정되고 위 조건을 만족할 때만 채워짐. 타깃 탭의 클래스별 요약표 입력 |
 | `stats` | object | ○ | §3.7. 타입에 따라 채워지는 필드가 다름 |
 
 `invalidCount`는 결측과 구분됨 — 빈 값은 `missingCount`, `age` 열의 `"미상"` 처럼 값이 있으나 타입에 맞지 않는 것은 `invalidCount`로 셈. 두 수를 합해도 전체 행 수를 넘지 않음.
@@ -180,6 +182,8 @@ erDiagram
 **`modeRate`를 `stats` 하위가 아니라 여기 두는 이유**: `stats`는 타입에 따라 채워지는 필드가 달라지는 영역인데 최빈값 비율은 모든 타입에서 동일하게 정의되고 세 규칙(Health `constant` · `F-CONST-COL` · 타입 추론 근거 노출)이 함께 씀. 타입 분기 밖에 두어야 규칙이 타입을 신경 쓰지 않아도 됨. 특히 **수치형 준상수**(상태코드 열의 99%가 동일한 경우 등)를 `stats.topValues` 없이 판정할 수 있게 하는 것이 목적임.
 
 **`classDistribution`이 `topValues`와 다른 점**: `topValues`는 상위 N개만 담아 **최소 클래스가 잘림.** 클래스 불균형은 최소 클래스 비율로 판정하므로 전체 분포가 필요함.
+
+**고카디널리티 타깃(§8 이전 미해결 항목, 해소)**: 타깃 열이 범주형·불리언이라도 고유값이 `F-HIGH-CARD.uniqueCount`(50) 이상이면 `classDistribution`·`classStats`를 붙이지 않음 — 분포 객체가 지나치게 커지고 클래스 불균형 판정 자체가 뜻을 잃기 때문. 이때 `F-CLASS-IMBALANCE`는 `classDistribution` 부재로 자연히 발화하지 않음(finding.js의 기존 가드가 no-op 처리). 회귀 타깃(수치형)에는 애초에 클래스 개념이 없으므로 둘 다 붙이지 않음.
 
 동명 열이 있으면 파싱 단계에서 `name`, `name_2`로 구분해 이름 참조의 유일성을 보장함.
 
@@ -275,7 +279,7 @@ sessionStorage 한도는 대략 5MB임. 열이 많으면 `histogram`과 `correla
 
 | 방향 | 타입 | 페이로드 |
 |---|---|---|
-| Page → Worker | `start` | `{file, encoding?, typeOverrides?}` |
+| Page → Worker | `start` | `{file, encoding?, typeOverrides?, target?}` |
 | Page → Worker | `cancel` | — |
 | Page → Worker | `preprocess` | `{recipe}` — 붙들어 둔 파싱 결과에 적용 후 재프로파일 ([`TODO.md` T7](./TODO.md)) |
 | Page → Worker | `export-csv` | `{recipe}` |
@@ -304,12 +308,18 @@ sequenceDiagram
 
     P->>P: sessionStorage 저장 (§4 폴백 적용)
     P->>P: 상태 C 전환
-    P-->>U: 결과 5섹션
+    P-->>U: 결과 7섹션
 
     Note over U,W: UC-02 대안 — 타입 수정 시 재계산
     U->>P: 열 타입 변경
     P->>W: start {file, typeOverrides}
     W-->>P: done {result}
+
+    Note over U,W: UC-21 — 타깃 지정 시 재계산
+    U->>P: 개요 탭에서 타깃 열 선택
+    P->>W: start {file, target}
+    W-->>P: done {result}
+    Note right of W: profile() 이 target 을 buildFindings 로 넘기고,<br/>분류 타깃이면 classDistribution·classStats 를 부착함
 
     Note over U,W: 오류 경로
     U->>P: 파일 선택
@@ -407,5 +417,5 @@ UC-15가 조회하는 Finding 유형 → 해설 매핑임.
 | 열 수 상한 | 열이 매우 많으면 `columns[]`와 `correlations[]`가 함께 커짐. 상한을 두고 초과 시 열 선택을 요구할지 결정 필요 |
 | ~~`ChartSpec` 표현 범위~~ | **확정 (2026-08-18)** — `{ kind, data, axis }` 로 5종이 공유하고, 렌더러 계약은 `(data, axis) => string` 임. **캔버스는 공유하지 않음** — 히트맵은 20열에서 레이블이 겹쳐 정사각 420×420 예외를 씀(`chart-svg.js` 의 `CANVAS`). 스케일은 렌더러 내부 관심사로 두고 스펙에 담지 않음 |
 | 스키마 버전 승격 시점 | Phase 2에서 타깃 분석 필드가 추가되면 `1.1`인지 `2.0`인지 — 필드 추가만이면 `1.1` |
-| `classDistribution` 크기 상한 | 타깃 열의 고유값이 매우 많으면(고카디널리티 타깃) 분포 객체가 커짐. 상한을 두고 초과 시 타깃 지정을 거부할지, 하위 클래스를 묶을지 결정 필요 |
+| ~~`classDistribution` 크기 상한~~ | **확정 (T7 2단계)** — 타깃 열이 범주형·불리언이고 고유값이 `F-HIGH-CARD.uniqueCount`(50) 미만일 때만 `classDistribution`·`classStats`를 부착함. 그 이상(고카디널리티)이거나 회귀 타깃(수치형)이면 붙이지 않으며, `F-CLASS-IMBALANCE`는 자연히 발화하지 않음 → §3.3 |
 | `invalid` 항목 정의 | Health Score의 "유효하지 않은 값"을 어디까지 볼지(음수 나이, 미래 날짜 등)는 `rules.md §6`의 미확정 항목 |

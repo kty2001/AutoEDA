@@ -20,7 +20,7 @@ const SAMPLE = [
 
 test('결과 JSON — 최상위·dataset 필드 (data-model.md §3.1·§3.2)', () => {
   const r = analyze(buf(SAMPLE));
-  assert.equal(r.schemaVersion, '1.2'); // 1.1 histogram.density(KDE) · 1.2 dataset.recipe(전처리)
+  assert.equal(r.schemaVersion, '1.3'); // 1.1 histogram.density(KDE) · 1.2 dataset.recipe(전처리) · 1.3 columns[].classStats(타깃)
   assert.equal(r.dataset.rowCount, 5);
   assert.equal(r.dataset.columnCount, 5);
   assert.equal(r.dataset.duplicateRowCount, 1);
@@ -110,9 +110,36 @@ test('취소 — 부분 결과 없이 null (data-model.md §5.2)', () => {
   assert.equal(r, null);
 });
 
-test('타깃 지정 — T군 평가 경로가 열린다 (Phase 2 인터페이스)', () => {
+test('타깃 지정 — classDistribution·classStats 부착과 F-CLASS-IMBALANCE 발화 (T7 2단계)', () => {
   const rows = Array.from({ length: 40 }, (_, i) => `${i},${i % 10 === 0 ? 'yes' : 'no'}`);
   const csv = ['x,label', ...rows].join('\n');
   const r = analyze(buf(csv), { target: 'label' });
-  assert.ok(Array.isArray(r.findings)); // classDistribution 미조립 상태에서도 오류 없이 동작
+
+  const label = r.columns.find((c) => c.name === 'label');
+  assert.deepEqual(label.classDistribution, { yes: 4, no: 36 });
+  assert.ok(r.findings.some((f) => f.type === 'F-CLASS-IMBALANCE'));
+
+  const x = r.columns.find((c) => c.name === 'x');
+  assert.equal(x.classStats.yes.count, 4);
+  assert.equal(x.classStats.no.count, 36);
+  assert.ok(typeof x.classStats.yes.mean === 'number');
+});
+
+test('타깃 지정 — 고카디널리티 타깃은 classDistribution 을 붙이지 않는다 (F-HIGH-CARD 상한 재사용)', () => {
+  const rows = Array.from({ length: 200 }, (_, i) => `${i},cat${i % 60}`); // 고유 클래스 60개
+  const csv = ['x,label', ...rows].join('\n');
+  const r = analyze(buf(csv), { target: 'label' });
+
+  const label = r.columns.find((c) => c.name === 'label');
+  assert.equal(label.type, 'categorical');
+  assert.equal(label.classDistribution, undefined);
+  assert.ok(!r.findings.some((f) => f.type === 'F-CLASS-IMBALANCE'));
+});
+
+test('타깃 지정 — 회귀(수치형) 타깃에는 classDistribution 을 붙이지 않는다', () => {
+  const csv = ['x,y', ...Array.from({ length: 30 }, (_, i) => `${i},${i * 2}`)].join('\n');
+  const r = analyze(buf(csv), { target: 'y' });
+  const y = r.columns.find((c) => c.name === 'y');
+  assert.equal(y.type, 'numeric');
+  assert.equal(y.classDistribution, undefined);
 });

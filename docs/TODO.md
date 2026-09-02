@@ -10,7 +10,7 @@
 
 여기에는 **작업 항목만** 둠. 수치·규칙·현황 표를 옮겨 적지 않고 링크함.
 
-최종 갱신: 2026-08-19
+최종 갱신: 2026-09-02
 
 ---
 
@@ -24,10 +24,10 @@
 |---|---|
 | 런타임 코드 | `js/` 18개 모듈 (스텁 0) |
 | 빌드 스크립트 | `build_seo` · `build_guides` 완료 / `build_cases` **미구현 — 쓰지 않기로 함**([`work-log.md` 2026-08-18](work-log.md)) |
-| 테스트 | 262건 통과 + 실기 11 + 배포본 9 |
-| 색인 대상 | **27 URL** — 전수가 리디렉션 0회로 200 |
-| 발행 콘텐츠 | **24편 · 42,728자** / 게이트 목표 15편 · 25,000자 — **충족(171%)** |
-| 미발행 콘텐츠 | 해설 2편(T2·T3 — Phase 2 타깃 기능 전까지 발화 안 함) · 사례 3편(데이터셋 미선정) |
+| 테스트 | 318건 통과 + 실기 11 + 배포본 9 |
+| 색인 대상 | **29 URL** — 전수가 리디렉션 0회로 200 |
+| 발행 콘텐츠 | **26편 · 45,116자** / 게이트 목표 15편 · 25,000자 — **충족(180%)** |
+| 미발행 콘텐츠 | 사례 3편(데이터셋 미선정) |
 | 필수 페이지 | **4종 확정** — 시행일·광고 쿠키 고지 기재 완료 |
 | 죽은 내부 링크 | **0건** |
 
@@ -140,14 +140,14 @@ npx wrangler dev --port 8787 --persist-to <프로젝트 밖 경로>
 
 ### T7. 진단에서 조치로 — 전처리 파이프라인 + 타깃 기반 EDA
 
-**1단계(전처리) 완료 (2026-08-19).** 2단계(타깃 기반 EDA) 미착수.
+**1단계(전처리) 완료 (2026-08-19). 2단계(타깃 기반 EDA) 완료 (2026-09-02).**
 
 **문제.** 도구가 데이터 상태를 알려주기만 하고 아무것도 바꾸지 못함. Finding 의 "무엇을 하면 되는지"가 문장으로만 존재해 사용자는 조치를 하려면 사이트를 떠나 코드를 써야 함. 이상치 제거·스케일링이 사이트에서 바로 되지 않으면 진단 자체의 쓸모가 반감됨.
 
-**동시에 확인된 것** — 축 3(타깃 기반 EDA)의 규칙 엔진은 **이미 구현돼 있는데 죽어 있음**:
-- `js/domain/finding.js:213-270` 의 `F-LEAKAGE`·`F-CLASS-IMBALANCE`·`F-TARGET-SKEW`·`F-SCALE-DIFF` 가 `target` 인자에 걸려 있으나 **타깃을 지정할 UI 가 없음**
-- `classDistribution`(`js/domain/stats.js:104`)은 계산 함수만 있고 열에 부착되지 않아 `F-CLASS-IMBALANCE` 는 조건 자체에 도달하지 못함
-- 해설 `target-distribution`·`scaling` 은 `data/finding-map.json` 이 가리키는데 **미발행**이라 "자세히" 링크가 뜨지 않음
+**당시 확인됐던 것** — 축 3(타깃 기반 EDA)의 규칙 엔진은 **이미 구현돼 있는데 죽어 있었음**(2단계에서 해소):
+- `js/domain/finding.js:213-270` 의 `F-LEAKAGE`·`F-CLASS-IMBALANCE`·`F-TARGET-SKEW`·`F-SCALE-DIFF` 가 `target` 인자에 걸려 있으나 타깃을 지정할 UI 가 없었음 → 개요 탭 "타깃 열" select 로 해소
+- `classDistribution`(`js/domain/stats.js:104`)은 계산 함수만 있고 열에 부착되지 않아 `F-CLASS-IMBALANCE` 가 조건 자체에 도달하지 못했음 → `analyze.worker.js` 의 `attachTargetInfo()` 가 분류 타깃에만 부착하도록 해소
+- 해설 `target-distribution`·`scaling` 은 `data/finding-map.json` 이 가리키는데 미발행이라 "자세히" 링크가 뜨지 않았음 → 두 편 발행으로 해소
 
 **순서**: 1단계 전처리 → 2단계 타깃 EDA. [`direction.md §4`](direction.md) 기준으로 Phase 3 후보(전처리 지원)를 Phase 2 앞으로 당기는 결정임.
 
@@ -228,15 +228,17 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 - **`pages/privacy.html`** — 정제 파일도 브라우저에서 생성되고 서버로 가지 않는다는 문장 추가. 실제 구현과 일치해야 함
 - [`data-model.md`](data-model.md)(§5 프로토콜·§3 `recipe`) · [`rules.md`](rules.md)(전처리 임계값) · [`screens.md §4`](screens.md)(탭 6개) · [`direction.md §4`](direction.md)(앞당긴 근거) · [`implementation-status.md §1`](implementation-status.md) · `work-log.md`
 
-#### 2단계 — 타깃 기반 EDA — **다음 차례**
+#### 2단계 — 타깃 기반 EDA — **완료 (2026-09-02)**
 
-- **타깃 지정 UI** — 개요 탭 상단 "타깃 열" select → `start { file, target }` 재계산. `analyze()` 는 이미 `target` 을 `buildFindings` 로 넘김
-- **`classDistribution` 부착** — `columnStats` 이후 **타깃 열에만** 붙임. 이것이 없어 `F-CLASS-IMBALANCE` 가 죽어 있음 ([`data-model.md §3.3`](data-model.md) 이 이미 "타깃 열에만 산출"로 규정)
+산출물: `js/domain/stats.js` 의 `numericStatsByClass` · `analyze.worker.js` 의 `attachTargetInfo()`(classDistribution·classStats 부착, schemaVersion 1.3) · 개요 탭 타깃 열 select · 타깃 탭(7번째, 회귀/분류 분기) · 해설 2편(target-distribution·scaling) 발행. 테스트 318건(신규 6건).
+
+- **타깃 지정 UI** — 개요 탭 상단 "타깃 열" select → `start { file, target }` 재계산(기존 `start` 페이로드 재사용, 새 메시지 타입 없음)
+- **`classDistribution`·`classStats` 부착** — `attachTargetInfo()` 가 분류 타깃(범주형·불리언)이고 고유값이 `F-HIGH-CARD.uniqueCount`(50) 미만일 때만 붙임. 고카디널리티 타깃·회귀 타깃은 대상 밖 — `data-model.md §3.3`·§8 이 확정본
 - **타깃 탭(7번째)** — 타깃 유형 판정 후 분기
-  - 회귀(수치): 타깃 분포·왜도 + **피처별 |Pearson| 순위** — `result.correlations` 재사용, 새 통계 없음
-  - 분류(범주·불리언): 클래스 분포 막대 + **클래스별 수치형 요약표**(평균·표준편차) — η²·Cramér's V 는 범위 밖이므로 기존 통계만으로 구성
-- **해설 2편 발행** — `data/guide_source/target-distribution.md`·`scaling.md` → `npm run build`. `finding-map.json` 이 이미 가리키므로 발행만 하면 링크가 살아남(`published.json` 게이트)
-- `F-SCALE-DIFF` 가 `addTargetFindings` 안에 있어 타깃 없이는 발화하지 않음. 스케일 차이는 타깃과 무관하므로 **밖으로 꺼낼지 판단**하고 [`rules.md §3.5`](rules.md) 와 함께 정리
+  - 회귀(수치): 타깃 분포·왜도 안내(`selectForFinding` 재사용) + 피처별 |Pearson| 순위(`result.correlations` 재사용, 새 통계 없음)
+  - 분류(범주·불리언): 클래스 분포 막대 + 클래스별 수치형 요약표(평균·표준편차, `numericStatsByClass` 신규) — η²·Cramér's V 는 범위 밖
+- **해설 2편 발행** — `data/guide_source/target-distribution.md`·`scaling.md` 작성 후 `npm run build` 로 발행 완료
+- **`F-SCALE-DIFF` 배치**: 타깃과 무관하게 계산되는데도 타깃 지정 시에만 발화하는 상태를 유지하기로 결정(사용자 확인, 2026-09-02) — 기존 문서·테스트와 일치하는 보수적 선택. 코드 변경 없음
 
 #### 범위 밖 (이번에 넣지 않음)
 

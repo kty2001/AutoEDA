@@ -123,9 +123,11 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 
 | ID | 발생 조건 | 심각도 | 범위 | 해설 슬러그 | ML |
 |---|---|---|---|---|:---:|
-| `F-CLASS-IMBALANCE` | `classDistribution`의 최소 클래스 비율 ≤ 10% | high | column | `class-imbalance` | ○ |
+| `F-CLASS-IMBALANCE` | `classDistribution`의 최소 클래스 비율 ≤ 10%\* | high | column | `class-imbalance` | ○ |
 | `F-TARGET-SKEW` | 회귀 타깃의 왜도 절댓값 ≥ 1 | medium | column | `target-distribution` | ○ |
 | `F-SCALE-DIFF` | 수치형 열 간 표준편차 최대/최소 비 ≥ 100 | medium | dataset | `scaling` | ○ |
+
+\* `classDistribution`은 타깃이 범주형·불리언이고 고유값이 `F-HIGH-CARD.uniqueCount`(50) 미만일 때만 계산됨(고카디널리티 타깃·회귀 타깃은 대상 밖). 계산되지 않으면 이 발견도 발화하지 않음(`data-model.md §3.3`).
 
 ### 3.6 필요 지표 폐합
 
@@ -172,6 +174,7 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 | 관계 탭의 산점도 | 6쌍 | 상관 절댓값 상위만 |
 | 산점도 점 수 | 쌍당 200점 | 초과 시 균등 간격 다운샘플 (`correlations[].points`, [`data-model.md §3.6`](./data-model.md)) |
 | 상관 히트맵 | 열 20개 | 초과 시 분산 상위 20열로 축소하고 축소 사실을 표시 |
+| 타깃 탭의 피처 랭킹 | 10개 | `\|Pearson\|` 내림차순 상위만 |
 
 **같은 유형 묶기가 중요함**: 열 50개 중 30개에 결측이 있으면 `F-MISSING-HIGH`가 30건 생성됨. 묶지 않으면 발견 목록이 그 유형으로만 채워져 다른 발견이 묻힘.
 
