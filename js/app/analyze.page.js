@@ -18,6 +18,7 @@ import { renderChart, escapeXml as esc } from '../domain/chart-svg.js';
 import { DISPLAY_LIMIT } from '../domain/thresholds.js';
 import { percent, count, stat, bytes } from '../lib/format.js';
 import { saveResult, loadResult, clearResult, loadPrefs, savePrefs } from '../storage/local.js';
+import { buildShareSummary, encodeShareSummary, decodeShareSummary } from '../domain/share.js';
 
 /** @typedef {'A'|'B'|'C'|'D'} State */
 
@@ -172,7 +173,12 @@ function renderError(code, detail) {
   if (!message || !actions) return;
   actions.innerHTML = '';
 
-  const backButton = button('다른 파일 선택', 'btn btn-secondary', () => setState('A'));
+  // 공유 링크(?s=)로 들어와 실패한 경우 그 값이 URL에 남아 있으면 새로고침 때마다
+  // 같은 오류가 반복된다 — 항상 지워 두는 편이 다른 오류 유형에도 해가 없다.
+  const backButton = button('다른 파일 선택', 'btn btn-secondary', () => {
+    if (location.search) history.replaceState(null, '', location.pathname);
+    setState('A');
+  });
 
   switch (code) {
     case 'ENCODING_UNDETECTED':
@@ -191,6 +197,10 @@ function renderError(code, detail) {
       return;
     case 'SCHEMA_MISMATCH':
       message.textContent = `불러온 파일이 이 도구의 결과 형식과 맞지 않습니다. ${detailText(detail)}`;
+      actions.append(backButton);
+      return;
+    case 'SHARE_INVALID':
+      message.textContent = '공유 링크를 읽을 수 없습니다. 링크가 손상되었거나 지원하지 않는 형식입니다.';
       actions.append(backButton);
       return;
     default: // PARSE_FAILED
@@ -273,6 +283,52 @@ export function renderResult(result, notice = null) {
 
   const preferred = loadPrefs().activeTab;
   activate(TABS.some((t) => t.id === preferred) ? preferred : 'overview');
+}
+
+/**
+ * 공유 링크(`?s=`)로 들어온 요약을 카드 1장으로 렌더한다. (docs/TODO.md T8)
+ * 전체 7탭이 아니라 Health Score 와 상위 발견만 보여준다 — 원본 파일도 전체 결과도 없다.
+ * currentResult 는 세팅하지 않는다 — 내보내기·전처리 등 원본이 필요한 동작은 그대로 비활성 상태로 둔다.
+ */
+function renderSharedSummary(summary) {
+  const tabs = document.getElementById('result-tabs');
+  const panels = document.getElementById('result-panels');
+  if (!tabs || !panels) return;
+  tabs.innerHTML = '';
+  panels.innerHTML = '';
+
+  const findingsHtml =
+    summary.f.length === 0
+      ? '<p class="hint">공유된 주요 발견이 없습니다.</p>'
+      : `<ol class="findings">${summary.f
+          .map(
+            (f) => `<li class="finding severity-${f.s}">
+              <span class="badge severity-${f.s}">${SEVERITY_LABEL[f.s] ?? esc(f.s)}</span>
+              <strong>${esc(f.w)}</strong>
+            </li>`
+          )
+          .join('')}</ol>`;
+
+  panels.insertAdjacentHTML(
+    'beforeend',
+    `<div class="card">
+      <p class="health-total">
+        <strong class="verdict-${gradeClass(summary.h.g)}">${summary.h.t}점 · ${GRADE_LABEL[summary.h.g] ?? esc(summary.h.g)}</strong>
+        — 다른 사람이 공유한 분석 요약입니다.
+      </p>
+      ${findingsHtml}
+      <p class="hint">이 요약은 만든 사람의 브라우저에서 생성됐으며 원본 데이터와 전체 결과는 포함되어 있지 않습니다.</p>
+    </div>`
+  );
+
+  const actions = document.createElement('p');
+  actions.appendChild(
+    button('내 데이터로 분석하기', 'btn', () => {
+      history.replaceState(null, '', location.pathname);
+      setState('A');
+    })
+  );
+  panels.appendChild(actions);
 }
 
 // 개요 — 데이터셋 기본 정보 + 열 목록 (타입 배지·오버라이드, UC-02·03)
@@ -918,6 +974,20 @@ function button(label, className, onClick) {
 }
 
 function init() {
+  // 공유 링크(?s=) 진입점 — 도구는 원래 쿼리스트링으로 상태를 구분하지 않는다(docs/screens.md §1).
+  // 이 한 가지 예외만 둔다: 4상태 자체는 여전히 URL과 무관하고, 공유 진입점 용도로만 쓴다.
+  const shareParam = new URLSearchParams(location.search).get('s');
+  if (shareParam) {
+    const summary = decodeShareSummary(shareParam);
+    if (summary) {
+      renderSharedSummary(summary);
+      setState('C');
+    } else {
+      renderError('SHARE_INVALID');
+      setState('D');
+    }
+  }
+
   const fileInput = document.getElementById('file-input');
   fileInput?.addEventListener('change', () => {
     const file = fileInput.files?.[0];
@@ -951,6 +1021,20 @@ function init() {
   });
 
   document.getElementById('export-result')?.addEventListener('click', exportResult);
+  document.getElementById('share-summary')?.addEventListener('click', async () => {
+    if (!currentResult) return;
+    const url = `${location.origin}${location.pathname}?s=${encodeShareSummary(buildShareSummary(currentResult))}`;
+    const status = document.getElementById('share-status');
+    if (!status) return;
+    status.hidden = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      status.textContent = '공유 링크가 복사되었습니다. 원본 데이터는 포함되지 않습니다.';
+    } catch {
+      // 클립보드 접근이 막힌 환경(권한 거부 등) — 링크를 화면에 직접 보여준다
+      status.textContent = `클립보드에 복사하지 못했습니다. 링크: ${url}`;
+    }
+  });
   document.getElementById('clear-result')?.addEventListener('click', () => {
     clearResult(); // UC-11 — 개인정보처리방침의 "직접 삭제" 근거
     // Worker 가 전처리용으로 붙들고 있는 원본까지 함께 놓는다 — 캐시만 지우면

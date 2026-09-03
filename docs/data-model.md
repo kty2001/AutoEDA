@@ -247,6 +247,28 @@ erDiagram
 
 > **타입과 무관하게 채워지는 필드는 `stats` 밖에 있음** — `missingRate`·`invalidRate`·`uniqueCount`·`modeRate`는 `id`·`text`를 포함한 모든 타입에서 산출됨(§3.3). 위 표는 `stats` 하위만 다룸. 따라서 `F-CONST-COL`처럼 타입을 가리지 않는 규칙은 `stats`를 보지 않고 `columns[]` 공통 필드만 참조해 성립함.
 
+### 3.8 공유 요약 스키마 (`?s=` 쿼리스트링, T8)
+
+결과 JSON과는 **별개의, 훨씬 작은 스키마**임. `js/domain/share.js`가 원천이며, `schemaVersion`과 독립된 `v` 필드로 버전을 관리함 — 결과 스키마가 바뀌어도 이미 공유된 링크의 해석이 흔들리면 안 되기 때문.
+
+```json
+{ "v": 1, "h": { "t": 78, "g": "fair" }, "f": [{ "t": "F-MULTICOLLINEAR", "s": "high", "w": "…" }] }
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `v` | int | 공유 스키마 버전. 현재 `1`. 디코더가 모르는 값이면 전체를 무효로 함 |
+| `h.t` | int | `health.total`. 0~100으로 clamp |
+| `h.g` | string | `health.grade`. `good`\|`fair`\|`poor` 화이트리스트 검증 |
+| `f[]` | array | 상위 발견 최대 3건. 없으면 빈 배열 |
+| `f[].t` | string | `findings[].type`과 동일 |
+| `f[].s` | string | `findings[].severity`. `high`\|`medium`\|`low` 화이트리스트 검증 |
+| `f[].w` | string | `findings[].what` 그대로(길이 초과 시 자름). 열 이름이 포함될 수 있음 |
+
+**담지 않는 것**: 원본 행, `dataset`(행/열 수 등), `columns[]`, `correlations[]`, `why`/`how`/`metrics`/`targets`. URL 길이·정보 최소화 원칙이며, Phase 3 "결과 링크 공유"(D1 전제, [`direction.md §4`](./direction.md))와 달리 서버에 아무것도 저장하지 않음.
+
+**`decodeShareSummary`는 신뢰할 수 없는 입력을 다룬다** — URL은 링크를 받은 사람이 아니라 **누구든** 만들 수 있음. `h.g`·`f[].s`가 그대로 CSS 클래스명으로 쓰이므로(`js/app/analyze.page.js`의 `gradeClass`) 화이트리스트 검증 없이 통과시키지 않으며, 인코딩된 문자열 자체에도 길이 상한(4,000자)을 두어 디코딩을 시도하기 전에 걸러냄. `h`가 어긋나면 전체를 무효로 하고, 개별 `f[]` 항목이 어긋나면 그 항목만 제외함(관대한 실패).
+
 ## 4. 저장소 키 스키마
 
 | 키 | 저장소 | 내용 | 수명 |

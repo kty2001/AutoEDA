@@ -10,7 +10,7 @@
 
 여기에는 **작업 항목만** 둠. 수치·규칙·현황 표를 옮겨 적지 않고 링크함.
 
-최종 갱신: 2026-09-02
+최종 갱신: 2026-09-03
 
 ---
 
@@ -259,6 +259,21 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 
 ---
 
+### T8. 결과 요약 공유 링크 (구 개선 제안 S1) — 코드 완료, 실기 검증 대기 (2026-09-03)
+
+산출물: `js/domain/share.js`(`buildShareSummary`·`encodeShareSummary`·`decodeShareSummary`, 순수 함수) · `js/app/analyze.page.js`(`renderSharedSummary`, `init()`의 `?s=` 진입 분기, `share-summary` 버튼 배선, `renderError`에 `SHARE_INVALID` 유형 추가) · `pages/analyze.html`(공유 버튼·상태 문구·FAQ 1건 추가) · `pages/privacy.html`(공유 링크 문단 추가, 최종 개정일 갱신) · 스키마는 [`data-model.md §3.8`](data-model.md), URL 규칙 예외는 [`screens.md §1`](screens.md), Phase 3 안과의 구분은 [`direction.md §2`](direction.md). 테스트 `tests/share.test.js` 15건 신규.
+
+**계약**: 원본 데이터·전체 통계는 담지 않음(Health Score 총점·등급 + 상위 발견 최대 3건의 `what`만). 서버 저장 없음 — URL 자체가 저장소. `decodeShareSummary`는 신뢰할 수 없는 입력(다른 사람이 만든 URL)을 다루므로 모든 필드를 화이트리스트로 검증함(자세한 내용은 `data-model.md §3.8`).
+
+**남은 것 — 브라우저 실기 검증** (`npx wrangler dev --persist-to <프로젝트 밖>`, `npm run serve`는 CSP를 재현하지 못하므로 불가):
+- [ ] 결과 화면에서 "요약 공유 링크 복사" → 클립보드 내용이 `?s=...` 형태인지, `navigator.clipboard` 권한이 없는 환경에서 폴백 문구가 뜨는지
+- [ ] 그 URL을 새 탭에서 열어 카드가 렌더되는지, 콘솔 오류(CSP 위반 포함) 0건인지
+- [ ] `?s=` 뒤에 깨진 문자열을 붙였을 때 상태 D로 유도되고, "다른 파일 선택" 클릭 후 URL의 `?s=`가 지워지는지
+- [ ] 기존 흐름(업로드 → 분석 → 결과, 이어보기·내보내기·불러오기·전처리) 회귀 없는지
+- [ ] `npm run build` — 새 FAQ 문항이 FAQPage JSON-LD에 화면 텍스트와 정확히 일치해 반영되는지
+
+---
+
 ## 3. 완료 이력
 
 결정 근거와 함정은 [`work-log.md`](work-log.md)에 날짜별로 있음. 여기서는 무엇을 끝냈는지만 봄.
@@ -308,3 +323,27 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 **Phase 3 후보** AI 질의응답 · 데이터셋 비교 · ~~전처리 지원~~ · 시계열 분석 · 분석 이력 비교
 
 > **전처리 지원은 T7 로 앞당겼음 (2026-08-19).** 진단만 하고 조치를 못 하면 진단의 쓸모가 반감된다는 판단이며, 같은 작업의 2단계로 Phase 2 의 타깃 기반 EDA 를 함께 처리함. 근거는 위 T7.
+
+---
+
+## 5. 개선 제안 후보 (2026-09-03)
+
+사이트 개선 리뷰(애드센스/서비스/기능 관점)에서 나온 후보 6건. 나머지 5건은 **아직 착수 결정 아님** — §4 와 같은 성격으로, 우선순위·구현 방법을 사용자와 확인한 뒤 T 항목으로 승격함.
+
+### 서비스 측면 — 재방문·바이럴 유인
+
+| # | 항목 | 해결 방향 | 기존 결정과의 관계 |
+|---|---|---|---|
+| ~~S1~~ | ~~결과 요약 공유(링크)~~ | **T8 로 승격, 코드 완료 (2026-09-03)** — 실기 검증 남음. 상세는 [T8](#t8-결과-요약-공유-링크-구-개선-제안-s1--코드-완료-실기-검증-대기-2026-09-03) | Phase 3 "결과 링크 공유"(D1 전제)와 구분되는 백엔드 0 안으로 구현함 |
+| S2 | 최근 분석 이력(localStorage) | 파일명·Health Score·타임스탬프만 저장(원자료·컬럼값 아님). 도구 화면에 "최근 분석" 목록 표시. 삭제 수단은 [`direction.md §8`](direction.md) "보존" 요구사항의 기존 삭제 UI 재사용 | 신규 결정 필요 없음 — 기존 `localStorage` 저장 원칙과 충돌 없음 |
+| S3 | 샘플 데이터 원클릭 체험 | 이미 발행된 사례 데이터셋(`bike-sharing`·`bank-marketing`·`air-quality`) 중 1개를 도구 화면에서 파일 선택 없이 바로 로드하는 버튼. 기존 `analyze` 파이프라인·파일 선택 경로 그대로 사용 | 사례 리포트(정적 문서)와는 별개 동선 — 도구 화면 안에서의 전환 유도. 라이선스는 이미 판정된 UCI CC BY 4.0 데이터셋 재사용이라 추가 검토 불필요 |
+
+### 기능적 측면
+
+| # | 항목 | 해결 방향 | 기존 결정과의 관계 |
+|---|---|---|---|
+| F1 | Excel 파서 우선순위 상향 | 구현이 아니라 **결정 촉진**: 순수 클라이언트사이드로 동작하는 파서 후보를 라이선스·번들 크기 기준으로 좁혀 [`tech-stack.md §9`](tech-stack.md)의 미결정을 해소 | [`direction.md §9`](direction.md) 미결정 3번과 동일 항목. 우선순위만 상향 요청 |
+| F2 | 25MB 초과 시 샘플링 완화책(선행 버전) | 정식 샘플링 전략(층화 등) 대신 "상위 N행만 읽고 안내 문구 표시"하는 최소 버전. 현재 `FILE_TOO_LARGE` 완전 차단 경로([`data-model.md §5.1`](data-model.md), `js/domain/thresholds.js` `FILE_LIMIT`)를 경고 후 진행으로 변경 | [`direction.md §4`](direction.md) Phase 2 "대용량 자동 샘플링"의 **축소 선행판**. 정식 샘플링을 대체하지 않음 |
+| F3 | 전처리 레시피 로컬 JSON 내보내기/불러오기 | `js/domain/recipe.js`의 정규화된 스텝 배열을 JSON 직렬화/역직렬화만 추가. 서버 전송 없음, 원본 무수정 원칙과 무관 | **T7 §"범위 밖"에서 이미 제외된 항목** — 이 제안은 그 결정을 재검토 요청하는 것임을 명시. 재승인 없이 착수하지 않음 |
+
+각 항목은 착수 전 우선순위·구현 범위를 다시 확인한 뒤 §2 의 T 번호를 부여함.
