@@ -24,11 +24,11 @@
 |---|---|
 | 런타임 코드 | `js/` 18개 모듈 (스텁 0) |
 | 빌드 스크립트 | `build_seo` · `build_guides` 완료 / `build_cases` **미구현 — 쓰지 않기로 함**([`work-log.md` 2026-08-18](work-log.md)) |
-| 테스트 | 350건 통과 + 실기 11 + 배포본 9 |
+| 테스트 | 351건 통과 + 실기 11 + 배포본 9 |
 | 색인 대상 | **29 URL** — 전수가 리디렉션 0회로 200 |
 | 발행 콘텐츠 | **26편 · 45,116자** / 게이트 목표 15편 · 25,000자 — **충족(180%)** |
 | 미발행 콘텐츠 | 사례 3편(데이터셋 미선정) |
-| 필수 페이지 | **4종 확정** — 시행일·광고 쿠키 고지 기재 완료 |
+| 필수 페이지 | **5종 확정** — 시행일·광고 쿠키 고지 기재 완료, 면책조항 추가(2026-09-06) |
 | 죽은 내부 링크 | **0건** |
 
 ---
@@ -281,6 +281,16 @@ T7·T8 과 무관한 별도 사용자 요청 2건. 로드맵 순서를 밀어내
 1. **스크롤 버그** — 개요 탭에서 컬럼 타입을 바꿀 때마다(타깃 열 지정 포함) 결과 섹션이 상태 B(진행 화면)로 전환되며 레이아웃에서 사라져 문서 높이가 줄고 스크롤이 맨 위로 튀던 문제. 재계산 재실행(`runWorker(_, {silent:true})`)은 상태 전환 없이 결과 섹션을 유지한 채 `is-recomputing` 표시만 하도록 고쳐 근본 원인을 없앰 — 타입 select 뿐 아니라 T7 2단계에서 추가된 타깃 열 select 에도 같은 수정을 적용함. `js/app/analyze.page.js`·`pages/analyze.html`·`css/style.css`
 2. **다중 컬럼 관계** — 관계 탭이 수치형 페어와이즈 상관만 다루던 한계를 메움. 세 갈래: 그룹상관(수치+수치+범주형, Simpson's paradox 유형 탐지) · 편상관(수치 3개, 제3변수 통제) · 범주형 연관성(Cramér's V, 범주형+범주형 — 원래 T7 범위 밖으로 제외했던 지표지만 이번에 별도로 포함함, 위 "범위 밖" 절 참조). 신규 `js/domain/interaction.js` + `correlation.js`(`cramersV`·`categoricalPairs`), 신규 Finding 3종(`F-INTERACTION-GROUP`·`F-INTERACTION-PARTIAL`·`F-ASSOC-STRONG`), `schemaVersion` 1.3 → 1.4(`associations`·`interactions` 필드 — T7 2단계가 이미 1.3을 썼으므로 그 다음 minor). 계산 비용은 `thresholds.INTERACTION`이 상수 상한을 둠(전수 조합 탐색 금지)
 3. Finding 18종 → **21종**. 문서 갱신: `data-model.md`(§2·§3.1·§3.5·§3.6.1·§3.6.2·§4·§6) · `rules.md`(§3.1·§3.4·§3.6·§4·§4.6) · `screens.md`(관계 탭) · `finding-map.json` · 본 문서(위 "범위 밖" 절)
+
+---
+
+### T10. 용어집 검색창 + 면책조항·사이트맵 페이지 추가 — **완료 (2026-09-06)**
+
+T7·T8·T9 과 무관한 별도 사용자 요청 2건.
+
+1. **용어집 검색창** — 용어 40여 개가 한 페이지에 나열돼 있어 원하는 항목을 찾으려면 스크롤에 의존해야 했음. 대소문자 무시 부분 문자열 검색으로 실시간 필터링. 신규 `js/app/glossary.page.js`(`matchesQuery`·`collectTerms`·`applyFilter`), `scripts/build_guides.mjs`의 `page()`에 섹션별 추가 스크립트(`extraScripts`) 훅 신설. 실기 검증 중 결함 1건 발견·수정 — 용어(h3)가 없는 마지막 절("임계값을 그대로 믿지 않는 법")이 검색과 무관하게 항상 남아 "일치하는 용어가 없습니다" 안내와 모순되던 문제. `collectTerms`가 이런 "고아 h2 절"도 독립된 검색 대상으로 다루도록 고쳐 해소함
+2. **필수 페이지 5종 → 면책조항 추가, 사이트맵 페이지 신설** — AdSense 체크리스트에서 자주 언급되는 5번째 정책 페이지(면책조항)와 크롤러 탐색을 돕는 HTML 사이트맵을 추가함. `pages/disclaimer.html`(수기, `terms` §2 와 상호 링크) · `pages/sitemap.html`(빌드 생성 — `build_guides.mjs`의 `report`를 원천으로 해설·사례 목록을 만들어 손으로 옮겨 적지 않음). 둘 다 `noindex, follow` + sitemap.xml 제외, CTA 밴드 없음(기존 정책 페이지와 동일 규약). 푸터 링크 2개를 수기 페이지 7개 + `build_guides.mjs` 템플릿에 함께 추가(마크업 중복 규약, `implementation-status.md` §1)
+3. 문서 갱신: `content-strategy.md`(§5·§6) · `direction.md`(필수 페이지 수) · `screens.md`(§2·§3.7·§3.8 신설, 이하 절 번호 이동) · `scripts/build_seo.mjs`의 `PAGES`
 
 ---
 

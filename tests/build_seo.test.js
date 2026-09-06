@@ -42,9 +42,16 @@ test('PAGES — URL 이 중복되지 않는다', () => {
   assert.equal(new Set(urls).size, urls.length);
 });
 
-test('PAGES — 정책 4종은 sitemap 에서 빠진다 (content-strategy.md §4)', () => {
+test('PAGES — 정책 5종 + 사이트맵 페이지는 sitemap 에서 빠진다 (content-strategy.md §4)', () => {
   const excluded = PAGES.filter((p) => !p.sitemap).map((p) => p.url).sort();
-  assert.deepEqual(excluded, ['/pages/about', '/pages/contact', '/pages/privacy', '/pages/terms']);
+  assert.deepEqual(excluded, [
+    '/pages/about',
+    '/pages/contact',
+    '/pages/disclaimer',
+    '/pages/privacy',
+    '/pages/sitemap',
+    '/pages/terms',
+  ]);
 });
 
 // ─── 검사 게이트 ────────────────────────────────────────────

@@ -40,6 +40,12 @@
   <h1>용어집</h1>
   <p class="page-intro">도구 화면과 해설에 나오는 용어를 한자리에 모았습니다. 항목마다 이 도구가 실제로 쓰는 판정 기준을 함께 적었습니다.</p>
 
+  <div class="glossary-search">
+    <label for="glossary-search-input" class="visually-hidden">용어 검색</label>
+    <input type="search" id="glossary-search-input" placeholder="용어 검색 (예: 왜도, 결측, VIF)" autocomplete="off">
+  </div>
+  <p id="glossary-search-empty" class="hint" hidden>일치하는 용어가 없습니다.</p>
+
   <nav class="term-index" aria-label="빠른 이동">
     <h2>빠른 이동</h2>
     <ul>
@@ -189,6 +195,8 @@
       <li><a href="/pages/contact">문의</a></li>
       <li><a href="/pages/privacy">개인정보처리방침</a></li>
       <li><a href="/pages/terms">이용약관</a></li>
+      <li><a href="/pages/disclaimer">면책조항</a></li>
+      <li><a href="/pages/sitemap">사이트맵</a></li>
     </ul>
     <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
   </div>
@@ -197,5 +205,6 @@
 <script type="module" src="/js/app/common.js"></script>
 <script type="module" src="/js/app/menu.js"></script>
 <script type="module" src="/js/app/float-cta.js"></script>
+<script type="module" src="/js/app/glossary.page.js"></script>
 </body>
 </html>

@@ -535,6 +535,21 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 .doc-list { padding-left: var(--sp-4); }
 .doc-list li { margin-bottom: var(--sp-2); }
 
+/* 용어집 — 검색창. select 와 같은 재질(테두리·여백·글꼴)을 맞춘다 */
+.glossary-search { margin-bottom: var(--sp-4); }
+.glossary-search input[type="search"] {
+  width: 100%;
+  max-width: 360px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.95rem;
+}
+.glossary-search input[type="search"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* 용어집 — 상단 '빠른 이동' 색인과 용어별 해설 링크 */
 .term-index {
   margin-bottom: var(--sp-8);

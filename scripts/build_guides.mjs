@@ -72,6 +72,8 @@ const SECTIONS = {
     label: '용어집',
     groups: [],
     single: true,
+    // 용어 40여 개가 한 페이지에 나열되므로 검색창으로 필터링한다 (js/app/glossary.page.js)
+    extraScripts: ['/js/app/glossary.page.js'],
   },
 };
 
@@ -385,7 +387,7 @@ function renderBlocks(blocks, indent = '  ', resolveGuide) {
 }
 
 /** 공통 셸. 기존 수기 페이지(pages/about.html)와 같은 마크업을 쓴다. */
-function page({ title, description, breadcrumb, h1, intro, body, related, cta = true }) {
+function page({ title, description, breadcrumb, h1, intro, body, related, cta = true, scripts = [], robots }) {
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -393,7 +395,7 @@ function page({ title, description, breadcrumb, h1, intro, body, related, cta = 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} — ${SITE_NAME}</title>
 <meta name="description" content="${esc(description)}">
-${SEO_MARKER}
+${robots ? `<meta name="robots" content="${esc(robots)}">` : SEO_MARKER}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -439,6 +441,8 @@ ${
       <li><a href="/pages/contact">문의</a></li>
       <li><a href="/pages/privacy">개인정보처리방침</a></li>
       <li><a href="/pages/terms">이용약관</a></li>
+      <li><a href="/pages/disclaimer">면책조항</a></li>
+      <li><a href="/pages/sitemap">사이트맵</a></li>
     </ul>
     <p>&copy; <span data-footer-year>2026</span> ${SITE_NAME}</p>
   </div>
@@ -447,7 +451,7 @@ ${
 <script type="module" src="/js/app/common.js"></script>
 <script type="module" src="/js/app/menu.js"></script>
 <script type="module" src="/js/app/float-cta.js"></script>
-</body>
+${scripts.map((src) => `<script type="module" src="${src}"></script>\n`).join('')}</body>
 </html>
 `;
 }
@@ -510,9 +514,14 @@ function termIndex(blocks) {
 
 /** 섹션 인덱스 — 인덱스 문서 본문 + 군별 목록. 목록이 비면 목록 절 자체를 내지 않는다. */
 function renderIndex(section, indexDoc, children, resolveGuide) {
-  // 단일 페이지 섹션(용어집)은 하위 목록 대신 본문 앵커 색인을 앞에 둔다.
+  // 단일 페이지 섹션(용어집)은 하위 목록 대신 검색창 + 본문 앵커 색인을 앞에 둔다.
   if (section.single) {
-    return [termIndex(indexDoc.blocks), renderBlocks(indexDoc.blocks, '  ', resolveGuide)]
+    const search = `  <div class="glossary-search">
+    <label for="glossary-search-input" class="visually-hidden">용어 검색</label>
+    <input type="search" id="glossary-search-input" placeholder="용어 검색 (예: 왜도, 결측, VIF)" autocomplete="off">
+  </div>
+  <p id="glossary-search-empty" class="hint" hidden>일치하는 용어가 없습니다.</p>`;
+    return [search, termIndex(indexDoc.blocks), renderBlocks(indexDoc.blocks, '  ', resolveGuide)]
       .filter(Boolean)
       .join('\n\n');
   }
@@ -633,6 +642,7 @@ function buildSection(name, section, report) {
         h1: indexDoc.meta.title,
         intro: indexDoc.meta.summary,
         body: renderIndex(section, indexDoc, children, resolveGuide),
+        scripts: section.extraScripts ?? [],
       }),
     },
     ...children.map((doc) => ({
@@ -670,6 +680,43 @@ function navData(section, groups) {
   };
 }
 
+/**
+ * 사람이 읽는 HTML 사이트맵. 해설·사례 목록은 손으로 옮겨 적지 않고 report(빌드 산출물)를
+ * 원천으로 삼는다 — 그렇지 않으면 새 글을 추가할 때마다 이 페이지만 어긋난다.
+ * @param {Array<{section: string, nav: {url: string, groups: {label:string, items:{slug:string,label:string}[]}[]}}>} report
+ * @returns {string} <main> 안에 들어갈 본문(page() 의 body 인자)
+ */
+function renderSitemapPage(report) {
+  const navSection = (name, label) => {
+    const group = report.find((g) => g.section === name);
+    if (!group || group.nav.groups.length === 0) return '';
+    const lists = group.nav.groups
+      .map(
+        ({ label: groupLabel, items }) =>
+          `  <h3>${esc(groupLabel)}</h3>\n  <ul class="doc-list">\n` +
+          items.map((it) => `    <li><a href="${group.nav.url}/${it.slug}">${esc(it.label)}</a></li>`).join('\n') +
+          '\n  </ul>'
+      )
+      .join('\n');
+    return `<h2>${esc(label)}</h2>\n<ul class="doc-list">\n  <li><a href="${group.nav.url}">${esc(label)} 전체 보기</a></li>\n</ul>\n${lists}`;
+  };
+
+  const parts = [
+    `<h2>도구</h2>\n<ul class="doc-list">\n  <li><a href="/">홈</a></li>\n  <li><a href="/pages/analyze">데이터 분석</a></li>\n</ul>`,
+    navSection('guide', '해설'),
+    navSection('case', '사례 리포트'),
+    `<h2>용어집</h2>\n<ul class="doc-list">\n  <li><a href="/pages/glossary">용어집</a></li>\n</ul>`,
+    `<h2>안내</h2>\n<ul class="doc-list">\n` +
+      `  <li><a href="/pages/about">소개</a></li>\n` +
+      `  <li><a href="/pages/contact">문의</a></li>\n` +
+      `  <li><a href="/pages/privacy">개인정보처리방침</a></li>\n` +
+      `  <li><a href="/pages/terms">이용약관</a></li>\n` +
+      `  <li><a href="/pages/disclaimer">면책조항</a></li>\n` +
+      `</ul>`,
+  ];
+  return parts.filter(Boolean).join('\n\n');
+}
+
 function main() {
   const report = [];
   const pending = [];
@@ -688,6 +735,22 @@ function main() {
     mkdirSync(dirname(item.path), { recursive: true });
     writeFileSync(item.path, item.html);
   }
+
+  // 사람이 읽는 HTML 사이트맵 — noindex(사이트맵 전용 페이지는 색인 가치가 없음, §7 AdSense
+  // 게이트의 "필수 페이지" 항목과 별개로 크롤러 탐색을 돕기 위해 둠). CTA 밴드는 정책 페이지와
+  // 같은 이유로 생략한다(about·contact·privacy·terms 도 두지 않음).
+  writeFileSync(
+    join(ROOT, 'pages/sitemap.html'),
+    page({
+      title: '사이트맵',
+      description: 'AutoEDA 의 모든 페이지 목록 — 도구, 해설, 사례 리포트, 용어집, 안내 페이지.',
+      h1: '사이트맵',
+      intro: '이 사이트의 모든 페이지를 한자리에 모았습니다.',
+      body: renderSitemapPage(report),
+      cta: false,
+      robots: 'noindex, follow',
+    })
+  );
 
   // 발행된 슬러그 목록 — 도구 화면이 이것으로 '자세히' 링크를 걸러 404 를 막는다.
   // 파일 시스템이 원천이므로 해설을 발행하면 링크가 자동으로 살아난다.
