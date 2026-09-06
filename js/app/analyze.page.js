@@ -12,7 +12,9 @@
 //
 // 동적 텍스트는 esc() 를 거치거나 textContent 로 넣는다 — 열 이름·범주 값이 XSS 경로다.
 
-import { selectForColumn, selectForFinding, selectPairs, selectHeatmap } from '../domain/chart-select.js';
+import {
+  selectForColumn, selectForFinding, selectPairs, selectHeatmap, selectAssociationHeatmap, selectInteractions,
+} from '../domain/chart-select.js';
 import { suggestSteps, normalizeRecipe } from '../domain/recipe.js';
 import { renderChart, escapeXml as esc } from '../domain/chart-svg.js';
 import { DISPLAY_LIMIT } from '../domain/thresholds.js';
@@ -92,6 +94,19 @@ export function setState(state) {
 }
 
 /**
+ * 타입 재계산 중임을 결과 화면에 표시한다. 상태 B(진행 화면)로 전환하지 않는다 —
+ * 결과 섹션이 레이아웃에서 사라지면 문서 높이가 줄어 스크롤이 맨 위로 튄다.
+ */
+function setRecomputing(on) {
+  document.getElementById('state-result')?.classList.toggle('is-recomputing', on);
+  const notice = document.getElementById('recompute-notice');
+  if (notice) notice.hidden = !on;
+  for (const select of document.querySelectorAll('#panel-overview select[data-column], #panel-overview #target-select')) {
+    select.disabled = on;
+  }
+}
+
+/**
  * 파일 선택·드래그 앤 드롭을 받아 Worker 를 기동한다. (UC-01)
  * @param {File} file
  * @param {{ encoding?: string, resetOverrides?: boolean }} [options]
@@ -108,13 +123,22 @@ export function startAnalysis(file, options = {}) {
   runWorker(options.encoding);
 }
 
-/** Worker 를 (재)기동한다. 타입 수정 재계산도 이 경로를 다시 탄다(docs/data-model.md §5). */
-function runWorker(encoding) {
+/**
+ * Worker 를 (재)기동한다. 타입 수정 재계산도 이 경로를 다시 탄다(docs/data-model.md §5).
+ * @param {string} [encoding]
+ * @param {{ silent?: boolean }} [options] silent: 타입 변경 재계산 — 상태 B 로 전환하지 않고
+ *   결과 화면을 그대로 둔 채 재계산 중 표시만 한다(스크롤 점프 방지).
+ */
+function runWorker(encoding, { silent = false } = {}) {
   currentWorker?.terminate();
   currentWorker = new Worker('/js/worker/analyze.worker.js', { type: 'module' });
   currentWorker.addEventListener('message', (event) => handleWorkerMessage(event.data));
-  setState('B');
-  setProgress('준비 중', 0);
+  if (silent) {
+    setRecomputing(true);
+  } else {
+    setState('B');
+    setProgress('준비 중', 0);
+  }
   currentWorker.postMessage({
     type: 'start',
     file: currentFile,
@@ -138,6 +162,7 @@ export function handleWorkerMessage(message) {
       setProgress(STAGE_LABEL[message.stage] ?? message.stage, message.ratio);
       return;
     case 'done': {
+      setRecomputing(false);
       const cache = saveResult(message.result);
       canPreprocess = true; // Worker 가 원본을 붙들고 있는 상태
       renderResult(message.result, cacheNotice(cache));
@@ -151,6 +176,7 @@ export function handleWorkerMessage(message) {
       downloadCsv(message.text);
       return;
     case 'error':
+      setRecomputing(false);
       renderError(message.code, message.detail);
       setState('D');
       return;
@@ -361,7 +387,7 @@ function renderOverview(panel, result) {
     } else {
       targetSelect.addEventListener('change', () => {
         currentTarget = targetSelect.value;
-        runWorker();
+        runWorker(undefined, { silent: true });
       });
     }
   }
@@ -395,7 +421,7 @@ function renderOverview(panel, result) {
     }
     select.addEventListener('change', () => {
       typeOverrides[select.dataset.column] = select.value;
-      runWorker();
+      runWorker(undefined, { silent: true });
     });
   }
 }
@@ -619,37 +645,72 @@ function renderRelations(panel, result) {
 
   if (result.correlations.length === 0) {
     panel.insertAdjacentHTML('beforeend', '<p>수치형 열이 2개 미만이라 상관을 계산하지 않았습니다.</p>');
-    return;
+  } else {
+    const method = loadPrefs().corrMethod === 'spearman' ? 'spearman' : 'pearson';
+    const toggle = document.createElement('p');
+    toggle.innerHTML = `<label>상관 방식
+      <select id="corr-method">
+        <option value="pearson"${method === 'pearson' ? ' selected' : ''}>Pearson</option>
+        <option value="spearman"${method === 'spearman' ? ' selected' : ''}>Spearman</option>
+      </select></label>`;
+    const heatmapSlot = document.createElement('div');
+    panel.append(toggle, heatmapSlot);
+
+    const drawHeatmap = (m) => {
+      const spec = selectHeatmap(result.correlations, result.columns, m);
+      heatmapSlot.innerHTML = spec ? renderChart(spec) : '';
+    };
+    drawHeatmap(method);
+    toggle.querySelector('select').addEventListener('change', (event) => {
+      savePrefs({ corrMethod: event.target.value });
+      drawHeatmap(event.target.value);
+    });
+
+    const scatters = selectPairs(result.correlations);
+    if (scatters.length > 0) {
+      panel.insertAdjacentHTML('beforeend', '<h3>상관 상위 쌍 산점도</h3>');
+      for (const spec of scatters) {
+        panel.insertAdjacentHTML(
+          'beforeend',
+          `<section class="scatter-block"><p class="hint">${esc(spec.axis.x)} × ${esc(spec.axis.y)} — Pearson ${stat(spec.data.pearson)}</p>${renderChart(spec)}</section>`
+        );
+      }
+    }
   }
 
-  const method = loadPrefs().corrMethod === 'spearman' ? 'spearman' : 'pearson';
-  const toggle = document.createElement('p');
-  toggle.innerHTML = `<label>상관 방식
-    <select id="corr-method">
-      <option value="pearson"${method === 'pearson' ? ' selected' : ''}>Pearson</option>
-      <option value="spearman"${method === 'spearman' ? ' selected' : ''}>Spearman</option>
-    </select></label>`;
-  const heatmapSlot = document.createElement('div');
-  panel.append(toggle, heatmapSlot);
+  // 범주형 연관성(Cramér's V) — 수치형 열 수와 무관하게 범주형 열 2개 이상이면 표시한다.
+  // 구버전 캐시(schemaVersion 1.2 이하)에는 없는 필드다
+  const assocSpec = selectAssociationHeatmap(result.associations ?? [], result.columns);
+  if (assocSpec) {
+    panel.insertAdjacentHTML('beforeend', '<h3>범주형 연관성</h3>');
+    panel.insertAdjacentHTML('beforeend', renderChart(assocSpec));
+  }
 
-  const drawHeatmap = (m) => {
-    const spec = selectHeatmap(result.correlations, result.columns, m);
-    heatmapSlot.innerHTML = spec ? renderChart(spec) : '';
-  };
-  drawHeatmap(method);
-  toggle.querySelector('select').addEventListener('change', (event) => {
-    savePrefs({ corrMethod: event.target.value });
-    drawHeatmap(event.target.value);
-  });
-
-  const scatters = selectPairs(result.correlations);
-  if (scatters.length > 0) {
-    panel.insertAdjacentHTML('beforeend', '<h3>상관 상위 쌍 산점도</h3>');
-    for (const spec of scatters) {
-      panel.insertAdjacentHTML(
-        'beforeend',
-        `<section class="scatter-block"><p class="hint">${esc(spec.axis.x)} × ${esc(spec.axis.y)} — Pearson ${stat(spec.data.pearson)}</p>${renderChart(spec)}</section>`
-      );
+  // 다중 컬럼 관계(교호작용) — 그룹상관 소그리드 + 편상관 텍스트
+  const interactions = selectInteractions(result.interactions ?? []);
+  if (interactions.length > 0) {
+    panel.insertAdjacentHTML('beforeend', '<h3>다중 컬럼 관계</h3>');
+    for (const it of interactions) {
+      if (it.kind === 'grouped') {
+        panel.insertAdjacentHTML(
+          'beforeend',
+          `<p class="hint">${esc(it.left)} × ${esc(it.right)} — ${esc(it.by)}별 상관이 전체(${stat(it.overall)})와 최대 ${stat(it.maxDelta)} 차이${it.signFlip ? ' (부호 반전)' : ''}</p>`
+        );
+        const grid = document.createElement('div');
+        grid.className = 'column-grid';
+        for (const chart of it.charts) {
+          grid.insertAdjacentHTML(
+            'beforeend',
+            `<section class="scatter-block"><p class="hint">${esc(chart.axis.groupLabel)} (n=${count(chart.data.points.length)}) — Pearson ${stat(chart.data.pearson)}</p>${renderChart(chart)}</section>`
+          );
+        }
+        panel.appendChild(grid);
+      } else {
+        panel.insertAdjacentHTML(
+          'beforeend',
+          `<p class="hint">${esc(it.left)} × ${esc(it.right)} — 전체 상관 ${stat(it.rxy)} → ${esc(it.z)} 통제 후 ${stat(it.partial)}</p>`
+        );
+      }
     }
   }
 }

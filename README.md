@@ -112,7 +112,7 @@ EDA Engine (JavaScript) → 통계 JSON
 | [docs/use-cases.md](docs/use-cases.md) | 액터 4종, 유스케이스 28건(Phase 1·1.5 상세), 추적 매트릭스 |
 | [docs/screens.md](docs/screens.md) | 페이지 12종, 페이지별 기능 명세, 도구 화면 4상태, 상태 저장, 공통 요소 |
 | [docs/data-model.md](docs/data-model.md) | 개념 엔티티 다이어그램, 결과 JSON 스키마, 저장소 키, Worker 메시지 프로토콜, 모듈 의존 그래프 |
-| [docs/rules.md](docs/rules.md) | Health Score 감점 규칙, Finding 18종 카탈로그, 표시 개수 상한, 문구 템플릿 규칙 |
+| [docs/rules.md](docs/rules.md) | Health Score 감점 규칙, Finding 21종 카탈로그, 표시 개수 상한, 문구 템플릿 규칙 |
 | [docs/data-sources.md](docs/data-sources.md) | 사례 리포트용 데이터셋 이용 조건 판정 기준·절차, 표시 요건 |
 
 작업 문서 3종 — 코드를 만지기 전에 읽음.

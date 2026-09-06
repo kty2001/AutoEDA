@@ -69,6 +69,9 @@ export const FINDING = Object.freeze({
   'F-MULTICOLLINEAR': Object.freeze({ absPearson: 0.8, vif: 10 }),
   'F-CORR-CAUSAL': Object.freeze({ absPearson: 0.7 }),
   'F-LEAKAGE': Object.freeze({ absPearson: 0.95 }),
+  'F-INTERACTION-GROUP': Object.freeze({ minDeltaR: 0.2, minGroupAbsPearson: 0.3 }),
+  'F-INTERACTION-PARTIAL': Object.freeze({ minDeltaR: 0.2 }),
+  'F-ASSOC-STRONG': Object.freeze({ minV: 0.5 }),
 
   // ── 타깃·모델링군 (rules.md §3.5) — Phase 2, 타깃 지정 시에만 활성
   'F-CLASS-IMBALANCE': Object.freeze({ minClassRatio: 0.1 }),
@@ -99,6 +102,17 @@ export const PREPROCESS = Object.freeze({ onehotMaxUnique: 20 });
 /** 처리 파일 크기 상한. 단일 원천: docs/direction.md §9. 초과 시 FILE_TOO_LARGE. */
 export const FILE_LIMIT = Object.freeze({ maxBytes: 25 * 1024 * 1024 }); // 25MB
 
+/**
+ * 다중 컬럼 관계(교호작용) 탐지 비용 상한. → rules.md §4
+ * 열 3개 조합을 전수 탐색하지 않고 이미 상관 절댓값 상위로 걸러진 후보만 확장한다.
+ */
+export const INTERACTION = Object.freeze({
+  candidatePairs: 6, // 그룹상관·편상관 후보는 상위 |r| 쌍만
+  candidateControls: 3, // 편상관 통제 변수 후보 수(쌍당)
+  maxGroupLevels: 10, // 그룹 변수·범주형 연관성 계산에 쓸 범주형의 최대 수준 수 (ID성 컬럼 배제)
+  minGroupSize: 30, // 그룹별 상관을 신뢰하기 위한 최소 표본 수
+});
+
 /** 화면 표시 개수 상한 — 정보 과부하(G2) 방지. → rules.md §4 */
 export const DISPLAY_LIMIT = Object.freeze({
   findings: 15, // 발견 목록 기본 표시
@@ -108,4 +122,6 @@ export const DISPLAY_LIMIT = Object.freeze({
   scatterPoints: 200, // 산점도 쌍당 점 수 (초과 시 균등 간격 다운샘플)
   heatmapColumns: 20, // 상관 히트맵 (초과 시 분산 상위 20열로 축소)
   targetRanking: 10, // 타깃 탭 — 피처-타깃 |Pearson| 랭킹 바 차트
+  interactionCharts: 3, // 관계 탭 그룹상관·편상관 후보 (Δr 상위만)
+  associationColumns: 20, // 범주형 연관성 히트맵 (기존 heatmapColumns와 같은 상한 재사용 원칙)
 });

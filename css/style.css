@@ -259,6 +259,15 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 .state { display: none; }
 .state.is-active { display: block; }
 
+/* 타입 변경 재계산 중 — 결과 섹션을 레이아웃에 유지한 채 흐리게 하고 상호작용만 막는다.
+   상태 B 로 전환하면 결과 섹션이 사라져 문서 높이가 줄고 스크롤이 맨 위로 튀는
+   문제가 있었다 — 섹션을 항상 유지해 근본 원인을 없앤다. */
+.is-recomputing #result-tabs,
+.is-recomputing #result-panels {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;

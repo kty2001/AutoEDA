@@ -3,7 +3,7 @@
 // 의존 위치: quality·stats·correlation·outlier 를 소비하고 chart-select.js 에 공급한다.
 //            → docs/data-model.md §6
 //
-// Finding 18종의 조건·심각도·문구 규칙은 docs/rules.md §3·§5, 임계값은 thresholds.js.
+// Finding 21종의 조건·심각도·문구 규칙은 docs/rules.md §3·§5, 임계값은 thresholds.js.
 // 결정론적으로 생성한다 — LLM 을 쓰지 않으며 Phase 2 의 AI 레이어와 무관하게 동작해야 한다.
 //
 // ⚠️ what/why/how 를 "문자열로 확정해" 담는다. 템플릿 ID 만 담으면 규칙 버전이 바뀐 뒤
@@ -19,7 +19,7 @@ import { FINDING, DISPLAY_LIMIT } from './thresholds.js';
 import { percent, stat, count, ro } from '../lib/format.js';
 
 /** @typedef {'high'|'medium'|'low'} Severity */
-/** @typedef {'dataset'|'column'|'pair'} Scope */
+/** @typedef {'dataset'|'column'|'pair'|'group'} Scope */
 
 const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
 
@@ -34,6 +34,8 @@ const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
  *   columns: Array<object>,
  *   health: object,
  *   correlations: Array<object>,
+ *   associations?: Array<object>,
+ *   interactions?: Array<object>,
  *   target?: string
  * }} input target 이 있으면 타깃·모델링군(Phase 2)도 평가한다
  * @returns {Array<{
@@ -44,7 +46,7 @@ const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
  * }>} 발견이 없으면 빈 배열. 호출측이 "확인할 문제가 없음"을 표시한다(UC-05 대안 흐름)
  */
 export function buildFindings(input) {
-  const { dataset, columns, correlations, target } = input;
+  const { dataset, columns, correlations, associations, interactions, target } = input;
   const rowCount = dataset.rowCount;
   const numeric = columns.filter((c) => c.type === 'numeric');
   const categorical = columns.filter((c) => c.type === 'categorical');
@@ -203,6 +205,42 @@ export function buildFindings(input) {
       `상관 절댓값이 0.7 이상인 쌍이 ${count(causal.length)}개 있습니다.`,
       `상관은 함께 움직인다는 사실만 말하며, 어느 쪽이 원인인지는 알려주지 않습니다.`,
       `제3의 변수나 수집 구조가 관계를 만들었을 가능성을 함께 검토해 보세요.`);
+  }
+
+  const ig = FINDING['F-INTERACTION-GROUP'];
+  for (const it of interactions ?? []) {
+    if (it.kind !== 'grouped') continue;
+    const strongGroup = it.groups.some(
+      (g) => g.pearson !== null && Math.abs(g.pearson) >= ig.minGroupAbsPearson
+    );
+    if (!it.signFlip && (it.maxDelta < ig.minDeltaR || !strongGroup)) continue;
+    add('F-INTERACTION-GROUP', 'medium', 'group', [it.left, it.right, it.by],
+      { overall: it.overall, maxDelta: it.maxDelta, signFlip: it.signFlip }, true,
+      it.signFlip
+        ? `${it.by} 기준으로 나눈 그룹마다 ${it.left} 열과 ${it.right} 열의 상관 부호가 반대로 나타납니다.`
+        : `${it.by} 기준으로 나눈 그룹별로 ${it.left} 열과 ${it.right} 열의 상관이 전체 상관(${stat(it.overall)})과 최대 ${stat(it.maxDelta)} 차이 납니다.`,
+      `그룹 전체로 계산한 상관과 그룹 안에서 계산한 상관이 다르면, 두 변수의 관계가 실제로는 제3의 변수에 따라 달라지는 것일 수 있습니다.`,
+      `${it.by} 값을 나눠서 두 변수의 관계를 다시 살펴보세요.`);
+  }
+
+  const ip = FINDING['F-INTERACTION-PARTIAL'];
+  for (const it of interactions ?? []) {
+    if (it.kind !== 'partial') continue;
+    if (Math.abs(it.rxy - it.partial) < ip.minDeltaR) continue;
+    add('F-INTERACTION-PARTIAL', 'low', 'group', [it.left, it.right, it.z],
+      { rxy: it.rxy, partial: it.partial }, true,
+      `${it.left} 열과 ${it.right} 열의 상관은 ${stat(it.rxy)}이지만 ${it.z} 열을 통제하면 ${stat(it.partial)}로 달라집니다.`,
+      `제3의 변수를 통제했을 때 상관이 크게 달라지면, 원래 상관 중 일부가 그 변수를 통해 간접적으로 생겼을 수 있습니다.`,
+      `${it.z} 열이 두 변수 모두에 영향을 주는 원인인지 검토해 보세요.`);
+  }
+
+  const asc = FINDING['F-ASSOC-STRONG'];
+  for (const pair of associations ?? []) {
+    if (pair.v === null || pair.v < asc.minV) continue;
+    add('F-ASSOC-STRONG', 'medium', 'pair', [pair.left, pair.right], { v: pair.v }, true,
+      `${pair.left} 열과 ${pair.right} 열의 연관성(Cramér's V)이 ${stat(pair.v)}입니다.`,
+      `두 범주형 변수가 강하게 연관되어 있으면 서로 비슷한 정보를 담고 있어 함께 넣어도 새로운 정보가 적을 수 있습니다.`,
+      `교차표로 실제 조합 분포를 확인하고, 둘 중 하나만 쓸지 검토해 보세요.`);
   }
 
   // F-MIXED-RELATION 은 2026-08-18 에 폐지했다 — 조건이 "범주형 ≥ 1 이고 수치형 ≥ 1" 이라

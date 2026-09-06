@@ -118,6 +118,69 @@ export function selectHeatmap(correlations, columns, method = 'pearson') {
 }
 
 /**
+ * 범주형 연관성(Cramér's V) 히트맵 스펙. selectHeatmap() 과 같은 구조를 범주형에 적용한다.
+ * 열이 상한을 넘으면 앞쪽(원본 열 순서) 상한 개수만 남기고 축소 사실을 표시한다.
+ * @param {Array<{ left: string, right: string, v: number|null }>} associations
+ * @param {Array<object>} columns 결과 JSON 의 columns[]
+ * @returns {{ kind: 'heatmap', data: object, axis: object }|null} 범주형 2열 미만이면 null
+ */
+export function selectAssociationHeatmap(associations, columns) {
+  const involved = new Set();
+  for (const p of associations) {
+    involved.add(p.left);
+    involved.add(p.right);
+  }
+  let names = columns.filter((c) => involved.has(c.name)).map((c) => c.name);
+  if (names.length < 2) return null;
+
+  const reduced = names.length > DISPLAY_LIMIT.associationColumns;
+  if (reduced) names = names.slice(0, DISPLAY_LIMIT.associationColumns);
+
+  const index = new Map(names.map((n, i) => [n, i]));
+  const cells = [];
+  for (const p of associations) {
+    const row = index.get(p.left);
+    const col = index.get(p.right);
+    if (row === undefined || col === undefined || p.v === null) continue;
+    cells.push({ row, col, value: p.v });
+  }
+  return {
+    kind: 'heatmap',
+    data: { names, cells, reduced },
+    axis: { method: 'cramersV', label: "Cramér's V 연관성", title: '범주형 연관성 히트맵' },
+  };
+}
+
+/**
+ * 다중 컬럼 관계(교호작용) 후보를 선별한다. 그룹상관은 전체 상관과의 최대 델타,
+ * 편상관은 통제 전후 차이를 크기로 삼아 상위만 남긴다(rules.md §4 — interactionCharts).
+ * points 가 없는 그룹(용량 폴백으로 축소된 캐시 등)은 그릴 수 없으므로 걸러낸다.
+ * @param {Array<object>} interactions
+ * @returns {Array<object>} kind별로 'grouped' 는 group 스캐터 스펙 배열(charts)을 붙여 반환,
+ *   'partial' 은 원본 필드 그대로 반환한다(텍스트로만 표시하므로 차트 스펙이 필요 없다)
+ */
+export function selectInteractions(interactions) {
+  return interactions
+    .map((it) => ({
+      ...it,
+      magnitude: it.kind === 'grouped' ? it.maxDelta : Math.abs(it.rxy - it.partial),
+    }))
+    .sort((a, b) => b.magnitude - a.magnitude)
+    .slice(0, DISPLAY_LIMIT.interactionCharts)
+    .map((it) => {
+      if (it.kind !== 'grouped') return it;
+      const charts = it.groups
+        .filter((g) => Array.isArray(g.points) && g.points.length > 0)
+        .map((g) => ({
+          kind: 'scatter',
+          data: { points: g.points, pearson: g.pearson },
+          axis: { x: it.left, y: it.right, groupLabel: `${it.by}=${g.value}` },
+        }));
+      return { ...it, charts };
+    });
+}
+
+/**
  * Finding 의 근거 시각화를 고른다. 발견 유형에 따라 강조 지점이 다르다
  * (편포 → 히스토그램에 왜도 방향 표시, 이상치 → 박스플롯에 경계선 등).
  * 열 범위 발견만 대상이다 — pair·dataset 범위는 관계 탭이 담당한다.

@@ -358,7 +358,7 @@ const RENDERERS = {
     if (reduced) {
       parts.push(text(canvas.w - HEAT.right, 12, `분산 상위 ${names.length}열로 축소됨`, 'annotation', 'end'));
     }
-    parts.push(text(originX, canvas.h - 4, `${axis.method} 상관`, 'axis-title', 'start'));
+    parts.push(text(originX, canvas.h - 4, axis.label ?? `${axis.method} 상관`, 'axis-title', 'start'));
     return parts.join('');
   },
 };
@@ -368,7 +368,7 @@ const RENDERERS = {
 function chartTitle(spec) {
   const { axis } = spec;
   if (spec.kind === 'scatter') return `${axis.x} × ${axis.y} 산점도`;
-  if (spec.kind === 'heatmap') return '상관 히트맵';
+  if (spec.kind === 'heatmap') return axis.title ?? '상관 히트맵';
   return `${axis.x ?? ''} ${KIND_LABEL[spec.kind] ?? spec.kind}`.trim();
 }
 

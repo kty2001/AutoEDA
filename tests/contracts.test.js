@@ -34,13 +34,14 @@ const CONTRACTS = {
     'histogram',
     'densityCurve',
   ],
-  'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif'],
+  'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif', 'categoricalPairs', 'cramersV'],
+  'interaction.js': ['detectInteractions', 'partialCorrelation', 'groupedCorrelation'],
   'outlier.js': ['iqrOutliers', 'zScoreOutliers'],
   'quality.js': ['healthScore'],
   'finding.js': ['buildFindings', 'collapseByType'],
   'transform.js': ['applyRecipe', 'STEP_ORDER'],
   'recipe.js': ['suggestSteps', 'normalizeRecipe', 'EXCLUDED'],
-  'chart-select.js': ['selectForColumn', 'selectPairs', 'selectForFinding'],
+  'chart-select.js': ['selectForColumn', 'selectPairs', 'selectForFinding', 'selectAssociationHeatmap', 'selectInteractions'],
   'chart-svg.js': ['linearScale', 'renderAxis', 'renderChart', 'escapeXml'],
   'thresholds.js': [
     'HEALTH_PENALTY_CAP',
@@ -53,6 +54,7 @@ const CONTRACTS = {
     'FILE_LIMIT',
     'DISPLAY_LIMIT',
     'PREPROCESS',
+    'INTERACTION',
   ],
 };
 
@@ -109,9 +111,9 @@ test('등급 구간 (rules.md §2.2)', () => {
   assert.equal(HEALTH_GRADE.fair, 50);
 });
 
-test('Finding 유형은 18종이며 ID 체계를 지킨다 (rules.md §3)', () => {
+test('Finding 유형은 21종이며 ID 체계를 지킨다 (rules.md §3)', () => {
   const ids = Object.keys(FINDING);
-  assert.equal(ids.length, 18);
+  assert.equal(ids.length, 21);
   for (const id of ids) {
     assert.match(id, /^F-[A-Z-]+$/, `${id} 가 F- 접두사 + 대문자 스네이크 형식이 아님`);
   }
@@ -131,7 +133,18 @@ test('Finding 임계값 주요 항목 (rules.md §3.2~§3.5)', () => {
   assert.equal(FINDING['F-LEAKAGE'].absPearson, 0.95);
   assert.equal(FINDING['F-CLASS-IMBALANCE'].minClassRatio, 0.1);
   assert.equal(FINDING['F-SCALE-DIFF'].stdRatio, 100);
+  assert.equal(FINDING['F-INTERACTION-GROUP'].minDeltaR, 0.2);
+  assert.equal(FINDING['F-INTERACTION-PARTIAL'].minDeltaR, 0.2);
+  assert.equal(FINDING['F-ASSOC-STRONG'].minV, 0.5);
   assert.equal(OUTLIER.iqrMultiplier, 1.5);
+});
+
+test('다중 컬럼 관계 비용 상한 (rules.md §4)', async () => {
+  const { INTERACTION } = await import('../js/domain/thresholds.js');
+  assert.equal(INTERACTION.candidatePairs, 6);
+  assert.equal(INTERACTION.candidateControls, 3);
+  assert.equal(INTERACTION.maxGroupLevels, 10);
+  assert.equal(INTERACTION.minGroupSize, 30);
 });
 
 test('타입 추론 기준 (rules.md §6.2)', () => {
@@ -155,6 +168,8 @@ test('표시 개수 상한 (rules.md §4)', () => {
     scatterPoints: 200,
     heatmapColumns: 20,
     targetRanking: 10,
+    interactionCharts: 3,
+    associationColumns: 20,
   });
 });
 
@@ -162,7 +177,7 @@ test('표시 개수 상한 (rules.md §4)', () => {
 // 3. finding-map.json ↔ thresholds.FINDING 폐합
 // ─────────────────────────────────────────────────────────────
 
-test('finding-map.json 이 Finding 18종 전부를 해설로 매핑한다', () => {
+test('finding-map.json 이 Finding 21종 전부를 해설로 매핑한다', () => {
   const map = JSON.parse(readFileSync(join(ROOT, 'data/finding-map.json'), 'utf8'));
   const mapped = Object.keys(map).filter((k) => !k.startsWith('_'));
   const declared = Object.keys(FINDING);

@@ -10,7 +10,7 @@
 
 여기에는 **작업 항목만** 둠. 수치·규칙·현황 표를 옮겨 적지 않고 링크함.
 
-최종 갱신: 2026-09-03
+최종 갱신: 2026-09-06
 
 ---
 
@@ -24,7 +24,7 @@
 |---|---|
 | 런타임 코드 | `js/` 18개 모듈 (스텁 0) |
 | 빌드 스크립트 | `build_seo` · `build_guides` 완료 / `build_cases` **미구현 — 쓰지 않기로 함**([`work-log.md` 2026-08-18](work-log.md)) |
-| 테스트 | 318건 통과 + 실기 11 + 배포본 9 |
+| 테스트 | 350건 통과 + 실기 11 + 배포본 9 |
 | 색인 대상 | **29 URL** — 전수가 리디렉션 0회로 200 |
 | 발행 콘텐츠 | **26편 · 45,116자** / 게이트 목표 15편 · 25,000자 — **충족(180%)** |
 | 미발행 콘텐츠 | 사례 3편(데이터셋 미선정) |
@@ -242,7 +242,9 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 
 #### 범위 밖 (이번에 넣지 않음)
 
-재현 코드(pandas/sklearn) 생성 · 레시피 JSON 내보내기/불러오기 · 범주형 연관 지표(η²·Cramér's V) · 결측 패턴 분석 · AI 해석 레이어. 관계 탭의 범주형 안내 문구(`renderMixedRelationNote`)는 그대로 둠.
+재현 코드(pandas/sklearn) 생성 · 레시피 JSON 내보내기/불러오기 · η²(범주형-수치형 분산설명력) · 결측 패턴 분석 · AI 해석 레이어. 관계 탭의 범주형 안내 문구(`renderMixedRelationNote`)는 그대로 둠.
+
+**범주형 연관 지표(Cramér's V)는 위 제외 목록에서 빠졌음** — 2026-09-06 T9(아래)에서 T7 과 별개로 관계 탭에 추가함. η²는 여전히 범위 밖 — 그룹별 상관관계(F-INTERACTION-GROUP)가 범주형×수치형 관계의 다른 측면(교호작용)을 이미 다루므로 별도 추가는 보류함.
 
 #### 검증
 
@@ -257,8 +259,6 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 4. **메모리 실측** — 25MB 근처 CSV 로 적용·다운로드까지. 넘치면 스텝 적용을 열 단위 스트리밍으로 전환
 5. **`npm run build`** (2단계) — 해설 2편 발행 후 `published.json` 갱신과 "자세히" 링크 생존 확인
 
----
-
 ### T8. 결과 요약 공유 링크 (구 개선 제안 S1) — 코드 완료, 실기 검증 대기 (2026-09-03)
 
 산출물: `js/domain/share.js`(`buildShareSummary`·`encodeShareSummary`·`decodeShareSummary`, 순수 함수) · `js/app/analyze.page.js`(`renderSharedSummary`, `init()`의 `?s=` 진입 분기, `share-summary` 버튼 배선, `renderError`에 `SHARE_INVALID` 유형 추가) · `pages/analyze.html`(공유 버튼·상태 문구·FAQ 1건 추가) · `pages/privacy.html`(공유 링크 문단 추가, 최종 개정일 갱신) · 스키마는 [`data-model.md §3.8`](data-model.md), URL 규칙 예외는 [`screens.md §1`](screens.md), Phase 3 안과의 구분은 [`direction.md §2`](direction.md). 테스트 `tests/share.test.js` 15건 신규.
@@ -271,6 +271,16 @@ export function profile(parsed, { typeOverrides, target, onProgress, isCancelled
 - [ ] `?s=` 뒤에 깨진 문자열을 붙였을 때 상태 D로 유도되고, "다른 파일 선택" 클릭 후 URL의 `?s=`가 지워지는지
 - [ ] 기존 흐름(업로드 → 분석 → 결과, 이어보기·내보내기·불러오기·전처리) 회귀 없는지
 - [ ] `npm run build` — 새 FAQ 문항이 FAQPage JSON-LD에 화면 텍스트와 정확히 일치해 반영되는지
+
+---
+
+### T9. 개요 화면 스크롤 버그 수정 + 다중 컬럼 관계(교호작용) 추가 — **완료 (2026-09-06)**
+
+T7·T8 과 무관한 별도 사용자 요청 2건. 로드맵 순서를 밀어내지 않고 나란히 처리함.
+
+1. **스크롤 버그** — 개요 탭에서 컬럼 타입을 바꿀 때마다(타깃 열 지정 포함) 결과 섹션이 상태 B(진행 화면)로 전환되며 레이아웃에서 사라져 문서 높이가 줄고 스크롤이 맨 위로 튀던 문제. 재계산 재실행(`runWorker(_, {silent:true})`)은 상태 전환 없이 결과 섹션을 유지한 채 `is-recomputing` 표시만 하도록 고쳐 근본 원인을 없앰 — 타입 select 뿐 아니라 T7 2단계에서 추가된 타깃 열 select 에도 같은 수정을 적용함. `js/app/analyze.page.js`·`pages/analyze.html`·`css/style.css`
+2. **다중 컬럼 관계** — 관계 탭이 수치형 페어와이즈 상관만 다루던 한계를 메움. 세 갈래: 그룹상관(수치+수치+범주형, Simpson's paradox 유형 탐지) · 편상관(수치 3개, 제3변수 통제) · 범주형 연관성(Cramér's V, 범주형+범주형 — 원래 T7 범위 밖으로 제외했던 지표지만 이번에 별도로 포함함, 위 "범위 밖" 절 참조). 신규 `js/domain/interaction.js` + `correlation.js`(`cramersV`·`categoricalPairs`), 신규 Finding 3종(`F-INTERACTION-GROUP`·`F-INTERACTION-PARTIAL`·`F-ASSOC-STRONG`), `schemaVersion` 1.3 → 1.4(`associations`·`interactions` 필드 — T7 2단계가 이미 1.3을 썼으므로 그 다음 minor). 계산 비용은 `thresholds.INTERACTION`이 상수 상한을 둠(전수 조합 탐색 금지)
+3. Finding 18종 → **21종**. 문서 갱신: `data-model.md`(§2·§3.1·§3.5·§3.6.1·§3.6.2·§4·§6) · `rules.md`(§3.1·§3.4·§3.6·§4·§4.6) · `screens.md`(관계 탭) · `finding-map.json` · 본 문서(위 "범위 밖" 절)
 
 ---
 

@@ -72,6 +72,68 @@ export function pearson(a, b) {
 }
 
 /**
+ * 범주형 열들의 연관성 쌍을 산출한다. correlationPairs() 의 범주형 버전 — 같은 이유로
+ * 임계값 필터링은 여기서 하지 않는다.
+ * @param {Array<{name: string, values: string[]}>} categoricalColumns 결측은 빈 문자열
+ * @returns {Array<{ left: string, right: string, v: number|null }>}
+ */
+export function categoricalPairs(categoricalColumns) {
+  if (categoricalColumns.length < 2) return [];
+  const pairs = [];
+  for (let i = 0; i < categoricalColumns.length; i++) {
+    for (let j = i + 1; j < categoricalColumns.length; j++) {
+      pairs.push({
+        left: categoricalColumns[i].name,
+        right: categoricalColumns[j].name,
+        v: cramersV(categoricalColumns[i].values, categoricalColumns[j].values),
+      });
+    }
+  }
+  return pairs;
+}
+
+/** 조합 키 구분자. 범주값 자체에 공백이 흔하므로(예: "New York") 공백을 쓰면 서로 다른
+ *  (a,b) 조합이 같은 키로 충돌할 수 있다 — 값에 나타날 일이 없는 문자로 구분한다. */
+const KEY_SEP = "\u0000";
+
+/**
+ * Cramér's V — 두 범주형 열의 연관 강도. 분할표 카이제곱 기반, 표준(비보정) 공식을 쓴다.
+ * 결측(빈 문자열)은 양쪽 모두 있는 행만 쌍별 제거한다.
+ * @param {string[]} a
+ * @param {string[]} b
+ * @returns {number|null} 유효 표본 2개 미만이거나 어느 한쪽 수준이 1개 이하면 null
+ */
+export function cramersV(a, b) {
+  const rowCounts = new Map();
+  const colCounts = new Map();
+  const cellCounts = new Map();
+  let n = 0;
+  for (let i = 0; i < a.length; i++) {
+    const av = a[i];
+    const bv = b[i];
+    if (!av || !bv) continue;
+    n++;
+    rowCounts.set(av, (rowCounts.get(av) ?? 0) + 1);
+    colCounts.set(bv, (colCounts.get(bv) ?? 0) + 1);
+    const key = av + KEY_SEP + bv;
+    cellCounts.set(key, (cellCounts.get(key) ?? 0) + 1);
+  }
+  if (n < 2 || rowCounts.size < 2 || colCounts.size < 2) return null;
+
+  let chi2 = 0;
+  for (const [rv, rn] of rowCounts) {
+    for (const [cv, cn] of colCounts) {
+      const expected = (rn * cn) / n;
+      if (expected < EPSILON) continue;
+      const observed = cellCounts.get(rv + KEY_SEP + cv) ?? 0;
+      chi2 += (observed - expected) ** 2 / expected;
+    }
+  }
+  const k = Math.min(rowCounts.size - 1, colCounts.size - 1);
+  return Math.sqrt(chi2 / (n * k));
+}
+
+/**
  * 순위 변환 후 Pearson 을 적용한다. 동순위는 평균 순위로 처리한다.
  * @param {Float64Array} a
  * @param {Float64Array} b
