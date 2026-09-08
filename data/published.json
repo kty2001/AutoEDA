@@ -18,6 +18,7 @@
     "multicollinearity",
     "outlier-methods",
     "outlier-removal",
+    "principal-components",
     "scaling",
     "skewness",
     "target-distribution"

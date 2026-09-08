@@ -6,14 +6,14 @@
 - 설계 문서 지도: [`README.md`](README.md) · 프로젝트 개요: [`../README.md`](../README.md)
 - 이 문서는 수치·임계값을 옮겨 적지 않음. 확정본에 링크만 둠 ([`README.md` §단일 원천 지도](README.md))
 
-최종 갱신: 2026-08-19
+최종 갱신: 2026-09-08
 
 ---
 
 ## 1. 현황 스냅숏
 
-**단계: Phase 1 완료·배포됨 + T7 1단계(전처리 파이프라인) 구현됨.**
-** (`https://autoeda.tyoujungzz.workers.dev`), 해설 20편·사례 리포트 3편 발행, 필수 페이지 4종 확정.** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. `build_cases.py` 는 **구현하지 않기로 함** — 사례 리포트를 `build_guides` 원고 경로로 발행했음([`work-log.md` 2026-08-18](work-log.md)). 죽은 내부 링크 0건, 색인 대상 27 URL. **남은 관문은 커스텀 도메인·광고 배치·GSC 등록이며 전부 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
+**단계: Phase 1 완료·배포됨 + T7(전처리·타깃 EDA) + T8(공유 링크) + T9(차원축소) 구현됨.**
+**배포 주소는 `https://autoeda.tyoujungzz.workers.dev` 이고 해설 23편·사례 리포트 3편 발행, 필수 페이지 4종 확정.** domain·worker·storage·app·`build_seo`·`build_guides` 전부 구현·테스트 완료. `build_cases.py` 는 **구현하지 않기로 함** — 사례 리포트를 `build_guides` 원고 경로로 발행했음([`work-log.md` 2026-08-18](work-log.md)). 죽은 내부 링크 0건, 색인 대상 29 URL. **남은 관문은 커스텀 도메인·광고 배치·GSC 등록이며 전부 코드 작업이 아님.** 구현 중의 결정·함정은 [`work-log.md`](work-log.md) 참조.
 
 ### 완성된 것
 
@@ -26,24 +26,25 @@
 | 기술통계 | `js/domain/stats.js` | 적률·R-7 분위수·topValues·classDistribution·numericStatsByClass·히스토그램. 추정량 선택은 파일 헤더에 문서화 |
 | 이상치 | `js/domain/outlier.js` | IQR(경계·비율), z-score 대조군 |
 | 상관·공선성 | `js/domain/correlation.js` | Pearson(쌍별 제거)·Spearman(평균 순위)·VIF(정규방정식, listwise) |
+| 주성분 | `js/domain/pca.js` | 표준화(상관행렬) PCA. 결측은 listwise, 고유분해는 순환 Jacobi, 부호는 절댓값 최대 로딩이 양수가 되도록 고정. **행 단위 점수를 내지 않음** — 산출물은 고윳값·로딩뿐 |
 | Health Score | `js/domain/quality.js` | 항목 6종 감점·verdict·evidence, id/text 제외 규칙 |
 | 전처리 변환 | `js/domain/transform.js` | 연산 7종(중복·열 제거·대치·이상치·로그·인코딩·스케일링). 입력 배열 불변, 삽입 순서와 무관하게 `STEP_ORDER` 로 적용. 이상치 경계는 `outlier.iqrOutliers` 재사용 — 판정과 조치가 같은 정의를 씀 |
 | 조치 제안 | `js/domain/recipe.js` | Finding → 스텝 매핑 + 대가(cost) 문구. 조치 없는 유형은 `EXCLUDED` 에 이유와 함께 등재하며 테스트가 폐합 검사함 |
 | 규칙 엔진 | `js/domain/finding.js` | Finding 18종(타깃군은 target 지정 시), 3단 문구 확정, 정렬·유형당 5건 묶기 |
 | 표시 포맷 | `js/lib/format.js` | percent·count·stat·bytes |
 | Finding→해설 매핑 | `data/finding-map.json` | 18종 전부. 테스트가 폐합 검사함 |
-| Worker 파이프라인 | `js/worker/analyze.worker.js` | 순수 함수 `analyze()`가 결과 JSON([`data-model.md §3`](data-model.md)) 조립 — FILE_LIMIT 검사·progress·취소·중복행·메모리 추정 포함. **파싱 이후 단계는 `profile()` 로 분리**해 전처리 결과가 같은 엔진을 타게 함. 원본 행은 Worker 안에만 두고 `preprocess`·`export-csv` 로만 다룸. 메시지 글루는 Worker 전역에서만 배선. **분류 타깃 지정 시 `attachTargetInfo()`가 `classDistribution`·`classStats`를 대상 열에만 부착**(schemaVersion 1.3) |
+| Worker 파이프라인 | `js/worker/analyze.worker.js` | 순수 함수 `analyze()`가 결과 JSON([`data-model.md §3`](data-model.md)) 조립 — FILE_LIMIT 검사·progress·취소·중복행·메모리 추정 포함. **파싱 이후 단계는 `profile()` 로 분리**해 전처리 결과가 같은 엔진을 타게 함. 원본 행은 Worker 안에만 두고 `preprocess`·`export-csv` 로만 다룸. 메시지 글루는 Worker 전역에서만 배선. **분류 타깃 지정 시 `attachTargetInfo()`가 `classDistribution`·`classStats`를 대상 열에만 부착**(schemaVersion 1.3). **수치형 열 전체의 주성분을 `principalComponents()`로 산출해 선택 필드 `pca` 로 붙임**(schemaVersion 1.4) |
 | 저장소 | `js/storage/local.js` | 결과 캐시 3단 축소 폴백([`data-model.md §4`](data-model.md))·major 검증·prefs 병합 저장 |
-| 차트 선택 | `js/domain/chart-select.js` | 타입별 대표 차트·산점도 상위 6쌍·히트맵 20열 축소·Finding 강조(왜도·IQR 경계) |
-| SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프. **캔버스는 공용 400×220 이고 히트맵만 420×420 예외**(행·열 레이블 자리. 레이블 폰트는 셀 크기에 종속) |
-| app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·**7섹션 탭(전처리·타깃 포함)**·발견 카드의 `조치 담기`·Before/After·정제 CSV 내려받기·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백. **타깃 탭**은 개요 select로 재계산을 트리거하고 회귀/분류로 분기 렌더 |
+| 차트 선택 | `js/domain/chart-select.js` | 타입별 대표 차트·산점도 상위 6쌍·히트맵 20열 축소·Finding 강조(왜도·IQR 경계)·스크리(주성분 설명 분산) |
+| SVG 렌더 | `js/domain/chart-svg.js` | 5종(히스토그램·박스플롯·막대·산점도·히트맵) 문자열 렌더 — 인라인 style 없음(CSP), 값 유래 문자열 전부 이스케이프. **캔버스는 공용 400×220 이고 예외 3종**(히트맵 640×640 — 행·열 레이블 자리, 폰트는 셀 크기에 종속 / 막대 480×260 — 좌우 레이블 / 박스플롯 300×300 — 세로 값축) |
+| app 배선 | `js/app/*.js` | analyze 4상태·Worker 왕복·**8섹션 탭(전처리·타깃·차원축소 포함)**·발견 카드의 `조치 담기`·Before/After·정제 CSV 내려받기·내보내기/불러오기·이어보기, 전역 메뉴, 공통 동작, 문의 mailto+폴백. **타깃 탭**은 개요 select로 재계산을 트리거하고 회귀/분류로 분기 렌더 |
 | SEO 빌드 | `scripts/build_seo.mjs` | canonical·OG·JSON-LD 주입(멱등) + `sitemap.xml`. 색인 정책 폐합 검사(sitemap↔noindex·확장자·URL 중복), `FAQPage` 는 페이지 HTML 에서 추출, 미생성 산출물은 경고 후 제외 |
 | 콘텐츠 빌드 | `scripts/build_guides.mjs` | 산문 md → HTML + 섹션 인덱스 + `data/published.json`. 서식 검증은 줄 번호와 함께 exit 1. 인덱스는 `pages/{섹션}.html` 로 냄(디렉토리 인덱스는 307 을 만듦) |
-| 발행 콘텐츠 | `data/{guide,case,glossary}_source/*.md` → `pages/{guide,case,glossary}.html` · `pages/{guide,case}/*.html` | 해설 20편 + 사례 4편(허브 1 + 리포트 3) = **24편 · 42,728자** — [`content-strategy.md` §7](content-strategy.md) 게이트의 171%. 미발행은 T2·T3 해설(Phase 2)과 국내 사례(데이터셋 미선정) |
-| 테스트 | `tests/*.test.js` | **312건.** `integration.test.js` 가 계층 통합 스모크, `build_seo.test.js` 끝의 산출물 폐합 3건이 **저장소에 실제로 놓인 페이지**를 검사함 |
+| 발행 콘텐츠 | `data/{guide,case,glossary}_source/*.md` → `pages/{guide,case,glossary}.html` · `pages/{guide,case}/*.html` | 해설 23편 + 사례 4편(허브 1 + 리포트 3) + 용어집 1편 = **28편 · 48,125자** — [`content-strategy.md` §7](content-strategy.md) 게이트의 193%. 해설 인벤토리는 23/23 완결이며 미발행은 사례뿐(데이터셋 미선정) |
+| 테스트 | `tests/*.test.js` | **368건.** `integration.test.js` 가 계층 통합 스모크, `build_seo.test.js` 끝의 산출물 폐합 3건이 **저장소에 실제로 놓인 페이지**를 검사함 |
 | 배포 설정 | `wrangler.jsonc` `_headers` `_redirects` `robots.txt` `.assetsignore` `sitemap.xml` | `sitemap.xml` 은 빌드 산출물이지만 배포 자산이라 커밋함 |
-| 페이지 골격 | `index.html` `404.html` `pages/*.html` | analyze 4상태 섹션 포함. 마크업은 손으로 쓴 9개 + `build_guides` 템플릿에 중복되므로 함께 고침 |
-| 시각 디자인 | `css/style.css` | [`DESIGN.md`](DESIGN.md) 토큰·컴포넌트 반영. 색·간격·반경·그림자·서체가 `:root` 토큰 한 곳에 모여 있어 차트·발견 목록·배지·탭이 함께 따라옴. 구조 개편(히어로 분할·중간 밴드)은 미반영 |
+| 페이지 골격 | `index.html` `404.html` `pages/*.html` | analyze 4상태 섹션 포함. 마크업은 손으로 쓴 7개 + `build_guides` 템플릿에 중복되므로 함께 고침 |
+| 시각 디자인 | `css/style.css` | [`DESIGN.md`](DESIGN.md) 토큰·컴포넌트 반영. 색·간격·반경·그림자·서체가 `:root` 토큰 한 곳에 모여 있어 차트·발견 목록·배지·탭이 함께 따라옴. 구조 개편(히어로 분할·중간 밴드·플로팅 CTA)은 2026-08-19 반영됨 |
 | 폰트 | `scripts/fetch_fonts.mjs` → `fonts/` · `css/fonts.css` | 자체 호스팅 Inter + Noto Sans KR 슬라이스 252개. CSP `font-src 'self'` 때문이며 `unicode-range` 를 보존해 실제 사용 구간만 전송됨 |
 
 ### 스텁 (구현 대상)
@@ -54,7 +55,7 @@
 
 사례 허브·목록·본문을 **전부 `build_guides` 가 만듦.** 원래는 데이터셋 파생 본문만 `build_cases.py` 로 분리할 계획이었으나, `SECTIONS.case` 배선이 이미 있어 원고 md 만 넣으면 페이지·목록·sitemap 이 함께 따라오는 것을 확인하고 스크립트를 만들지 않았음. 대가는 빌드타임 인라인 SVG 차트이며, 3편 규모에서는 해석 본문이 주(主)라는 판단으로 감수했음.
 
-원자료는 `data/guide_source/` 19편, `data/case_source/` 4편(허브 포함), `data/glossary_source/` 1편임. 발행 현황은 [`TODO.md` T4](TODO.md)가 원천임.
+원자료는 `data/guide_source/` 23편, `data/case_source/` 4편(허브 포함), `data/glossary_source/` 1편임. 발행 현황은 [`TODO.md` T4](TODO.md)가 원천임.
 
 ## 2. 구현 규약
 
@@ -74,7 +75,7 @@
 
 | 명령 | 내용 |
 |---|---|
-| `npm test` | 전체 테스트 312건(계약·동작·통합·빌드·산출물 폐합). **모든 작업 완료 전 필수** |
+| `npm test` | 전체 테스트 368건(계약·동작·통합·빌드·산출물 폐합). **모든 작업 완료 전 필수** |
 | `npm run serve` | 로컬 서빙 (`python -m http.server 8000`). ES Module·Worker 확인용 |
 | `npx wrangler dev --persist-to <프로젝트 밖>` | **실기 검증용 서버.** `_headers` CSP·확장자 없는 URL 을 배포와 같게 적용함 — `npm run serve` 는 둘 다 재현하지 못하므로 CSP·링크 확인에는 쓸 수 없음. `--persist-to` 를 빼면 무한 리로드([`work-log.md`](work-log.md)) |
 | **`npm run build`** | **콘텐츠를 고쳤으면 이것을 씀.** `build:guides` → `build:seo` 를 순서대로 돌림 |

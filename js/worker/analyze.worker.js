@@ -34,13 +34,14 @@ import {
 } from '../domain/stats.js';
 import { iqrOutliers } from '../domain/outlier.js';
 import { correlationPairs } from '../domain/correlation.js';
+import { principalComponents } from '../domain/pca.js';
 import { healthScore } from '../domain/quality.js';
 import { buildFindings } from '../domain/finding.js';
 import { applyRecipe } from '../domain/transform.js';
 import { FILE_LIMIT, DISPLAY_LIMIT, FINDING } from '../domain/thresholds.js';
 import { bytes } from '../lib/format.js';
 
-const SCHEMA_VERSION = '1.3';
+const SCHEMA_VERSION = '1.4';
 
 /** 단계 진입 시 보고하는 진행률. 값 자체는 표시용 근사치다. */
 const STAGE_RATIO = { decode: 0.1, parse: 0.3, infer: 0.5, stats: 0.75, finding: 0.9 };
@@ -122,6 +123,9 @@ export function profile(parsed, options = {}) {
     .map((c) => ({ name: c.name, values: alignedNumeric(parsed.columns[c.index]) }));
   attachTargetInfo(columns, numericArrays, parsed, target);
   const correlations = attachScatterPoints(correlationPairs(numericArrays), numericArrays);
+  // 주성분은 집계값(고윳값·로딩)만 낸다 — 행 단위 점수를 담지 않으므로 결과 JSON 에
+  // 원본 행이 섞이는 경로가 생기지 않는다(docs/data-model.md §3.9)
+  const pca = principalComponents(numericArrays);
 
   const dataset = {
     rowCount: parsed.rowCount,
@@ -141,7 +145,9 @@ export function profile(parsed, options = {}) {
   const health = healthScore({ columns, dataset });
   const findings = buildFindings({ dataset, columns, health, correlations, target });
 
-  return { schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings, correlations };
+  const result = { schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings, correlations };
+  if (pca) result.pca = pca; // 산출 조건 미달이면 필드 자체를 두지 않는다(선택 필드)
+  return result;
 }
 
 /**

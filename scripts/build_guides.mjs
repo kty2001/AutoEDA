@@ -52,7 +52,7 @@ const SECTIONS = {
     out: 'pages/guide',
     url: '/pages/guide',
     label: '해설',
-    groups: ['프로세스·한국 데이터 환경', '데이터 품질', '분포', '관계', '타깃·모델링'],
+    groups: ['프로세스·한국 데이터 환경', '데이터 품질', '분포', '관계', '차원 축소', '타깃·모델링'],
   },
   case: {
     source: 'data/case_source',

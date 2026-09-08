@@ -118,6 +118,21 @@ export function selectHeatmap(correlations, columns, method = 'pearson') {
 }
 
 /**
+ * 차원축소 탭의 스크리 차트 스펙. 주성분별 설명 분산 비율을 내림차순 막대로 그린다.
+ * 새 차트 종류를 만들지 않고 기존 막대 렌더러를 그대로 쓴다 —
+ * 타깃 탭의 |Pearson| 랭킹이 같은 방식이다(docs/data-model.md §8 ChartSpec 계약).
+ * @param {object|null} pca 결과 JSON 의 pca (docs/data-model.md §3.9)
+ * @returns {{ kind: 'bar', data: object, axis: object }|null} pca 가 없으면 null
+ */
+export function selectScree(pca) {
+  if (!pca?.components?.length) return null;
+  const items = pca.components
+    .slice(0, DISPLAY_LIMIT.pcaComponents)
+    .map((c, i) => ({ value: `PC${i + 1}`, count: c.ratio }));
+  return { kind: 'bar', data: { items }, axis: { x: '주성분', y: '설명 분산 비율' } };
+}
+
+/**
  * Finding 의 근거 시각화를 고른다. 발견 유형에 따라 강조 지점이 다르다
  * (편포 → 히스토그램에 왜도 방향 표시, 이상치 → 박스플롯에 경계선 등).
  * 열 범위 발견만 대상이다 — pair·dataset 범위는 관계 탭이 담당한다.

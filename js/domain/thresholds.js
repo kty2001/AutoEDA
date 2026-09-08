@@ -96,6 +96,20 @@ export const INFER = Object.freeze({
  */
 export const PREPROCESS = Object.freeze({ onehotMaxUnique: 20 });
 
+/**
+ * 주성분 분석 산출 조건. → rules.md §6.2 — 자체 판단, 실측 후 조정 대상
+ * minColumns:      수치형 열이 이보다 적으면 산출하지 않는다 (2열이면 상관계수 하나로 끝난다)
+ * maxColumns:      초과 시 분산 상위 열만 쓴다 (히트맵의 20열 축소와 같은 방식)
+ * minCompleteRows: 결측 없는 행이 이보다 적으면 산출하지 않는다
+ * cumulativeTarget: 안내 문구와 로딩 표에 몇 개 성분을 보일지 정하는 누적 설명 분산 기준
+ */
+export const PCA = Object.freeze({
+  minColumns: 3,
+  maxColumns: 30,
+  minCompleteRows: 10,
+  cumulativeTarget: 0.8,
+});
+
 /** 처리 파일 크기 상한. 단일 원천: docs/direction.md §9. 초과 시 FILE_TOO_LARGE. */
 export const FILE_LIMIT = Object.freeze({ maxBytes: 25 * 1024 * 1024 }); // 25MB
 
@@ -108,4 +122,5 @@ export const DISPLAY_LIMIT = Object.freeze({
   scatterPoints: 200, // 산점도 쌍당 점 수 (초과 시 균등 간격 다운샘플)
   heatmapColumns: 20, // 상관 히트맵 (초과 시 분산 상위 20열로 축소)
   targetRanking: 10, // 타깃 탭 — 피처-타깃 |Pearson| 랭킹 바 차트
+  pcaComponents: 10, // 차원축소 탭 — 스크리 막대·누적 분산표·로딩 표의 공통 성분 상한
 });

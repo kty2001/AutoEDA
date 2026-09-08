@@ -32,6 +32,7 @@ erDiagram
     Dataset ||--o{ Finding : "데이터셋 수준 발견"
     Column ||--o{ Finding : "열 수준 발견"
     Dataset ||--o{ CorrelationPair : "상관 쌍"
+    Dataset ||--o| Pca : "주성분 요약"
     Finding ||--o{ ChartSpec : "근거 시각화"
     Finding }o--|| GuideDoc : "해설 매핑"
 
@@ -104,6 +105,15 @@ erDiagram
         float spearman
         float vif
     }
+    Pca {
+        json columns
+        int usedRowCount
+        int droppedRowCount
+        json droppedColumns
+        boolean reduced
+        json components
+        json loadings
+    }
     ChartSpec {
         string kind
         json data
@@ -127,23 +137,25 @@ erDiagram
 
 ```json
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "dataset": { },
   "columns": [ ],
   "health": { },
   "findings": [ ],
-  "correlations": [ ]
+  "correlations": [ ],
+  "pca": { }
 }
 ```
 
 | 경로 | 타입 | 필수 | 설명 |
 |---|---|:---:|---|
-| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`, 1.2 → 1.3: `columns[].classStats`) |
+| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`, 1.2 → 1.3: `columns[].classStats`, 1.3 → 1.4: `pca`) |
 | `dataset` | object | ○ | §3.2 |
 | `columns` | array | ○ | §3.3. 원본 열 순서 |
 | `health` | object | ○ | §3.4 |
 | `findings` | array | ○ | §3.5. 빈 배열 허용 |
 | `correlations` | array | ○ | §3.6. 수치형 열 2개 미만이면 빈 배열 |
+| `pca` | object | △ | §3.9. 산출 조건 미달이면 **필드 자체가 없음** |
 
 ### 3.2 `dataset`
 
@@ -269,6 +281,27 @@ erDiagram
 
 **`decodeShareSummary`는 신뢰할 수 없는 입력을 다룬다** — URL은 링크를 받은 사람이 아니라 **누구든** 만들 수 있음. `h.g`·`f[].s`가 그대로 CSS 클래스명으로 쓰이므로(`js/app/analyze.page.js`의 `gradeClass`) 화이트리스트 검증 없이 통과시키지 않으며, 인코딩된 문자열 자체에도 길이 상한(4,000자)을 두어 디코딩을 시도하기 전에 걸러냄. `h`가 어긋나면 전체를 무효로 하고, 개별 `f[]` 항목이 어긋나면 그 항목만 제외함(관대한 실패).
 
+### 3.9 `pca` — 주성분 요약 (T9)
+
+`js/domain/pca.js`가 원천임. `thresholds.PCA`의 산출 조건(수치형 열 수·완전 케이스 행 수)에 미달하면 **필드를 아예 두지 않음** — 빈 객체로 두면 화면이 "계산했는데 결과가 없다"와 "계산하지 않았다"를 구분할 수 없음.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `columns` | string[] | 실제로 쓴 수치형 열 이름. 원본 순서. 로딩 배열의 열 축임 |
+| `usedRowCount` | int | 완전 케이스 행 수 |
+| `droppedRowCount` | int | 결측 때문에 제외한 행 수 |
+| `droppedColumns` | string[] | 완전 케이스에서 상수라 제외한 열. 없으면 빈 배열 |
+| `reduced` | boolean | 수치형 열이 `PCA.maxColumns`를 넘어 분산 상위만 썼는지 |
+| `components[]` | array | 고윳값 내림차순. **전량** 담음 |
+| `components[].eigenvalue` / `ratio` / `cumulative` | float | 고윳값 / 설명 분산 비율 / 누적 비율 |
+| `loadings` | number[][] | `[성분][열]`. 성분 수는 `DISPLAY_LIMIT.pcaComponents`까지만 |
+
+**행 단위 값(주성분 점수)을 담지 않음.** `correlations[].points`(§3.6)는 산점도를 그릴 방법이 달리 없어서 만든 유일한 예외인데, 차원축소 탭은 점수 산점도를 그리지 않기로 해 그 예외가 필요하지 않음. 여기 있는 값은 전부 열 수·성분 수에 묶인 집계값이며 행 수와 무관함 — 규약 8([`implementation-status.md §2`](./implementation-status.md))이 구조로 지켜짐.
+
+**`components`는 전량, `loadings`는 상한까지**인 이유: 고윳값 행은 열당 숫자 3개라 저렴하고 누적 100%까지 보여야 "몇 개 축이면 되는가"에 답할 수 있음. 반면 로딩은 열 수 × 성분 수라 제곱으로 커지므로 표시 상한을 그대로 저장 상한으로 씀.
+
+계산 규약(listwise 결측 처리 · 표준화 = 상관행렬 기준 · 부호 고정 · 로딩 정의)은 `js/domain/pca.js`의 헤더가 단일 원천임.
+
 ## 4. 저장소 키 스키마
 
 | 키 | 저장소 | 내용 | 수명 |
@@ -330,7 +363,7 @@ sequenceDiagram
 
     P->>P: sessionStorage 저장 (§4 폴백 적용)
     P->>P: 상태 C 전환
-    P-->>U: 결과 7섹션
+    P-->>U: 결과 8섹션
 
     Note over U,W: UC-02 대안 — 타입 수정 시 재계산
     U->>P: 열 타입 변경
@@ -384,18 +417,23 @@ flowchart LR
         STA["stats.js<br/>기술통계"]
         COR["correlation.js<br/>상관·VIF"]
         OUT["outlier.js<br/>이상치"]
+        PCA["pca.js<br/>주성분"]
         QUA["quality.js<br/>Health Score"]
         FIN["finding.js<br/>규칙 엔진"]
+        REC["recipe.js<br/>조치 제안"]
+        TRA["transform.js<br/>전처리 변환"]
     end
 
     subgraph PRES["analyze.page.js 내부"]
         SEL["chart-select.js<br/>차트 선택"]
         SVG["chart-svg.js<br/>SVG 렌더"]
+        SHA["share.js<br/>요약 공유"]
     end
 
     DEC --> PAR --> INF
     INF --> STA
     INF --> COR
+    INF --> PCA
     INF --> OUT
     STA --> QUA
     OUT --> QUA
@@ -405,7 +443,13 @@ flowchart LR
     COR --> FIN
     OUT --> FIN
     FIN --> SEL --> SVG
+    PCA --> SEL
+    FIN --> REC --> TRA
+    TRA --> INF
+    FIN --> SHA
 ```
+
+`transform.js` 가 `infer.js` 로 되돌아가는 화살표는 순환이 아님 — 변환 산출물을 `profile()` 이 **처음부터 다시** 태우는 것이며(Before/After 가 같은 엔진을 쓰게 하려는 것), 한 번의 실행 안에서 두 모듈이 서로를 부르지 않음.
 
 **계약 3건**
 
@@ -437,7 +481,7 @@ UC-15가 조회하는 Finding 유형 → 해설 매핑임.
 | 항목 | 내용 |
 |---|---|
 | 열 수 상한 | 열이 매우 많으면 `columns[]`와 `correlations[]`가 함께 커짐. 상한을 두고 초과 시 열 선택을 요구할지 결정 필요 |
-| ~~`ChartSpec` 표현 범위~~ | **확정 (2026-08-18)** — `{ kind, data, axis }` 로 5종이 공유하고, 렌더러 계약은 `(data, axis) => string` 임. **캔버스는 공유하지 않음** — 히트맵은 20열에서 레이블이 겹쳐 정사각 420×420 예외를 씀(`chart-svg.js` 의 `CANVAS`). 스케일은 렌더러 내부 관심사로 두고 스펙에 담지 않음 |
+| ~~`ChartSpec` 표현 범위~~ | **확정 (2026-08-18)** — `{ kind, data, axis }` 로 5종이 공유하고, 렌더러 계약은 `(data, axis) => string` 임. **캔버스는 공유하지 않음** — 히트맵 640×640 · 막대 480×260 · 박스플롯 300×300 이 예외임(`chart-svg.js` 의 `CANVAS`). 스케일은 렌더러 내부 관심사로 두고 스펙에 담지 않음 |
 | 스키마 버전 승격 시점 | Phase 2에서 타깃 분석 필드가 추가되면 `1.1`인지 `2.0`인지 — 필드 추가만이면 `1.1` |
 | ~~`classDistribution` 크기 상한~~ | **확정 (T7 2단계)** — 타깃 열이 범주형·불리언이고 고유값이 `F-HIGH-CARD.uniqueCount`(50) 미만일 때만 `classDistribution`·`classStats`를 부착함. 그 이상(고카디널리티)이거나 회귀 타깃(수치형)이면 붙이지 않으며, `F-CLASS-IMBALANCE`는 자연히 발화하지 않음 → §3.3 |
 | `invalid` 항목 정의 | Health Score의 "유효하지 않은 값"을 어디까지 볼지(음수 나이, 미래 날짜 등)는 `rules.md §6`의 미확정 항목 |

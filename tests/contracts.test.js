@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -20,10 +20,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // 1. 모듈 계약
 // ─────────────────────────────────────────────────────────────
 
-/** 모듈별 필수 export. docs/data-model.md §6 의존 그래프 노드와 일치한다. */
+/**
+ * 모듈별 필수 export. docs/data-model.md §6 의존 그래프 노드와 일치한다.
+ *
+ * ⚠️ 이 맵은 export 계약만이 아니라 **아래 순수성 검사의 대상 목록이기도 하다** —
+ *    검사가 Object.keys(CONTRACTS) 를 돌기 때문에, 여기 없는 모듈은 DOM·IO 금지 검사를
+ *    아예 받지 않는다. js/domain/ 에 파일을 추가하면 반드시 여기에도 등록한다.
+ *    (share.js 가 T8 이후 이 목록에서 빠져 있어 검사를 받지 못하고 있었다.)
+ */
 const CONTRACTS = {
   'decode.js': ['decode', 'stripBom'],
-  'parse.js': ['detectDelimiter', 'parseCsv', 'serializeCsv'],
+  'parse.js': ['detectDelimiter', 'parseCsv', 'serializeCsv', 'hasLeadingZero', 'toNumber'],
   'infer.js': ['inferColumns', 'isValidFor', 'parseDate'],
   'stats.js': [
     'numericStats',
@@ -35,12 +42,20 @@ const CONTRACTS = {
     'densityCurve',
   ],
   'correlation.js': ['correlationPairs', 'pearson', 'spearman', 'vif'],
+  'pca.js': ['principalComponents'],
   'outlier.js': ['iqrOutliers', 'zScoreOutliers'],
   'quality.js': ['healthScore'],
   'finding.js': ['buildFindings', 'collapseByType'],
+  'share.js': ['buildShareSummary', 'encodeShareSummary', 'decodeShareSummary'],
   'transform.js': ['applyRecipe', 'STEP_ORDER'],
   'recipe.js': ['suggestSteps', 'normalizeRecipe', 'EXCLUDED'],
-  'chart-select.js': ['selectForColumn', 'selectPairs', 'selectForFinding'],
+  'chart-select.js': [
+    'selectForColumn',
+    'selectPairs',
+    'selectHeatmap',
+    'selectForFinding',
+    'selectScree',
+  ],
   'chart-svg.js': ['linearScale', 'renderAxis', 'renderChart', 'escapeXml'],
   'thresholds.js': [
     'HEALTH_PENALTY_CAP',
@@ -53,6 +68,7 @@ const CONTRACTS = {
     'FILE_LIMIT',
     'DISPLAY_LIMIT',
     'PREPROCESS',
+    'PCA',
   ],
 };
 
@@ -64,6 +80,19 @@ for (const [file, expected] of Object.entries(CONTRACTS)) {
     }
   });
 }
+
+test('js/domain 의 모든 모듈이 CONTRACTS 에 등록돼 있다', () => {
+  // 이 검사가 없으면 새 모듈이 조용히 순수성 검사 밖에 놓인다 —
+  // share.js 가 T8 이후 그 상태로 남아 있었고, 하필 신뢰할 수 없는 URL 입력을 다루는 모듈이었다.
+  const files = readdirSync(join(ROOT, 'js/domain')).filter((f) => f.endsWith('.js'));
+  const registered = Object.keys(CONTRACTS);
+  for (const file of files) {
+    assert.ok(registered.includes(file), `js/domain/${file} 이 CONTRACTS 에 없음 — 순수성 검사를 받지 못한다`);
+  }
+  for (const name of registered) {
+    assert.ok(files.includes(name), `CONTRACTS 의 ${name} 이 실제로 없음`);
+  }
+});
 
 test('domain 모듈은 DOM·IO 를 참조하지 않는다', () => {
   // 순수 함수 계약(docs/tech-stack.md §5). 문자열 검사로 최소한을 지킨다.
@@ -85,7 +114,7 @@ test('domain 모듈은 DOM·IO 를 참조하지 않는다', () => {
 // 2. 임계값 ↔ 문서 대조 (자동화된 폐합 검사)
 // ─────────────────────────────────────────────────────────────
 
-const { HEALTH_PENALTY_CAP, HEALTH_GRADE, FINDING, OUTLIER, INFER, FILE_LIMIT, DISPLAY_LIMIT } =
+const { HEALTH_PENALTY_CAP, HEALTH_GRADE, FINDING, OUTLIER, INFER, FILE_LIMIT, DISPLAY_LIMIT, PCA } =
   await import('../js/domain/thresholds.js');
 
 test('Health Score 감점 상한 합계는 100 (rules.md §2)', () => {
@@ -155,6 +184,16 @@ test('표시 개수 상한 (rules.md §4)', () => {
     scatterPoints: 200,
     heatmapColumns: 20,
     targetRanking: 10,
+    pcaComponents: 10,
+  });
+});
+
+test('주성분 분석 산출 조건 (rules.md §6.2)', () => {
+  assert.deepEqual(PCA, {
+    minColumns: 3,
+    maxColumns: 30,
+    minCompleteRows: 10,
+    cumulativeTarget: 0.8,
   });
 });
 
