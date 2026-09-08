@@ -32,6 +32,8 @@ erDiagram
     Dataset ||--o{ Finding : "데이터셋 수준 발견"
     Column ||--o{ Finding : "열 수준 발견"
     Dataset ||--o{ CorrelationPair : "상관 쌍"
+    Dataset ||--o{ AssociationPair : "범주형 연관 쌍"
+    Dataset ||--o{ InteractionCandidate : "다중 컬럼 관계 후보"
     Dataset ||--o| Pca : "주성분 요약"
     Finding ||--o{ ChartSpec : "근거 시각화"
     Finding }o--|| GuideDoc : "해설 매핑"
@@ -105,6 +107,18 @@ erDiagram
         float spearman
         float vif
     }
+    AssociationPair {
+        string left
+        string right
+        float v
+    }
+    InteractionCandidate {
+        string kind
+        string left
+        string right
+        float maxDelta
+        boolean signFlip
+        float partial
     Pca {
         json columns
         int usedRowCount
@@ -143,18 +157,22 @@ erDiagram
   "health": { },
   "findings": [ ],
   "correlations": [ ],
+  "associations": [ ],
+  "interactions": [ ]
   "pca": { }
 }
 ```
 
 | 경로 | 타입 | 필수 | 설명 |
 |---|---|:---:|---|
-| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`, 1.2 → 1.3: `columns[].classStats`, 1.3 → 1.4: `pca`) |
+| `schemaVersion` | string | ○ | `major.minor`. UC-10이 검증. major 불일치는 거부. minor는 선택 필드 추가에만 올림(1.0 → 1.1: `histogram.density`, 1.2: `dataset.recipe`, 1.3: `columns[].classStats`, 1.4: `associations`·`interactions`·`pca`). **1.4 에 필드 셋이 함께 들어간 것은 다중 컬럼 관계 작업과 차원축소 작업이 합류했기 때문이며, 셋 다 선택 필드라 minor 로 충분함** |
 | `dataset` | object | ○ | §3.2 |
 | `columns` | array | ○ | §3.3. 원본 열 순서 |
 | `health` | object | ○ | §3.4 |
 | `findings` | array | ○ | §3.5. 빈 배열 허용 |
 | `correlations` | array | ○ | §3.6. 수치형 열 2개 미만이면 빈 배열 |
+| `associations` | array | ○ | §3.6.1. 범주형(카디널리티 낮은 것만) 열 2개 미만이면 빈 배열 |
+| `interactions` | array | ○ | §3.6.2. 상관 절댓값 상위 후보가 없으면 빈 배열 |
 | `pca` | object | △ | §3.9. 산출 조건 미달이면 **필드 자체가 없음** |
 
 ### 3.2 `dataset`
@@ -220,7 +238,7 @@ erDiagram
 | `id` | string | 이 결과 내 유일. `{type}#{순번}` |
 | `type` | string | `rules.md §3`의 Finding 유형 ID (예 `F-MULTICOLLINEAR`) |
 | `severity` | string | `high` \| `medium` \| `low` |
-| `scope` | string | `dataset` \| `column` \| `pair` |
+| `scope` | string | `dataset` \| `column` \| `pair` \| `group`(다중 컬럼 관계, 1.4) |
 | `targets` | string[] | 대상 열 이름. `dataset` 범위면 빈 배열 |
 | `metrics` | object | 문구 템플릿에 주입되는 수치 |
 | `what` / `why` / `how` | string | 3단 해석 (축 1). 생성 시점에 문구를 확정해 담음 |
@@ -240,6 +258,36 @@ erDiagram
 전체 행렬을 담지 않고 **쌍 배열로 담음** — 열 30개면 행렬은 900칸이지만 상삼각 쌍은 435개이고, 임계값 미달 쌍을 제외하면 더 줄어듦. 히트맵은 이 배열로 재구성함.
 
 `points`가 필요한 이유: 결과 JSON에는 원본 행이 없으므로(§3.2) 산점도(UC-08)를 그릴 점이 어디에도 없음. 집계만으로는 계산 불가능한 유일한 화면 요소라 상위 쌍에 한해 다운샘플을 담음 — 원본 행 전체가 아니라 두 열의 값 쌍만이며, 표시 상한이 개수를 제한함.
+
+### 3.6.1 `associations[]` (1.4)
+
+`correlations[]`의 범주형 버전 — 두 범주형 열의 연관 강도를 Cramér's V로 담음. 대상은 카디널리티가 낮은 범주형 열(`thresholds.INTERACTION.maxGroupLevels` 이하)로 제한함 — 비용(분할표 크기)과 해석 가능성 둘 다를 위함.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `left` / `right` | string | 열 이름 |
+| `v` | float | Cramér's V, `[0, 1]`. `null` 허용(계산 불가 시) |
+
+전체 행렬이 아니라 쌍 배열로 담음(§3.6과 같은 이유). 히트맵은 이 배열로 재구성함.
+
+### 3.6.2 `interactions[]` (1.4)
+
+두 수치형 열의 관계가 제3의 변수에 따라 달라지는지 탐지한 후보. 상관 절댓값 상위 쌍(`thresholds.INTERACTION.candidatePairs`)만 확장하므로 전체 3열 조합을 담지 않음 — `js/domain/interaction.js` 참조.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `kind` | string | `grouped` \| `partial` |
+| `left` / `right` | string | 두 수치형 열 이름 |
+| `by` | string | (`grouped`만) 그룹 기준 범주형 열 이름 |
+| `overall` | float | (`grouped`만) 전체(비조건) Pearson 상관 |
+| `groups[]` | array | (`grouped`만) `{ value, n, pearson, points? }`. `points`는 상위 `DISPLAY_LIMIT.interactionCharts`개 후보에만, 그룹 소속 행만으로 만든 산점도용 다운샘플 점. 용량 폴백 2단계에서 제거됨(§4) |
+| `maxDelta` | float | (`grouped`만) 그룹별 상관과 전체 상관의 최대 절댓값 차이 |
+| `signFlip` | boolean | (`grouped`만) 어느 그룹이든 전체와 부호가 반대인지 |
+| `z` | string | (`partial`만) 통제한 제3의 수치형 열 이름 |
+| `rxy` | float | (`partial`만) 통제 전 Pearson 상관 |
+| `partial` | float | (`partial`만) `z`를 통제한 편상관계수. `null` 허용(계산 불가 시) |
+
+`partial`은 텍스트로만 표시하므로(관계 탭) `points`를 담지 않음 — `grouped`만 산점도가 필요함.
 
 ### 3.7 `stats` — 타입별 채워지는 필드
 
@@ -281,7 +329,7 @@ erDiagram
 
 **`decodeShareSummary`는 신뢰할 수 없는 입력을 다룬다** — URL은 링크를 받은 사람이 아니라 **누구든** 만들 수 있음. `h.g`·`f[].s`가 그대로 CSS 클래스명으로 쓰이므로(`js/app/analyze.page.js`의 `gradeClass`) 화이트리스트 검증 없이 통과시키지 않으며, 인코딩된 문자열 자체에도 길이 상한(4,000자)을 두어 디코딩을 시도하기 전에 걸러냄. `h`가 어긋나면 전체를 무효로 하고, 개별 `f[]` 항목이 어긋나면 그 항목만 제외함(관대한 실패).
 
-### 3.9 `pca` — 주성분 요약 (T9)
+### 3.9 `pca` — 주성분 요약 (T11)
 
 `js/domain/pca.js`가 원천임. `thresholds.PCA`의 산출 조건(수치형 열 수·완전 케이스 행 수)에 미달하면 **필드를 아예 두지 않음** — 빈 객체로 두면 화면이 "계산했는데 결과가 없다"와 "계산하지 않았다"를 구분할 수 없음.
 
@@ -317,7 +365,7 @@ erDiagram
 sessionStorage 한도는 대략 5MB임. 열이 많으면 `histogram`과 `correlations`가 커질 수 있음.
 
 1. `stats.histogram`을 제외하고 재시도 → 복원 시 분포 차트만 다시 계산 필요
-2. `correlations`를 임계값 이상 쌍으로 축소하고 산점도용 `points`(§3.6)를 제거한 뒤 재시도
+2. `correlations`를 임계값 이상 쌍으로 축소하고 산점도용 `points`(§3.6)를 제거함. `interactions[].groups[].points`(§3.6.2)도 같은 크기 문제라 함께 제거한 뒤 재시도
 3. 그래도 실패하면 **캐시를 포기하고 화면에 안내함** — "해설을 보고 돌아오면 다시 분석해야 함"
 
 조용히 실패해 복귀 시 빈 화면을 보여주지 않음. 어느 단계에서 축소됐는지 결과 화면에 표시함.
@@ -415,7 +463,8 @@ flowchart LR
         PAR["parse.js<br/>CSV 파싱"]
         INF["infer.js<br/>타입 추론"]
         STA["stats.js<br/>기술통계"]
-        COR["correlation.js<br/>상관·VIF"]
+        COR["correlation.js<br/>상관·VIF·연관성"]
+        INT["interaction.js<br/>다중 컬럼 관계"]
         OUT["outlier.js<br/>이상치"]
         PCA["pca.js<br/>주성분"]
         QUA["quality.js<br/>Health Score"]
@@ -435,6 +484,7 @@ flowchart LR
     INF --> COR
     INF --> PCA
     INF --> OUT
+    COR --> INT
     STA --> QUA
     OUT --> QUA
     COR --> QUA
@@ -442,6 +492,7 @@ flowchart LR
     STA --> FIN
     COR --> FIN
     OUT --> FIN
+    INT --> FIN
     FIN --> SEL --> SVG
     PCA --> SEL
     FIN --> REC --> TRA

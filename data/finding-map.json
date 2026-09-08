@@ -17,6 +17,9 @@
   "F-MULTICOLLINEAR":  { "slug": "multicollinearity",             "label": "다중공선성" },
   "F-CORR-CAUSAL":     { "slug": "correlation-causation",         "label": "상관과 인과" },
   "F-LEAKAGE":         { "slug": "data-leakage",                  "label": "데이터 누수" },
+  "F-INTERACTION-GROUP":   { "slug": "interaction-effects",       "label": "교호작용과 조절효과" },
+  "F-INTERACTION-PARTIAL": { "slug": "partial-correlation",       "label": "편상관" },
+  "F-ASSOC-STRONG":        { "slug": "categorical-association",   "label": "범주형 변수 간 연관성" },
 
   "F-CLASS-IMBALANCE": { "slug": "class-imbalance",               "label": "클래스 불균형" },
   "F-TARGET-SKEW":     { "slug": "target-distribution",           "label": "타깃 분포" },

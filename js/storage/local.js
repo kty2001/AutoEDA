@@ -119,6 +119,8 @@ function stripHistograms(result) {
  * 2단계 — 규칙이 참조하는 임계값 이상의 쌍만 남기고 산점도용 points 를 제거한다:
  * |Pearson| ≥ F-CORR-CAUSAL(가장 낮은 상관 임계) 또는 VIF ≥ F-MULTICOLLINEAR.
  * 히트맵 전체·산점도는 손실되지만 Finding 근거 쌍은 보존된다.
+ * 그룹상관(interactions[].groups[].points)도 같은 크기 문제라 같은 단계에서 함께 제거한다
+ * — 편상관은 점을 담지 않으므로(텍스트 표시) 그대로 둔다.
  */
 function reduceCorrelations(result) {
   return {
@@ -130,5 +132,10 @@ function reduceCorrelations(result) {
           (p.vif !== null && p.vif >= FINDING['F-MULTICOLLINEAR'].vif)
       )
       .map(({ points, ...rest }) => rest),
+    interactions: (result.interactions ?? []).map((it) =>
+      it.kind === 'grouped'
+        ? { ...it, groups: it.groups.map(({ points, ...rest }) => rest) }
+        : it
+    ),
   };
 }

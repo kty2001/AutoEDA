@@ -26,13 +26,14 @@ function deployedPages(dir = ROOT) {
   return out;
 }
 
-test('app 모듈 5종 — document 없이 import 가능 (부작용 가드)', async () => {
+test('app 모듈 6종 — document 없이 import 가능 (부작용 가드)', async () => {
   await assert.doesNotReject(async () => {
     await import('../js/app/common.js');
     await import('../js/app/menu.js');
     await import('../js/app/float-cta.js');
     await import('../js/app/contact.page.js');
     await import('../js/app/analyze.page.js');
+    await import('../js/app/glossary.page.js');
   });
 });
 
@@ -96,6 +97,15 @@ test('buildMailto — 제목 접두사·본문 인코딩', async () => {
   assert.ok(url.includes(encodeURIComponent('1행에서 오류 & 중단')));
   // 모르는 유형은 '기타'로
   assert.ok(buildMailto('ghost', 'x').includes(encodeURIComponent('기타')));
+});
+
+test('glossary.matchesQuery — 대소문자 무시 부분 일치, 빈 검색어는 항상 참', async () => {
+  const { matchesQuery } = await import('../js/app/glossary.page.js');
+  assert.equal(matchesQuery('왜도(Skewness)', 'skewness'), true);
+  assert.equal(matchesQuery('왜도(Skewness)', 'SKEW'), true);
+  assert.equal(matchesQuery('왜도(Skewness)', '결측'), false);
+  assert.equal(matchesQuery('왜도(Skewness)', ''), true);
+  assert.equal(matchesQuery('왜도(Skewness)', '   '), true);
 });
 
 test('analyze.page 의 data-guide-slug 안내 링크가 발행된 해설을 가리킨다', async () => {

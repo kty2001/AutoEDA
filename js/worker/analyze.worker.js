@@ -33,12 +33,13 @@ import {
   numericStatsByClass,
 } from '../domain/stats.js';
 import { iqrOutliers } from '../domain/outlier.js';
-import { correlationPairs } from '../domain/correlation.js';
+import { correlationPairs, categoricalPairs } from '../domain/correlation.js';
+import { detectInteractions } from '../domain/interaction.js';
 import { principalComponents } from '../domain/pca.js';
 import { healthScore } from '../domain/quality.js';
 import { buildFindings } from '../domain/finding.js';
 import { applyRecipe } from '../domain/transform.js';
-import { FILE_LIMIT, DISPLAY_LIMIT, FINDING } from '../domain/thresholds.js';
+import { FILE_LIMIT, DISPLAY_LIMIT, FINDING, INTERACTION } from '../domain/thresholds.js';
 import { bytes } from '../lib/format.js';
 
 const SCHEMA_VERSION = '1.4';
@@ -127,6 +128,17 @@ export function profile(parsed, options = {}) {
   // 원본 행이 섞이는 경로가 생기지 않는다(docs/data-model.md §3.9)
   const pca = principalComponents(numericArrays);
 
+  // 다중 컬럼 관계(교호작용) — 카디널리티가 낮은 범주형만 다룬다(비용 상한, 해석 가능성 둘 다 위해).
+  const categoricalArrays = columns
+    .filter((c) => (c.type === 'categorical' || c.type === 'boolean') && c.uniqueCount <= INTERACTION.maxGroupLevels)
+    .map((c) => ({ name: c.name, values: stringValues(parsed.columns[c.index]) }));
+  const associations = categoricalPairs(categoricalArrays);
+  const interactions = attachInteractionPoints(
+    detectInteractions({ numericColumns: numericArrays, categoricalColumns: categoricalArrays, correlations }),
+    numericArrays,
+    categoricalArrays
+  );
+
   const dataset = {
     rowCount: parsed.rowCount,
     columnCount: parsed.names.length,
@@ -143,9 +155,12 @@ export function profile(parsed, options = {}) {
 
   if (!step('finding')) return null;
   const health = healthScore({ columns, dataset });
-  const findings = buildFindings({ dataset, columns, health, correlations, target });
+  const findings = buildFindings({ dataset, columns, health, correlations, associations, interactions, target });
 
-  const result = { schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings, correlations };
+  const result = {
+    schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings,
+    correlations, associations, interactions,
+  };
   if (pca) result.pca = pca; // 산출 조건 미달이면 필드 자체를 두지 않는다(선택 필드)
   return result;
 }
@@ -270,6 +285,48 @@ function samplePoints(a, b) {
   if (all.length <= limit) return all;
   const step = all.length / limit;
   return Array.from({ length: limit }, (_, k) => all[Math.floor(k * step)]);
+}
+
+/** 지정한 행(그룹 소속 행)만 골라 균등 간격으로 상한까지 추린다 — samplePoints() 의 그룹 버전. */
+function samplePointsForRows(a, b, rowIndices) {
+  const all = [];
+  for (const i of rowIndices) {
+    if (!Number.isNaN(a[i]) && !Number.isNaN(b[i])) all.push([a[i], b[i]]);
+  }
+  const limit = DISPLAY_LIMIT.scatterPoints;
+  if (all.length <= limit) return all;
+  const step = all.length / limit;
+  return Array.from({ length: limit }, (_, k) => all[Math.floor(k * step)]);
+}
+
+/**
+ * 그룹상관 후보 상위 DISPLAY_LIMIT.interactionCharts 개에 그룹별 산점도용 다운샘플 점을 붙인다.
+ * 편상관 후보는 텍스트로만 표시하므로 점을 붙이지 않는다.
+ */
+function attachInteractionPoints(interactions, numericArrays, categoricalArrays) {
+  const byNumeric = new Map(numericArrays.map((c) => [c.name, c.values]));
+  const byCategorical = new Map(categoricalArrays.map((c) => [c.name, c.values]));
+  const top = interactions
+    .filter((it) => it.kind === 'grouped')
+    .sort((a, b) => b.maxDelta - a.maxDelta)
+    .slice(0, DISPLAY_LIMIT.interactionCharts);
+  const chosen = new Set(top);
+  return interactions.map((it) => {
+    if (!chosen.has(it)) return it;
+    const x = byNumeric.get(it.left);
+    const y = byNumeric.get(it.right);
+    const groupValues = byCategorical.get(it.by);
+    return {
+      ...it,
+      groups: it.groups.map((g) => {
+        const rows = [];
+        for (let i = 0; i < groupValues.length; i++) {
+          if (groupValues[i] === g.value) rows.push(i);
+        }
+        return { ...g, points: samplePointsForRows(x, y, rows) };
+      }),
+    };
+  });
 }
 
 /** 완전 중복 행 수 — 첫 등장을 제외한 나머지를 센다(docs/data-model.md §3.2). */

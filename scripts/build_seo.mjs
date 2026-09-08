@@ -7,7 +7,7 @@
 //    GSC 가 "리디렉션 오류" 로 색인을 거부한다 — 형제 프로젝트가 지금 이 문제로
 //    sitemap 전량이 무효인 상태다. → docs/tech-stack.md §6
 //
-// ⚠️ sitemap 에서 제외: 정책 페이지 4종(noindex), 404.
+// ⚠️ sitemap 에서 제외: 정책 페이지 5종(noindex) + 사이트맵 페이지, 404.
 //    <changefreq> 에 표준에 없는 값을 쓰면 오류로 잔존해 재수집이 막힌다.
 //    → docs/content-strategy.md §6
 //
@@ -46,11 +46,14 @@ export const PAGES = [
   { url: '/pages/glossary', file: 'pages/glossary.html', title: '용어집', kind: 'glossary', sitemap: true, generated: true },
   // 해설·사례 하위 페이지는 build_guides / build_cases 산출물을 스캔해 추가한다
 
-  // 정책 4종 — noindex, sitemap 제외
+  // 정책 5종 — noindex, sitemap 제외
   { url: '/pages/about', file: 'pages/about.html', title: '소개', sitemap: false },
   { url: '/pages/contact', file: 'pages/contact.html', title: '문의', sitemap: false },
   { url: '/pages/privacy', file: 'pages/privacy.html', title: '개인정보처리방침', sitemap: false },
   { url: '/pages/terms', file: 'pages/terms.html', title: '이용약관', sitemap: false },
+  { url: '/pages/disclaimer', file: 'pages/disclaimer.html', title: '면책조항', sitemap: false },
+  // 사람이 읽는 HTML 사이트맵 — build_guides.mjs 산출물. 탐색 전용이라 색인 가치가 없어 제외
+  { url: '/pages/sitemap', file: 'pages/sitemap.html', title: '사이트맵', sitemap: false, generated: true },
 ];
 
 // ─── 목록 구성 ──────────────────────────────────────────────

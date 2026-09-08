@@ -61,17 +61,17 @@
 
 ## 3. Finding 규칙 카탈로그
 
-18종. `content-strategy.md §2`의 "대응 Finding" 열에서 도출됨. `F-MIXED-RELATION`은 발행 후 폐지했음(§6.3).
+21종. `content-strategy.md §2`의 "대응 Finding" 열에서 도출됨. `F-MIXED-RELATION`은 발행 후 폐지했음(§6.3). 관계군의 `F-INTERACTION-GROUP`·`F-INTERACTION-PARTIAL`·`F-ASSOC-STRONG` 3종은 다중 컬럼 관계(교호작용) 기능과 함께 추가됨(§3.4).
 
 ### 3.1 Finding ↔ 해설의 비대칭
 
-**Finding 18종 ↔ 해설 19편(Q·D·R·T군)은 1:1에 가깝지만, 역방향은 성립하지 않음.** K군 3편은 프로세스 문서라 Finding에서 도달하지 않고, R4(`categorical-numeric-relation`)는 대응 Finding을 폐지해 **관계 탭 고정 안내**에서 도달함(§6.3).
+**Finding 21종 ↔ 해설 22편(Q·D·R·T군)은 1:1에 가깝지만, 역방향은 성립하지 않음.** K군 3편은 프로세스 문서라 Finding에서 도달하지 않고, R4(`categorical-numeric-relation`)는 대응 Finding을 폐지해 **관계 탭 고정 안내**에서 도달함(§6.3).
 
 | 해설군 | 편수 | Finding 대응 |
 |---|---|---|
 | Q 데이터 품질 | 6 | ○ (F-MISSING-HIGH ~ F-ID-COL) |
 | D 분포 | 5 | ○ (F-SKEW ~ F-BIN-SENSITIVE) |
-| R 관계 | 5 | △ (F-CORR-METHOD ~ F-LEAKAGE. R4 는 관계 탭 안내에서 도달) |
+| R 관계 | 8 | △ (F-CORR-METHOD ~ F-ASSOC-STRONG. R4 는 관계 탭 안내에서 도달) |
 | T 타깃·모델링 | 3 | ○ (Phase 2의 UC-21에서 활성) |
 | **K 프로세스·한국 환경** | **3** | **× — `finding-map.json`에 등장하지 않음** |
 
@@ -104,7 +104,7 @@ K1(EDA 진행 순서)은 `/pages/guide` 인덱스 본문이고, K2(인코딩)는
 
 `F-BIN-SENSITIVE`는 이산적 수치(평점 1~5, 층수 등)를 연속형처럼 히스토그램으로 그리면 오해를 부르는 경우를 알림. 문제가 아니라 **해석 주의 안내**이므로 심각도 low임.
 
-### 3.4 관계군 (4종)
+### 3.4 관계군 (7종)
 
 | ID | 발생 조건 | 심각도 | 범위 | 해설 슬러그 | ML |
 |---|---|---|---|---|:---:|
@@ -112,10 +112,15 @@ K1(EDA 진행 순서)은 `/pages/guide` 인덱스 본문이고, K2(인코딩)는
 | `F-MULTICOLLINEAR` | Pearson 절댓값 ≥ 0.8 **또는** VIF ≥ 10 | high | pair | `multicollinearity` | ○ |
 | `F-CORR-CAUSAL` | Pearson 절댓값 ≥ 0.7인 쌍이 1개 이상 존재 | low | dataset | `correlation-causation` | × |
 | `F-LEAKAGE` | 타깃 지정 시 특정 열과 타깃의 Pearson 절댓값 ≥ 0.95 | high | pair | `data-leakage` | ○ |
+| `F-INTERACTION-GROUP` | 범주형 기준 그룹별 상관이 전체와 부호가 반대 **또는** 최대 델타 ≥ 0.2이고 어느 그룹 상관 절댓값 ≥ 0.3 | medium | group | `interaction-effects` | ○ |
+| `F-INTERACTION-PARTIAL` | 제3의 수치형 열을 통제한 편상관과 원 상관의 차이 절댓값 ≥ 0.2 | low | group | `partial-correlation` | ○ |
+| `F-ASSOC-STRONG` | 두 범주형 열의 Cramér's V ≥ 0.5 | medium | pair | `categorical-association` | ○ |
 
 `F-CORR-METHOD`는 편포 열이 있을 때 Pearson보다 Spearman이 적절할 수 있음을 알리는 안내형 Finding임. `F-CORR-CAUSAL`도 같은 성격으로, 상관이 높을 때 인과 해석을 경계하게 함.
 
 VIF 10과 상관 0.8은 관례적 기준임(§6).
+
+`F-INTERACTION-GROUP`·`F-INTERACTION-PARTIAL`은 두 수치형 열의 관계가 제3의 변수(범주형·수치형)에 따라 달라지는지 알리는 Finding임 — 전자는 Simpson's paradox 유형(그룹별 상관이 전체와 다르거나 부호가 반대), 후자는 편상관으로 확인하는 매개·교란 가능성임. `F-ASSOC-STRONG`은 범주형 버전의 `F-MULTICOLLINEAR`에 가깝지만 스코프가 `pair`(다중 컬럼이 아니라 단순 연관)라 별도 관계군에 둠. 세 규칙 모두 계산 비용 상한은 `thresholds.INTERACTION`이 정함(§4) — 열 3개 조합을 전수 탐색하지 않고 상관 절댓값 상위 후보만 확장함.
 
 ### 3.5 타깃·모델링군 (3종) — Phase 2
 
@@ -146,6 +151,9 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 | Pearson / VIF | `correlations[].pearson` / `.vif` | F-MULTICOLLINEAR, F-CORR-CAUSAL, F-LEAKAGE |
 | 표준편차 | `columns[].stats.std` | F-SCALE-DIFF |
 | 타입 | `columns[].type` | 전반 |
+| **그룹별 상관 최대 델타 / 부호 반전** | `interactions[].maxDelta` / `.signFlip` (`kind:'grouped'`) | F-INTERACTION-GROUP |
+| **편상관 / 원 상관** | `interactions[].partial` / `.rxy` (`kind:'partial'`) | F-INTERACTION-PARTIAL |
+| **범주형 연관성(Cramér's V)** | `associations[].v` | F-ASSOC-STRONG |
 
 **계산 불가능한 규칙이 없음을 이 표로 보장함.** 새 규칙을 추가할 때 지표가 스키마에 없으면 스키마를 먼저 늘려야 함.
 
@@ -159,8 +167,9 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 | 2차 | `numeric` 타입에 `topValues`가 없어 **수치형 준상수**를 판정할 수 없음 (`F-CONST-COL`·§2 `constant`) | `columns[].modeRate`를 타입 무관 공통 필드로 추가 |
 | 2차 | `F-CLASS-IMBALANCE`가 **최소** 클래스 비율을 요구하는데 `topValues[0]`(최빈값 = **최대**)를 가리켜 논리가 성립하지 않음. `topValues`가 상위 N개만 담아 최소 클래스가 잘리는 문제도 겹침 | `columns[].classDistribution`(전체 분포) 추가 |
 | 3차 | §4의 "관계 탭 산점도 6쌍"을 그릴 **점 데이터가 스키마 어디에도 없음.** 결과 JSON은 원본 행을 담지 않으므로([`data-model.md §3.2`](./data-model.md)) 집계만으로는 산점도가 계산 불가능함 | `correlations[].points`(상위 쌍 다운샘플) 추가 + §4에 쌍당 점 수 상한 행 추가 |
+| 4차 | 다중 컬럼 관계 추가 시 그룹상관 후보에 산점도용 점이 없어 관계 탭에서 그릴 수 없음 (3차와 같은 유형의 결함). 열 3개 조합을 전수 탐색하면 비용이 상한 없이 커짐 | `interactions[].groups[].points`(그룹 소속 행만 다운샘플) 추가 + `thresholds.INTERACTION`(후보·통제 변수 수·그룹 카디널리티·최소 표본 상한) 추가 |
 
-네 결함 모두 **규칙은 그럴듯하지만 계산이 불가능한** 유형이었음. 문장으로는 드러나지 않고 지표 → 필드 대조에서만 드러남. 3차는 표현 레이어 구현에 착수하고 나서야 드러났는데, **"화면에 무엇을 그리는가"도 지표 대조 대상**이라는 뜻임 — 통계 지표만 대조하면 놓침.
+다섯 결함 모두 **규칙은 그럴듯하지만 계산이 불가능하거나 비용이 무한정 커지는** 유형이었음. 문장으로는 드러나지 않고 지표 → 필드 대조, 비용 → 상한 대조에서만 드러남. 3·4차는 표현 레이어 구현에 착수하고 나서야 드러났는데, **"화면에 무엇을 그리는가"·"계산이 얼마나 커질 수 있는가"도 대조 대상**이라는 뜻임 — 통계 지표만 대조하면 놓침.
 
 ## 4. 표시 개수 상한
 
@@ -175,6 +184,8 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 | 산점도 점 수 | 쌍당 200점 | 초과 시 균등 간격 다운샘플 (`correlations[].points`, [`data-model.md §3.6`](./data-model.md)) |
 | 상관 히트맵 | 열 20개 | 초과 시 분산 상위 20열로 축소하고 축소 사실을 표시 |
 | 타깃 탭의 피처 랭킹 | 10개 | `\|Pearson\|` 내림차순 상위만 |
+| 관계 탭의 다중 컬럼 관계 후보 | 3건 | 그룹상관은 최대 델타, 편상관은 통제 전후 차이 절댓값 상위만 (`interactions[]`, [`data-model.md §3.6.2`](./data-model.md)) |
+| 범주형 연관성 히트맵 | 열 20개 | 초과 시 원본 열 순서 앞쪽 20열로 축소 |
 | 차원축소 탭의 주성분 | 10개 | 스크리 막대·누적 분산표·로딩 표가 공유하는 상한. 고윳값 행 자체는 전량 담음([`data-model.md §3.9`](./data-model.md)) |
 
 **같은 유형 묶기가 중요함**: 열 50개 중 30개에 결측이 있으면 `F-MISSING-HIGH`가 30건 생성됨. 묶지 않으면 발견 목록이 그 유형으로만 채워져 다른 발견이 묻힘.
@@ -190,6 +201,19 @@ VIF 10과 상관 0.8은 관례적 기준임(§6).
 이상치 조치의 경계는 새 값이 아니라 §2·§3이 쓰는 것과 **같은** `OUTLIER.iqrMultiplier`를 씀. 판정과 조치가 다른 정의를 쓰면 "이상치 5%"라고 알려 준 뒤 다른 행을 지우게 됨.
 
 조치가 없는 Finding 유형은 `js/domain/recipe.js`의 `EXCLUDED`에 **이유와 함께** 등재함. 매핑도 제외도 없는 유형이 생기면 `tests/recipe.test.js`의 폐합 검사가 실패함.
+
+## 4.6 다중 컬럼 관계 계산 상한
+
+표시 개수 상한(§4)과 별개로, 그룹상관·편상관 **계산 자체**를 제한하는 상한임. 상수는 `thresholds.INTERACTION`.
+
+| 대상 | 상한 | 이유 |
+|---|---|---|
+| 그룹상관·편상관 후보 쌍 | 상관 절댓값 상위 6쌍 | 열 3개 조합을 전수 탐색(`C(n,3)`)하면 열이 많을 때 비용이 상한 없이 커짐 |
+| 편상관 통제 변수 후보 | 쌍당 3개 | 이미 계산된 상관(재사용)으로 관련도 순위를 매겨 상위만 확장함 |
+| 그룹 변수·범주형 연관성 카디널리티 | 10수준 이하 | 분할표 크기(카이제곱 계산)를 제한하고, 수준이 많은 교차표는 해석도 어려움 |
+| 그룹별 상관의 최소 표본 수 | 30 | 적은 표본의 상관은 우연히 클 수 있어 신뢰하지 않음 |
+
+이 상한 덕분에 열 개수와 무관하게 계산량이 선형으로 유지됨 — `correlationPairs()`가 이미 계산해 둔 전체 수치형 쌍 상관을 재사용하고 재계산하지 않는 것도 같은 이유임([`data-model.md §6`](./data-model.md) 의존 그래프).
 
 ## 5. 문구 템플릿 작성 규칙
 

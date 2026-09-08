@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { correlationPairs, pearson, spearman, vif } from '../js/domain/correlation.js';
+import { correlationPairs, pearson, spearman, vif, cramersV, categoricalPairs } from '../js/domain/correlation.js';
 
 const F = (arr) => Float64Array.from(arr);
 const approx = (actual, expected, eps = 1e-9) =>
@@ -111,4 +111,49 @@ test('correlationPairs — 상삼각 쌍과 좌측 열 VIF', () => {
 
 test('correlationPairs — 수치형 2개 미만이면 빈 배열', () => {
   assert.deepEqual(correlationPairs([{ name: 'a', values: F([1, 2]) }]), []);
+});
+
+// ─── cramersV ───────────────────────────────────────────────
+
+test('cramersV — 완전 연관이면 1', () => {
+  const a = ['x', 'x', 'x', 'x', 'x', 'x', 'y', 'y', 'y', 'y', 'y', 'y'];
+  const b = ['p', 'p', 'p', 'p', 'p', 'p', 'q', 'q', 'q', 'q', 'q', 'q'];
+  approx(cramersV(a, b), 1);
+});
+
+test('cramersV — 독립이면 0에 가깝다', () => {
+  const a = ['x', 'x', 'x', 'x', 'x', 'x', 'y', 'y', 'y', 'y', 'y', 'y'];
+  const b = ['p', 'q', 'p', 'q', 'p', 'q', 'p', 'q', 'p', 'q', 'p', 'q'];
+  approx(cramersV(a, b), 0);
+});
+
+test('cramersV — 결측(빈 문자열)은 쌍별 제거', () => {
+  const a = ['x', 'x', '', 'y', 'y', 'y'];
+  const b = ['p', 'p', 'p', 'q', 'q', ''];
+  // 유효 쌍: (x,p)(x,p)(y,q)(y,q) — 완전 연관
+  approx(cramersV(a, b), 1);
+});
+
+test('cramersV — 어느 한쪽 수준이 1개면 null', () => {
+  assert.equal(cramersV(['x', 'x', 'x'], ['p', 'q', 'r']), null);
+});
+
+// ─── categoricalPairs ─────────────────────────────────────────
+
+test('categoricalPairs — 상삼각 쌍', () => {
+  const cols = [
+    { name: 'a', values: ['x', 'x', 'y', 'y'] },
+    { name: 'b', values: ['p', 'p', 'q', 'q'] },
+    { name: 'c', values: ['p', 'q', 'p', 'q'] },
+  ];
+  const pairs = categoricalPairs(cols);
+  assert.deepEqual(
+    pairs.map((p) => `${p.left}-${p.right}`),
+    ['a-b', 'a-c', 'b-c']
+  );
+  approx(pairs[0].v, 1);
+});
+
+test('categoricalPairs — 범주형 2개 미만이면 빈 배열', () => {
+  assert.deepEqual(categoricalPairs([{ name: 'a', values: ['x', 'y'] }]), []);
 });

@@ -40,6 +40,12 @@
   <h1>용어집</h1>
   <p class="page-intro">도구 화면과 해설에 나오는 용어를 한자리에 모았습니다. 항목마다 이 도구가 실제로 쓰는 판정 기준을 함께 적었습니다.</p>
 
+  <div class="glossary-search">
+    <label for="glossary-search-input" class="visually-hidden">용어 검색</label>
+    <input type="search" id="glossary-search-input" placeholder="용어 검색 (예: 왜도, 결측, VIF)" autocomplete="off">
+  </div>
+  <p id="glossary-search-empty" class="hint" hidden>일치하는 용어가 없습니다.</p>
+
   <nav class="term-index" aria-label="빠른 이동">
     <h2>빠른 이동</h2>
     <ul>
@@ -57,7 +63,7 @@
   <p>아래 항목은 이 도구의 화면에 실제로 나오는 용어들입니다. 각 항목은 뜻 한 문단과 <strong>이 도구가 쓰는 판정 기준</strong>으로 이루어져 있습니다. 임계값은 관례를 따른 것과 이 프로젝트가 정한 것이 섞여 있으며, 어느 쪽인지는 항목마다 밝혔습니다. 더 깊은 설명이 필요한 항목에는 해설 링크를 달았습니다.</p>
   <h2 id="tool">이 도구가 쓰는 말</h2>
   <h3 id="finding">발견</h3>
-  <p>확인이 필요한 사항 하나를 가리킵니다. 결과 화면의 목록에 올라오는 항목이 각각 하나의 발견이며, 무엇이 발견되었는지·왜 문제인지·무엇을 하면 되는지 세 단으로 제시됩니다. 유형은 18종으로 고정되어 있고, 조건에 맞을 때만 생성되므로 데이터에 따라 개수가 다릅니다.</p>
+  <p>확인이 필요한 사항 하나를 가리킵니다. 결과 화면의 목록에 올라오는 항목이 각각 하나의 발견이며, 무엇이 발견되었는지·왜 문제인지·무엇을 하면 되는지 세 단으로 제시됩니다. 유형은 21종으로 고정되어 있고, 조건에 맞을 때만 생성되므로 데이터에 따라 개수가 다릅니다.</p>
   <h3 id="severity">심각도</h3>
   <p>발견의 급함을 세 단계로 나눈 것입니다. high는 그대로 두면 이후 분석이 어긋나는 사항, medium은 조치를 검토할 사항, low는 해석할 때 주의하라는 안내입니다. 심각도는 데이터의 중요도가 아니라 <strong>분석 진행에 미치는 영향</strong>을 기준으로 매깁니다.</p>
   <h3 id="health-score">품질 점수</h3>
@@ -206,6 +212,8 @@
       <li><a href="/pages/contact">문의</a></li>
       <li><a href="/pages/privacy">개인정보처리방침</a></li>
       <li><a href="/pages/terms">이용약관</a></li>
+      <li><a href="/pages/disclaimer">면책조항</a></li>
+      <li><a href="/pages/sitemap">사이트맵</a></li>
     </ul>
     <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
   </div>
@@ -214,5 +222,6 @@
 <script type="module" src="/js/app/common.js"></script>
 <script type="module" src="/js/app/menu.js"></script>
 <script type="module" src="/js/app/float-cta.js"></script>
+<script type="module" src="/js/app/glossary.page.js"></script>
 </body>
 </html>

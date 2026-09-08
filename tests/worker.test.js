@@ -20,7 +20,8 @@ const SAMPLE = [
 
 test('결과 JSON — 최상위·dataset 필드 (data-model.md §3.1·§3.2)', () => {
   const r = analyze(buf(SAMPLE));
-  // 1.1 histogram.density(KDE) · 1.2 dataset.recipe(전처리) · 1.3 columns[].classStats(타깃) · 1.4 pca(차원축소)
+  // 1.1 histogram.density(KDE) · 1.2 dataset.recipe(전처리) · 1.3 columns[].classStats(타깃)
+  // 1.4 associations·interactions(다중 컬럼 관계) + pca(차원축소) — 두 작업이 합류하며 같은 minor 에 들어왔다
   assert.equal(r.schemaVersion, '1.4');
   assert.equal(r.dataset.rowCount, 5);
   assert.equal(r.dataset.columnCount, 5);

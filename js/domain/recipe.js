@@ -25,6 +25,9 @@ export const EXCLUDED = Object.freeze({
   'F-CORR-CAUSAL': '인과 해석의 경고이므로 데이터 조치가 존재하지 않음',
   'F-CLASS-IMBALANCE': '리샘플링·클래스 가중치는 학습 단계의 선택이며 전처리 산출물에 넣으면 누수를 만듦',
   'F-MIXED-RELATION': '폐지된 유형 (docs/rules.md §6.3)',
+  'F-INTERACTION-GROUP': '그룹별로 관계가 달라진다는 해석상의 신호이며 어느 그룹을 어떻게 다룰지는 도메인 판단이라 자동 조치가 없음',
+  'F-INTERACTION-PARTIAL': '제3의 변수로 상관이 달라진다는 해석상의 경고이며 데이터를 바꿀 조치가 존재하지 않음',
+  'F-ASSOC-STRONG': '범주형 변수 간 연관성 경고이며, 어느 열을 남길지는 도메인 판단이라 자동 조치를 제안하지 않음',
 });
 
 /**
