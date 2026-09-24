@@ -150,13 +150,13 @@ test('renderChart — 히스토그램·박스플롯·막대: 데이터가 플롯
   const right = Number(bars[3][1]) + Number(bars[3][2]);
   assert.ok(right < 388, `마지막 막대가 우측 끝에 붙음: ${right}`);
 
-  // 세로 박스플롯은 최소·최대 수염이 위아래 끝이다 (BOX: top 16 · 캔버스 300 · bottom 32)
+  // 세로 박스플롯은 최소·최대 수염이 위아래 끝이다 (BOX: top 16 · 캔버스 240 · bottom 32)
   const svg = renderChart(box);
   const ys = [...svg.matchAll(/<line[^>]*y1="([\d.]+)"[^>]*y2="([\d.]+)"[^>]*class="(?:whisker|median)"/g)]
     .flatMap((m) => [Number(m[1]), Number(m[2])]);
   assert.ok(ys.length > 0);
   assert.ok(Math.min(...ys) - 16 > 5, `최댓값 수염이 위 경계에 붙음: ${Math.min(...ys)}`);
-  assert.ok(268 - Math.max(...ys) > 5, `최솟값 수염이 아래 경계에 붙음: ${Math.max(...ys)}`);
+  assert.ok(208 - Math.max(...ys) > 5, `최솟값 수염이 아래 경계에 붙음: ${Math.max(...ys)}`);
 
   // 가로 막대는 0 에서 출발하므로 여백이 세로로 붙는다 (BAR: top 16 · 캔버스 260 · bottom 32)
   const cat = {
@@ -170,6 +170,15 @@ test('renderChart — 히스토그램·박스플롯·막대: 데이터가 플롯
   assert.ok(Number(rows[0][1]) - 16 > 10, `첫 막대가 위 경계에 붙음: ${rows[0][1]}`);
   const bottom = Number(rows[9][1]) + Number(rows[9][2]);
   assert.ok(228 - bottom > 10, `마지막 막대가 x축선에 붙음: ${bottom}`);
+
+  // 범주가 적으면 막대 묶음이 플롯 세로 중앙(16 + 212 / 2 = 122)에 모인다
+  const few = { ...cat, stats: { topValues: [{ value: 'a', count: 5 }, { value: 'b', count: 3 }] } };
+  const fewRows = [...renderChart(selectForColumn(few)[0]).matchAll(/<rect x="128" y="([\d.]+)"[^>]*height="([\d.]+)"/g)];
+  assert.equal(fewRows.length, 2);
+  for (const [, y, h] of fewRows) {
+    const center = Number(y) + Number(h) / 2;
+    assert.ok(Math.abs(center - 122) < 35, `막대가 가운데에서 벌어짐: ${center}`);
+  }
 });
 
 test('renderChart — 열 이름·범주 값이 이스케이프된다 (XSS 경로 차단)', () => {
@@ -238,7 +247,7 @@ test('renderChart — 박스플롯: 중앙값 선과 IQR 경계 점선', () => {
 test('renderChart — 박스플롯: 세로로 그린다 (값 축이 y)', () => {
   const [, box] = selectForColumn(numericCol());
   const svg = renderChart(box);
-  assert.ok(svg.startsWith('<svg viewBox="0 0 300 300"'));
+  assert.ok(svg.startsWith('<svg viewBox="0 0 240 240"'));
 
   // 중앙값 선은 가로 — 세로 박스플롯에서만 y1 === y2 다
   const median = svg.match(/<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)" class="median"/);

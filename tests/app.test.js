@@ -47,7 +47,7 @@ test('normalizePath — 확장자·꼬리 슬래시 제거', async () => {
 
 test('menu.ITEMS — 확장자 없는 URL (307 리디렉션 회피)', async () => {
   const { ITEMS } = await import('../js/app/menu.js');
-  assert.equal(ITEMS.length, 6);
+  assert.equal(ITEMS.length, 8);
   for (const item of ITEMS) {
     assert.ok(!item.href.endsWith('.html'), `${item.href} 가 확장자를 포함함`);
     assert.ok(item.href.startsWith('/'), '루트 기준 절대경로여야 함');

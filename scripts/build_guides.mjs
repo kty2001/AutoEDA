@@ -409,6 +409,7 @@ ${robots ? `<meta name="robots" content="${esc(robots)}">` : SEO_MARKER}
       <a href="/pages/guide">해설</a>
       <a href="/pages/case">사례 리포트</a>
       <a href="/pages/glossary">용어집</a>
+      <a href="/pages/contact">문의</a>
     </nav>
   </div>
 </header>
@@ -707,6 +708,8 @@ function renderSitemapPage(report) {
     navSection('case', '사례 리포트'),
     `<h2>용어집</h2>\n<ul class="doc-list">\n  <li><a href="/pages/glossary">용어집</a></li>\n</ul>`,
     `<h2>안내</h2>\n<ul class="doc-list">\n` +
+      `  <li><a href="/pages/how-to">사용 방법</a></li>\n` +
+      `  <li><a href="/pages/faq">FAQ</a></li>\n` +
       `  <li><a href="/pages/about">소개</a></li>\n` +
       `  <li><a href="/pages/contact">문의</a></li>\n` +
       `  <li><a href="/pages/privacy">개인정보처리방침</a></li>\n` +

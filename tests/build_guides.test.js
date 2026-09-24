@@ -398,10 +398,11 @@ test('산출물 — 용어집의 해설 링크가 실제 해설을 가리킨다'
 
 test('네비 — 모든 페이지의 상단 메뉴가 같다 (수기 복사 규약의 실패 지점)', () => {
   const pages = ['index.html', '404.html', 'pages/analyze.html', 'pages/about.html', 'pages/contact.html',
+    'pages/faq.html', 'pages/how-to.html',
     'pages/privacy.html', 'pages/terms.html', 'pages/disclaimer.html', 'pages/sitemap.html',
     SECTIONS.guide.indexFile, SECTIONS.case.indexFile,
     SECTIONS.glossary.indexFile, join(SECTIONS.guide.out, 'skewness.html')];
-  const expected = ['/pages/analyze', '/pages/guide', '/pages/case', '/pages/glossary'];
+  const expected = ['/pages/analyze', '/pages/guide', '/pages/case', '/pages/glossary', '/pages/contact'];
   for (const file of pages) {
     const html = readFileSync(join(ROOT, file), 'utf8');
     const nav = /<nav class="site-nav"[\s\S]*?<\/nav>/.exec(html);

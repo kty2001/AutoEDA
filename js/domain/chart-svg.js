@@ -34,10 +34,11 @@ const GUTTER = 10;
  * - 막대: 좌측 범주 레이블과 우측 수치 레이블이 공용 여백(좌 48·우 12)을 넘어
  *   viewBox 밖으로 잘렸다. 두 레이블 자리를 확보한 전용 규격을 쓴다.
  * - 박스플롯: 세로로 그리므로 폭보다 높이가 필요하다. 공용 220 높이에서는
- *   수염·사분위가 눌려 형태를 읽을 수 없다.
+ *   수염·사분위가 눌려 형태를 읽을 수 없다. 300 은 옆 히스토그램보다 커 보여 240 으로 줄였다
+ *   (CSS 폭만 줄이면 눈금 글자까지 작아지므로 viewBox 를 함께 줄인다).
  * 나머지 2종은 공용 규격(W × H)을 그대로 쓴다.
  */
-const CANVAS = { heatmap: { w: 640, h: 640 }, bar: { w: 480, h: 260 }, boxplot: { w: 300, h: 300 } };
+const CANVAS = { heatmap: { w: 640, h: 640 }, bar: { w: 480, h: 260 }, boxplot: { w: 240, h: 240 } };
 
 /** 히트맵 전용 여백 — 좌측은 행 레이블, 하단은 45° 회전한 열 레이블 자리다. */
 const HEAT = { left: 112, top: 16, right: 12, bottom: 112 };
@@ -49,6 +50,8 @@ const BAR = { left: 128, top: 16, right: 56, bottom: 32 };
 /** 막대 범주 레이블 절단 길이. 절단 기호까지 한글 11자 ≈ 110단위 < BAR.left − 6.
  *  전체 값은 막대 <title> 에 있다. */
 const BAR_LABEL_MAX = 10;
+/** 막대 한 행의 최대 높이 — 막대 높이 상한 24 가 행의 70% 가 되는 값이다. */
+const BAR_ROW_MAX = 24 / 0.7;
 
 /** 박스플롯 전용 여백 — 좌측은 세로축 눈금(다섯 수치) 자리다. */
 const BOX = { left: 56, top: 16, right: 16, bottom: 32 };
@@ -240,8 +243,10 @@ const RENDERERS = {
     // 막대는 0 에서 출발해야 하므로 가로는 여백을 두지 않는다. 첫·마지막 막대가
     // 위 경계·x축선에 붙는 것을 막기 위해 여백을 세로에만 준다.
     const x = linearScale([0, Math.max(...items.map((d) => d.count), 1)], [0, plot.w]);
-    const bandY = plot.y + GUTTER;
-    const rowH = (plot.h - GUTTER * 2) / items.length;
+    // 범주가 적으면 행이 플롯 높이를 나눠 가져 첫·마지막 막대가 위아래 끝으로 벌어진다.
+    // 행 높이에 상한(막대 최대 24 ÷ 0.7)을 두고, 남는 높이는 위아래로 나눠 묶음을 가운데 둔다.
+    const rowH = Math.min((plot.h - GUTTER * 2) / items.length, BAR_ROW_MAX);
+    const bandY = plot.y + (plot.h - rowH * items.length) / 2;
     const barH = Math.min(rowH * 0.7, 24);
     const parts = items.map((d, i) => {
       const cy = bandY + rowH * i + rowH / 2;

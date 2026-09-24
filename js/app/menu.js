@@ -6,7 +6,7 @@
 // <script type="module" src="/js/app/menu.js"> 한 줄만 추가한다.
 // (../BDAnalyzer/js/menu.js 패턴)
 //
-// 항목: 도구 / 해설 / 사례 / 용어집 / 소개 / 문의
+// 항목: 도구 / 해설 / 사례 / 용어집 / 사용 방법 / FAQ / 소개 / 문의
 // 동작: 버튼 클릭·바깥 클릭·Esc 로 열고 닫으며 aria-expanded 를 갱신한다.
 //       현재 화면은 강조하고 aria-current="page" 를 준다.
 //
@@ -23,6 +23,8 @@ const ITEMS = [
   { href: '/pages/guide', label: '해설' },
   { href: '/pages/case', label: '사례 리포트' },
   { href: '/pages/glossary', label: '용어집' },
+  { href: '/pages/how-to', label: '사용 방법' },
+  { href: '/pages/faq', label: 'FAQ' },
   { href: '/pages/about', label: '소개' },
   { href: '/pages/contact', label: '문의' },
 ];

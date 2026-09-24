@@ -44,6 +44,8 @@ export const PAGES = [
   { url: '/pages/guide', file: 'pages/guide.html', title: '해설', sitemap: true, generated: true },
   { url: '/pages/case', file: 'pages/case.html', title: '사례 리포트', sitemap: true, generated: true },
   { url: '/pages/glossary', file: 'pages/glossary.html', title: '용어집', kind: 'glossary', sitemap: true, generated: true },
+  { url: '/pages/how-to', file: 'pages/how-to.html', title: '사용 방법', sitemap: true },
+  { url: '/pages/faq', file: 'pages/faq.html', title: 'FAQ', sitemap: true },
   // 해설·사례 하위 페이지는 build_guides / build_cases 산출물을 스캔해 추가한다
 
   // 정책 5종 — noindex, sitemap 제외

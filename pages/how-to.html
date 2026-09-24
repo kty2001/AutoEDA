@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사용 방법 — AutoEDA</title>
+<meta name="description" content="CSV 파일 선택부터 품질 점수·발견 목록 읽기, 변수별·관계 분석, 전처리 적용과 정제 CSV 다운로드, 결과 저장·공유까지 AutoEDA를 쓰는 순서를 안내합니다.">
+<!-- canonical · OG · JSON-LD 는 scripts/build_seo.mjs 가 주입한다 -->
+<!-- build:seo:begin -->
+<link rel="canonical" href="https://autoeda.tyoujungzz.workers.dev/pages/how-to">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://autoeda.tyoujungzz.workers.dev/pages/how-to">
+<meta property="og:site_name" content="AutoEDA">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="사용 방법 — AutoEDA">
+<meta property="og:description" content="CSV 파일 선택부터 품질 점수·발견 목록 읽기, 변수별·관계 분석, 전처리 적용과 정제 CSV 다운로드, 결과 저장·공유까지 AutoEDA를 쓰는 순서를 안내합니다.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://autoeda.tyoujungzz.workers.dev/"},{"@type":"ListItem","position":2,"name":"사용 방법","item":"https://autoeda.tyoujungzz.workers.dev/pages/how-to"}]}</script>
+<!-- build:seo:end -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="logo" href="/">AutoEDA</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="/pages/analyze">데이터 분석</a>
+      <a href="/pages/guide">해설</a>
+      <a href="/pages/case">사례 리포트</a>
+      <a href="/pages/glossary">용어집</a>
+      <a href="/pages/contact">문의</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <h1>사용 방법</h1>
+  <p class="page-intro">파일을 고르는 것부터 정제된 CSV를 내려받기까지, 결과 화면의 탭 순서대로 따라가면 됩니다.</p>
+
+  <p>
+    결과 화면은 개요 · 품질 · 발견 · 변수별 · 관계 · 전처리 · 타깃의 7개 탭으로 나뉩니다. 탭 순서는
+    <a href="/pages/guide">EDA 진행 순서</a>와 같습니다 — 뒤 단계의 판단을 무효로 만들 수 있는 것을 앞에 둡니다.
+    처음이라면 왼쪽 탭부터 차례로 보는 것을 권합니다.
+  </p>
+
+  <h2>1. 파일 고르기</h2>
+  <p>
+    <a href="/pages/analyze">데이터 분석</a> 화면에서 &ldquo;파일 선택&rdquo;을 누르거나 파일을 카드 위로 끌어다 놓습니다.
+    CSV를 25MB까지 받으며, 구분자와 인코딩(UTF-8 · CP949 · EUC-KR)은 자동으로 추정합니다.
+    파일은 서버로 올라가지 않고 브라우저 안에서 바로 분석이 시작됩니다. 진행 중에는 &ldquo;취소&rdquo;로 멈출 수 있습니다.
+  </p>
+  <p>
+    한글이 깨져 보이거나 분석할 수 없다는 안내가 나오면 오류 화면에서 인코딩을 직접 골라 다시 시도합니다.
+    Excel 파일은 CSV로 저장한 뒤 사용해 주세요.
+  </p>
+
+  <h2>2. 개요 — 타입 확인과 타깃 지정</h2>
+  <p>
+    행·열 수와 각 열의 타입을 확인합니다. 우편번호나 코드값처럼 숫자로 적혀 있지만 수치가 아닌 열이
+    수치형으로 잡혔다면 타입을 바꿉니다. 바꾸면 관련 분석이 다시 계산됩니다.
+  </p>
+  <p>
+    예측하려는 열이 있다면 상단에서 타깃으로 지정합니다. 지정하면 전체가 다시 계산되고 타깃 탭이 열립니다.
+    예측 목적이 없는 분석이라면 지정하지 않아도 됩니다.
+  </p>
+
+  <h2>3. 품질과 발견 — 먼저 손볼 것 찾기</h2>
+  <p>
+    품질 탭은 결측·중복·상수 컬럼·고카디널리티·이상치를 항목별로 판정하고 100점 만점의 점수로 모읍니다.
+    발견 탭은 조치가 필요한 사항만 심각도 순으로 보여 주며, 각 항목에 무엇이 발견되었는지 · 왜 문제인지 ·
+    무엇을 하면 되는지가 함께 붙습니다. &ldquo;자세히&rdquo; 링크는 해당 개념의 해설로 이어집니다.
+  </p>
+
+  <h2>4. 변수별과 관계 — 분포와 연관 보기</h2>
+  <p>
+    변수별 탭은 열마다 기술통계와 타입에 맞는 차트(수치형은 히스토그램·박스플롯, 범주형은 빈도 막대)를 보여 줍니다.
+    처음에는 일부 열만 그리며, &ldquo;다른 열 보기&rdquo;로 나머지 열을 골라 볼 수 있습니다.
+  </p>
+  <p>
+    관계 탭은 상관 히트맵, 다중공선성 후보, 상관이 강한 쌍의 산점도를 보여 줍니다. 상관이 0에 가깝다고
+    관계가 없다는 뜻은 아니므로 산점도의 모양을 함께 확인합니다.
+  </p>
+
+  <h2>5. 전처리 — 조치를 골라 정제된 CSV 받기</h2>
+  <p>
+    중복 행 제거, 결측 대치, 이상치 처리, 로그 변환, 범주 인코딩, 스케일링 가운데 필요한 조치를 체크해 적용합니다.
+    모든 조치는 기본이 꺼져 있고, 각 조치 아래에 켰을 때의 대가가 적혀 있습니다. 적용 전후의 품질 점수와
+    열별 분포 변화를 나란히 확인한 뒤 정제된 CSV를 내려받습니다. 원본 파일은 바뀌지 않습니다.
+  </p>
+
+  <h2>6. 타깃 — 예측 대상 점검 (선택)</h2>
+  <p>
+    타깃을 지정했을 때만 열립니다. 회귀 타깃이면 타깃 분포와 피처별 상관 순위를, 분류 타깃이면 클래스 분포와
+    클래스별 수치 요약을 보여 주며, 클래스 불균형 · 타깃 왜도 · 데이터 누수 의심 열을 발견으로 올립니다.
+  </p>
+
+  <h2>7. 저장 · 공유 · 지우기</h2>
+  <ul>
+    <li><strong>결과 내보내기</strong> — 집계 통계와 발견을 JSON 파일로 저장합니다. 도구 첫 화면의 &ldquo;저장한 결과 불러오기&rdquo;로 다시 엽니다.</li>
+    <li><strong>요약 공유 링크 복사</strong> — 품질 점수와 주요 발견 상위 3건을 URL 안에만 담은 링크를 복사합니다.</li>
+    <li><strong>결과 지우기</strong> — 브라우저에 남은 결과를 즉시 삭제합니다.</li>
+    <li><strong>새 파일</strong> — 다른 파일을 처음부터 분석합니다.</li>
+  </ul>
+  <p>
+    다른 페이지에 다녀와도 같은 탭 안에서는 결과가 남아 있어 이어 볼 수 있습니다. 탭을 닫으면 사라집니다.
+    원본 데이터 행은 내보내기·공유 어느 경로에도 담기지 않습니다.
+  </p>
+
+  <h2>더 알아보기</h2>
+  <p>
+    파일 없이 결과부터 보고 싶다면 <a href="/pages/case">사례 리포트</a>를, 자주 받는 질문은 <a href="/pages/faq">FAQ</a>를 참고하세요.
+  </p>
+
+  <hr>
+
+  <section class="cta">
+    <h2>내 데이터로 해 보기</h2>
+    <p>파일은 브라우저를 벗어나지 않습니다.</p>
+    <p><a class="btn" href="/pages/analyze">CSV 분석하기</a></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul>
+      <li><a href="/pages/about">소개</a></li>
+      <li><a href="/pages/contact">문의</a></li>
+      <li><a href="/pages/privacy">개인정보처리방침</a></li>
+      <li><a href="/pages/terms">이용약관</a></li>
+      <li><a href="/pages/disclaimer">면책조항</a></li>
+      <li><a href="/pages/sitemap">사이트맵</a></li>
+    </ul>
+    <p>&copy; <span data-footer-year>2026</span> AutoEDA</p>
+  </div>
+</footer>
+
+<script type="module" src="/js/app/common.js"></script>
+<script type="module" src="/js/app/menu.js"></script>
+<script type="module" src="/js/app/float-cta.js"></script>
+</body>
+</html>
