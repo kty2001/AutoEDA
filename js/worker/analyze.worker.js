@@ -35,6 +35,7 @@ import {
 import { iqrOutliers } from '../domain/outlier.js';
 import { correlationPairs, categoricalPairs } from '../domain/correlation.js';
 import { detectInteractions } from '../domain/interaction.js';
+import { principalComponents } from '../domain/pca.js';
 import { healthScore } from '../domain/quality.js';
 import { buildFindings } from '../domain/finding.js';
 import { applyRecipe } from '../domain/transform.js';
@@ -123,6 +124,9 @@ export function profile(parsed, options = {}) {
     .map((c) => ({ name: c.name, values: alignedNumeric(parsed.columns[c.index]) }));
   attachTargetInfo(columns, numericArrays, parsed, target);
   const correlations = attachScatterPoints(correlationPairs(numericArrays), numericArrays);
+  // 주성분은 집계값(고윳값·로딩)만 낸다 — 행 단위 점수를 담지 않으므로 결과 JSON 에
+  // 원본 행이 섞이는 경로가 생기지 않는다(docs/data-model.md §3.9)
+  const pca = principalComponents(numericArrays);
 
   // 다중 컬럼 관계(교호작용) — 카디널리티가 낮은 범주형만 다룬다(비용 상한, 해석 가능성 둘 다 위해).
   const categoricalArrays = columns
@@ -153,7 +157,12 @@ export function profile(parsed, options = {}) {
   const health = healthScore({ columns, dataset });
   const findings = buildFindings({ dataset, columns, health, correlations, associations, interactions, target });
 
-  return { schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings, correlations, associations, interactions };
+  const result = {
+    schemaVersion: SCHEMA_VERSION, dataset, columns, health, findings,
+    correlations, associations, interactions,
+  };
+  if (pca) result.pca = pca; // 산출 조건 미달이면 필드 자체를 두지 않는다(선택 필드)
+  return result;
 }
 
 /**

@@ -17,7 +17,7 @@ class FakeStorage {
 }
 
 let analyze, profile, saveResult, loadResult;
-let selectForColumn, selectPairs, selectHeatmap, selectForFinding, renderChart;
+let selectForColumn, selectPairs, selectHeatmap, selectForFinding, selectScree, renderChart;
 let applyRecipe, suggestSteps, normalizeRecipe, serializeCsv;
 let result;
 /** analyze 가 붙들어 준 파싱 결과 — 전처리 경로의 입력이다 (Worker 가 하는 일과 같다). */
@@ -47,7 +47,7 @@ before(async () => {
   ({ suggestSteps, normalizeRecipe } = await import('../js/domain/recipe.js'));
   ({ serializeCsv } = await import('../js/domain/parse.js'));
   ({ saveResult, loadResult } = await import('../js/storage/local.js'));
-  ({ selectForColumn, selectPairs, selectHeatmap, selectForFinding } = await import(
+  ({ selectForColumn, selectPairs, selectHeatmap, selectForFinding, selectScree } = await import(
     '../js/domain/chart-select.js'
   ));
   ({ renderChart } = await import('../js/domain/chart-svg.js'));
@@ -225,4 +225,68 @@ test('타깃 지정 — F-LEAKAGE 가 실제로 발화한다 (거의 결정론�
   const leakage = withTarget.findings.find((f) => f.type === 'F-LEAKAGE');
   assert.ok(leakage, 'F-LEAKAGE 가 발화하지 않았다 — 연소득은 나이의 거의 결정론적 함수다');
   assert.ok(leakage.targets.includes('연소득') && leakage.targets.includes('나이'));
+});
+
+// ─── 차원축소 (docs/TODO.md T9) ─────────────────────────────
+// 수치형 열이 2개뿐인 위 픽스처는 PCA 산출 조건에 미달한다 — 그 경계도 함께 확인한다.
+
+/** 수치형 4열(둘은 강하게 겹침) + 범주형 1열. 차원축소 경로를 타는 최소 현실형 파일이다. */
+function pcaCsv() {
+  const rows = ['키,몸무게,허리둘레,만족도,등급'];
+  for (let i = 0; i < 120; i++) {
+    const height = 150 + (i % 45);
+    const weight = height * 0.6 + (i % 5); // 키와 강한 상관
+    const waist = height * 0.45 + (i % 7);
+    const score = (i * 13) % 10; // 체격과 무관
+    rows.push(`${height},${weight.toFixed(1)},${waist.toFixed(1)},${score},${['A', 'B'][i % 2]}`);
+  }
+  return rows.join('\n');
+}
+
+test('차원축소 — 수치형 열이 최소 개수 미만이면 pca 필드 자체가 없다', () => {
+  // 위 픽스처의 수치형은 나이·연소득 둘뿐이다 (우편번호는 선행 0 코드값이라 수치가 아니다)
+  assert.equal(result.columns.filter((c) => c.type === 'numeric').length, 2);
+  assert.equal('pca' in result, false);
+});
+
+test('차원축소 — analyze() 한 번으로 pca 가 조립되고 스크리 차트까지 그려진다', () => {
+  const r = analyze(new TextEncoder().encode(pcaCsv()).buffer);
+  assert.ok(r.pca, 'pca 가 조립되지 않았다');
+  assert.deepEqual(r.pca.columns, ['키', '몸무게', '허리둘레', '만족도']);
+  assert.equal(r.pca.usedRowCount, 120);
+  assert.equal(r.pca.droppedRowCount, 0);
+
+  const sum = r.pca.components.reduce((a, c) => a + c.ratio, 0);
+  assert.ok(Math.abs(sum - 1) < 1e-9, `설명 비율 합이 1 이 아님: ${sum}`);
+  // 체격 3열이 서로 겹치므로 첫 축이 절반 이상을 가져간다
+  assert.ok(r.pca.components[0].ratio > 0.5, `PC1 설명 비율 ${r.pca.components[0].ratio}`);
+
+  const svg = renderChart(selectScree(r.pca));
+  assert.match(svg, /<svg/);
+  assert.ok(!svg.includes('style='), 'CSP — 인라인 style 금지');
+});
+
+test('차원축소 — 결과 캐시를 왕복해도 pca 가 살아남는다', () => {
+  const r = analyze(new TextEncoder().encode(pcaCsv()).buffer);
+  assert.ok(saveResult(r).saved);
+  const reread = loadResult();
+  assert.deepEqual(reread.pca, JSON.parse(JSON.stringify(r.pca)));
+});
+
+test('차원축소 — 전처리 후 결과도 같은 엔진으로 pca 를 다시 낸다', () => {
+  let held;
+  const r = analyze(new TextEncoder().encode(pcaCsv()).buffer, { onParsed: (p) => (held = p) });
+  const applied = applyRecipe(held, r.columns, [{ op: 'drop-column', column: '만족도' }]);
+  const after = profile(applied, { recipe: [{ op: 'drop-column', column: '만족도' }] });
+  assert.deepEqual(after.pca.columns, ['키', '몸무게', '허리둘레']);
+  assert.ok(after.pca.components[0].ratio > r.pca.components[0].ratio, '무관한 열을 빼면 첫 축의 비중이 커진다');
+});
+
+test('차원축소 — 결과 JSON 에 행 단위 값이 들어가지 않는다 (규약 8)', () => {
+  const r = analyze(new TextEncoder().encode(pcaCsv()).buffer);
+  const keys = Object.keys(r.pca);
+  assert.deepEqual(keys.filter((k) => k.includes('score') || k.includes('points')), []);
+  // 담긴 배열의 길이는 전부 열 수·성분 수에 묶여 있고 행 수와 무관하다
+  assert.equal(r.pca.loadings.length, r.pca.components.length);
+  for (const row of r.pca.loadings) assert.equal(row.length, r.pca.columns.length);
 });

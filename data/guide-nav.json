@@ -95,6 +95,15 @@
         ]
       },
       {
+        "label": "차원 축소",
+        "items": [
+          {
+            "slug": "principal-components",
+            "label": "주성분 분석"
+          }
+        ]
+      },
+      {
         "label": "타깃·모델링",
         "items": [
           {

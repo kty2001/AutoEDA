@@ -2,8 +2,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { selectForColumn, selectPairs, selectHeatmap, selectForFinding } from '../js/domain/chart-select.js';
+import {
+  selectForColumn,
+  selectPairs,
+  selectHeatmap,
+  selectForFinding,
+  selectScree,
+} from '../js/domain/chart-select.js';
 import { linearScale, renderAxis, renderChart, escapeXml } from '../js/domain/chart-svg.js';
+import { DISPLAY_LIMIT } from '../js/domain/thresholds.js';
 
 const numericCol = (name = 'x', statsOverride = {}) => ({
   name,
@@ -61,6 +68,47 @@ test('산점도 — 상관 절댓값 상위 6쌍, points 없는 쌍은 제외', 
   assert.equal(specs[0].axis.y, 'c'); // |−0.9| 가 최상위
   assert.ok(specs.every((s) => s.kind === 'scatter' && s.data.points.length > 0));
   assert.ok(!specs.some((s) => s.axis.y === 'i')); // 점 없는 쌍 제외
+});
+
+// ─── selectScree ────────────────────────────────────────────
+
+const samplePca = (ratios) => ({
+  columns: ratios.map((_, i) => `열${i}`),
+  components: ratios.map((ratio, i) => ({
+    eigenvalue: ratio * ratios.length,
+    ratio,
+    cumulative: ratios.slice(0, i + 1).reduce((a, b) => a + b, 0),
+  })),
+  loadings: [],
+});
+
+test('selectScree — 설명 분산 비율을 막대 스펙으로 낸다', () => {
+  const spec = selectScree(samplePca([0.6, 0.3, 0.1]));
+  assert.equal(spec.kind, 'bar'); // 새 차트 종류를 만들지 않고 기존 렌더러를 쓴다
+  assert.deepEqual(spec.data.items, [
+    { value: 'PC1', count: 0.6 },
+    { value: 'PC2', count: 0.3 },
+    { value: 'PC3', count: 0.1 },
+  ]);
+});
+
+test('selectScree — 성분이 표시 상한을 넘으면 상위만 남긴다', () => {
+  const ratios = Array.from({ length: DISPLAY_LIMIT.pcaComponents + 3 }, () => 0.05);
+  const spec = selectScree(samplePca(ratios));
+  assert.equal(spec.data.items.length, DISPLAY_LIMIT.pcaComponents);
+});
+
+test('selectScree — pca 가 없으면 null (그릴 것이 없다)', () => {
+  assert.equal(selectScree(null), null);
+  assert.equal(selectScree(undefined), null);
+  assert.equal(selectScree({ components: [] }), null);
+});
+
+test('selectScree — 스펙이 기존 막대 렌더러로 그려진다', () => {
+  const svg = renderChart(selectScree(samplePca([0.7, 0.3])));
+  assert.match(svg, /<svg/);
+  assert.match(svg, /PC1/);
+  assert.ok(!svg.includes('style='), 'CSP — 인라인 style 금지');
 });
 
 // ─── selectHeatmap ──────────────────────────────────────────

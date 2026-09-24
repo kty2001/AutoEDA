@@ -2,7 +2,7 @@
 // 대응 유스케이스: UC-01 ~ UC-11, UC-15 (docs/use-cases.md)
 // 대응 화면: /pages/analyze — 4상태 단일 페이지 (docs/screens.md §3.2·§4)
 //
-// 상태 A 파일 선택 → B 진행(Worker) → C 결과(7섹션 탭) → D 오류
+// 상태 A 파일 선택 → B 진행(Worker) → C 결과(8섹션 탭) → D 오류
 // 상태를 히스토리에 넣지 않는다 — 뒤로가기로 결과가 사라지는 혼란을 만들지 않는다.
 // 대신 해설 페이지에서 돌아오면 sessionStorage 로 결과를 복원한다(docs/screens.md §4).
 //
@@ -13,11 +13,17 @@
 // 동적 텍스트는 esc() 를 거치거나 textContent 로 넣는다 — 열 이름·범주 값이 XSS 경로다.
 
 import {
-  selectForColumn, selectForFinding, selectPairs, selectHeatmap, selectAssociationHeatmap, selectInteractions,
+  selectForColumn,
+  selectForFinding,
+  selectPairs,
+  selectHeatmap,
+  selectAssociationHeatmap,
+  selectInteractions,
+  selectScree,
 } from '../domain/chart-select.js';
 import { suggestSteps, normalizeRecipe } from '../domain/recipe.js';
 import { renderChart, escapeXml as esc } from '../domain/chart-svg.js';
-import { DISPLAY_LIMIT } from '../domain/thresholds.js';
+import { DISPLAY_LIMIT, PCA } from '../domain/thresholds.js';
 import { percent, count, stat, bytes } from '../lib/format.js';
 import { saveResult, loadResult, clearResult, loadPrefs, savePrefs } from '../storage/local.js';
 import { buildShareSummary, encodeShareSummary, decodeShareSummary } from '../domain/share.js';
@@ -47,6 +53,7 @@ const TABS = [
   { id: 'relations', label: '관계' },
   { id: 'prep', label: '전처리' },
   { id: 'target', label: '타깃' },
+  { id: 'pca', label: '차원축소' },
 ];
 
 const OP_LABEL = {
@@ -243,10 +250,10 @@ function detailText(detail) {
   return String(detail);
 }
 
-// ─── 상태 C — 결과 5섹션 (UC-03 ~ UC-08) ────────────────────
+// ─── 상태 C — 결과 8섹션 (UC-03 ~ UC-08) ────────────────────
 
 /**
- * 결과 7섹션(개요·품질·발견·변수별·관계·전처리·타깃)을 렌더한다.
+ * 결과 8섹션(개요·품질·발견·변수별·관계·전처리·타깃·차원축소)을 렌더한다.
  * @param {object} result 결과 JSON (docs/data-model.md §3)
  * @param {string|null} [notice] 캐시 축소 등 결과 화면에 표시할 안내
  */
@@ -273,6 +280,7 @@ export function renderResult(result, notice = null) {
     relations: renderRelations,
     prep: renderPrep,
     target: renderTarget,
+    pca: renderPca,
   };
 
   // 새 결과에는 이전 레시피를 물려주지 않는다 — 열 이름이 우연히 겹치면 엉뚱한 열에 적용된다
@@ -973,6 +981,113 @@ function renderClassificationTarget(panel, result, targetCol) {
     }
   }
   attachGuideLinks(panel);
+}
+
+// 차원축소 — 표준화된 수치형 열의 주성분 (docs/TODO.md T11)
+//
+// 히트맵이 두 열씩만 다루는 것을 수치형 열 전체 관점으로 옮긴 탭이다.
+// 주성분 점수(행 단위 값)는 담지도 그리지도 않는다. 여기 있는 것은 전부 집계값이다.
+function renderPca(panel, result) {
+  const pca = result.pca;
+  if (!pca) {
+    const numericCount = result.columns.filter((c) => c.type === 'numeric').length;
+    panel.insertAdjacentHTML(
+      'beforeend',
+      `<p>주성분 분석을 산출하지 않았습니다. 수치형 열이 ${PCA.minColumns}개 이상이고
+       결측 없는 행이 ${PCA.minCompleteRows}개 이상일 때 계산합니다.
+       이 데이터의 수치형 열은 ${count(numericCount)}개입니다.</p>`
+    );
+    return;
+  }
+
+  // 전제와 대가를 먼저 적는다. 축이 무엇인지 모른 채 설명 분산만 보면
+  // "3개 축이면 충분하다"는 결론으로 곧장 건너뛰게 된다
+  panel.insertAdjacentHTML(
+    'beforeend',
+    `<p class="hint">수치형 열 ${count(pca.columns.length)}개를 <strong>표준화한 뒤</strong> 상관행렬 기준으로 계산했습니다.
+     결측이 있는 행은 빼고 전체 ${count(result.dataset.rowCount)}행 중 <strong>${count(pca.usedRowCount)}행</strong>을 썼습니다.
+     주성분은 원본 열을 섞어 만든 새 축입니다. 분산은 압축되지만 <strong>열 이름이 갖던 의미는 남지 않습니다.</strong>
+     <span data-guide-slug="principal-components"></span></p>`
+  );
+
+  const notes = [];
+  if (pca.reduced) notes.push(`수치형 열이 많아 분산 상위 ${count(pca.columns.length)}개 열만 썼습니다.`);
+  if (pca.droppedColumns.length > 0) {
+    notes.push(`값이 하나뿐이라 제외한 열: ${pca.droppedColumns.map((n) => esc(n)).join(', ')}`);
+  }
+  if (pca.droppedRowCount > 0) notes.push(`결측으로 제외한 행: ${count(pca.droppedRowCount)}개`);
+  if (notes.length > 0) {
+    panel.insertAdjacentHTML('beforeend', `<p class="hint">${notes.join(' · ')}</p>`);
+  }
+
+  const scree = selectScree(pca);
+  if (scree) {
+    panel.insertAdjacentHTML('beforeend', '<h3>주성분별 설명 분산</h3>');
+    panel.insertAdjacentHTML('beforeend', renderChart(scree));
+  }
+
+  const shown = pca.components.slice(0, DISPLAY_LIMIT.pcaComponents);
+  const varianceRows = shown
+    .map(
+      (c, i) =>
+        `<tr><th scope="row">PC${i + 1}</th><td>${stat(c.eigenvalue)}</td><td>${percent(c.ratio)}</td><td>${percent(c.cumulative)}</td></tr>`
+    )
+    .join('');
+  panel.insertAdjacentHTML(
+    'beforeend',
+    `<h3>누적 설명 분산</h3>
+     <div class="table-wrap"><table>
+       <thead><tr><th>성분</th><th>고윳값</th><th>설명 비율</th><th>누적</th></tr></thead>
+       <tbody>${varianceRows}</tbody>
+     </table></div>
+     <p class="hint">${esc(cumulativeSummary(pca))}</p>`
+  );
+  if (pca.components.length > shown.length) {
+    panel.insertAdjacentHTML(
+      'beforeend',
+      `<p class="hint">성분 ${count(pca.components.length)}개 중 상위 ${count(shown.length)}개만 표에 실었습니다.</p>`
+    );
+  }
+
+  // 로딩 표는 누적 기준을 넘는 지점까지만 — 성분 전량을 늘어놓으면 표가 읽히지 않는다
+  const loadingCount = Math.min(componentsToTarget(pca), pca.loadings.length);
+  const header = Array.from({ length: loadingCount }, (_, k) => `<th>PC${k + 1}</th>`).join('');
+  const loadingRows = pca.columns
+    .map((name, i) => {
+      const cells = Array.from(
+        { length: loadingCount },
+        (_, k) => `<td>${stat(pca.loadings[k][i])}</td>`
+      ).join('');
+      return `<tr><th scope="row">${esc(name)}</th>${cells}</tr>`;
+    })
+    .join('');
+  panel.insertAdjacentHTML(
+    'beforeend',
+    `<h3>성분별 로딩</h3>
+     <div class="table-wrap"><table>
+       <thead><tr><th>열</th>${header}</tr></thead>
+       <tbody>${loadingRows}</tbody>
+     </table></div>
+     <p class="hint">로딩은 원본 열과 주성분의 상관계수입니다. 절댓값이 큰 열이 그 축을 만든 열이고,
+      부호는 방향만 가리킵니다.</p>`
+  );
+
+  attachGuideLinks(panel);
+}
+
+/** 누적 설명 분산이 기준을 처음 넘는 성분 수. 넘지 못하면 담고 있는 성분 전부. */
+function componentsToTarget(pca) {
+  const index = pca.components.findIndex((c) => c.cumulative >= PCA.cumulativeTarget);
+  return index === -1 ? pca.components.length : index + 1;
+}
+
+function cumulativeSummary(pca) {
+  const k = componentsToTarget(pca);
+  const reached = pca.components[k - 1].cumulative;
+  if (reached < PCA.cumulativeTarget) {
+    return `성분 ${pca.components.length}개를 모두 써도 누적 설명 분산이 ${percent(reached)}입니다. 열이 서로 크게 겹치지 않는다는 뜻입니다.`;
+  }
+  return `주성분 ${k}개가 전체 분산의 ${percent(reached)}를 설명합니다. 원본 ${pca.columns.length}개 열이 ${k}개 축으로 줄어듭니다.`;
 }
 
 /** 정제 CSV 를 내려준다. 문자열은 여기서만 잠깐 존재하며 어디에도 저장하지 않는다. */
